@@ -224,18 +224,17 @@ function updateColumn4(data) {
   }
 }
 
-// Fonction pour charger le contexte depuis GitHub Pages
-async function fetchContextFromFile(topic) {
+// Fonction pour charger le contexte Markdown depuis GitHub Pages
+async function fetchMarkdownContext(topic) {
   try {
-    const response = await fetch(`/contexts/${topic}.txt`);
-    if (!response.ok) {
-      throw new Error(`Fichier ${topic}.txt non trouvé (status: ${response.status})`);
-    }
-    const text = await response.text();
-    console.log(`✅ Contexte ${topic}.txt chargé (${text.length} caractères)`);
-    return text.trim();
-  } catch (e) {
-    console.error('❌ Impossible de charger le contexte :', e);
+    const response = await fetch(`/contexts/${topic}.md`);
+    if (!response.ok) throw new Error(`Fichier ${topic}.md non trouvé (status: ${response.status})`);
+    
+    const mdText = await response.text();
+    console.log(`✅ Contexte Markdown ${topic}.md chargé (${mdText.length} caractères)`);
+    return mdText;
+  } catch (error) {
+    console.error('❌ Impossible de charger le contexte Markdown:', error);
     return "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
   }
 }
@@ -253,11 +252,10 @@ window.sendAIChatMessage = async function() {
   // Vider l'input
   input.value = '';
   
-  // Récupérer le contexte depuis le fichier correspondant au topic
+  // Charger automatiquement le contexte Markdown du sujet
   let topicContext = "Tu es un tuteur expert en français.";
   if (window.currentDiscussion) {
-    const topic = window.currentDiscussion;
-    topicContext = await fetchContextFromFile(topic);
+    topicContext = await fetchMarkdownContext(window.currentDiscussion);
   }
   
   // Appeler le pipeline IA - PLUS DE FALLBACK

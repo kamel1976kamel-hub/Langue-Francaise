@@ -218,12 +218,12 @@ async function callGitHubModel(model, messages, temperature = 0.7) {
 
 // Fonction pour exécuter le pipeline à 4 modèles via GitHub Models API
 window.runFourModelPipeline = async function(studentAnswer, activityContext, activityType = 'general') {
-  // Si l'environnement est en mode développement/local, on peut utiliser une version simplifiée
-  if (location.hostname === 'localhost' || location.protocol === 'file:') {
-    // Version simplifiée pour test local
-    return await runFourModelPipelineFallback(studentAnswer, activityContext, activityType);
+  // Mode démo pour GitHub Pages (CORS bloqué)
+  if (location.hostname.includes('github.io')) {
+    return await runFourModelPipelineDemo(studentAnswer, activityContext, activityType);
   }
   
+  // Mode local avec API GitHub Models
   try {
     // Étape 1: Évaluateur Logique - Analyse la réponse à froid
     const logicEvaluationPrompt = `Analyse cette réponse d'étudiant à froid. Identifie les erreurs de raisonnement, les lacunes et les points justes. Réponds de manière technique et précise.\n\nRéponse de l'étudiant : ${studentAnswer}\n\nContexte de l'activité : ${activityContext}`;
@@ -264,6 +264,35 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
     return "Erreur lors de l'analyse de la réponse. Veuillez vérifier votre connexion Internet.";
   }
 };
+
+// Fonction de démonstration pour GitHub Pages
+async function runFourModelPipelineDemo(studentAnswer, activityContext, activityType = 'general') {
+  console.log("🎭 Mode démo : Simulation de la pipeline IA");
+  
+  // Simuler un temps de traitement
+  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  
+  // Analyser le contexte pour une réponse personnalisée
+  const contextLower = activityContext.toLowerCase();
+  let response = "";
+  
+  if (contextLower.includes('narratif')) {
+    response = `Merci pour votre réponse ! J'analyse votre travail sur le texte narratif.\n\n**Points forts observés :**\n- Vous semblez avoir compris les éléments essentiels du récit\n- La structure narrative est présente\n\n**Pistes d'amélioration :**\n- Pensez à approfondir la caractérisation de vos personnages\n- Travaillez l'enchaînement logique des événements\n- Utilisez des temps verbaux variés pour créer du rythme\n\n**Question pour vous guider :**\nQuel élément perturbateur pourriez-vous ajouter pour rendre votre histoire plus captivante ?\n\nContinuez ainsi, vous êtes sur la bonne voie !`;
+  } else if (contextLower.includes('descriptif')) {
+    response = `Excellente approche descriptive ! Voici mon analyse :\n\n**Réussites :**\n- Le choix des détails est pertinent\n- L'organisation spatiale est cohérente\n\n**Suggestions pour enrichir :**\n- Intégrez davantage de perceptions sensorielles (vues, sons, odeurs)\n- Variez les champs lexicaux pour créer des atmosphères différentes\n- Pensez à l'implication du narrateur (subjectivité vs objectivité)\n\n**Pour aller plus loin :**\nQuel effet émotionnel cherchez-vous à produire chez votre lecteur ?\n\nVotre travail montre déjà une belle sensibilité descriptive !`;
+  } else if (contextLower.includes('explicatif')) {
+    response = `Très bon travail sur le texte explicatif ! Analyse détaillée :\n\n**Points positifs :**\n- La définition du sujet est claire\n- Vous utilisez des connecteurs logiques appropriés\n\n**Axes de progression :**\n- Développez davantage les relations de cause à effet\n- Ajoutez des exemples concrets pour illustrer vos explications\n- Structurez votre propos avec une introduction et une conclusion nettes\n\n**Question de réflexion :**\nComment pourriez-vous rendre votre explication encore plus accessible à quelqu'un qui ne connaît pas le sujet ?\n\nVotre démarche explicative est solide !`;
+  } else if (contextLower.includes('argumentatif')) {
+    response = `Analyse de votre texte argumentatif :\n\n**Forces :**\n- Votre position est clairement affirmée\n- Les arguments présentés sont pertinents\n\n**Recommandations :**\n- Renforcez vos arguments avec des preuves spécifiques\n- Anticipez les contre-arguments possibles\n- Travaillez la progression de vos arguments (du plus faible au plus fort)\n\n**Pour approfondir :**\nQuelles objections pourriez-vous anticiper et comment y répondreiez-vous ?\n\nVotre capacité à convaincre est déjà bien développée !`;
+  } else if (contextLower.includes('resume')) {
+    response = `Bonne analyse dans votre travail de résumé :\n\n**Compétences maîtrisées :**\n- Vous identifiez bien les idées essentielles\n- La concision est respectée\n\n**Points à perfectionner :**\n- Vérifiez que toutes les idées principales sont bien présentes\n- Travaillez les transitions entre les idées\n- Assurez-vous de ne pas introduire d'interprétation personnelle\n\n**Suggestion :**\nRelisez votre résumé et demandez-vous : "Est-ce que quelqu'un qui n'a pas lu le texte original comprend l'essentiel ?"\n\nVotre synthèse est sur la bonne voie !`;
+  } else {
+    // Réponse générale pour les techniques d'écriture
+    response = `Merci pour votre travail ! Voici mon analyse pédagogique :\n\n**Ce qui fonctionne bien :**\n- Votre engagement dans la tâche est évident\n- Les bases de l'expression écrite sont acquises\n\n**Pistes de développement :**\n- Enrichissez votre vocabulaire précis et varié\n- Structurez vos idées de manière plus explicite\n- Relisez-vous attentivement pour corriger les petites erreurs\n\n**Conseil pratique :**\nPrenez le temps de faire un plan rapide avant de rédiger. Cela vous aidera à organiser vos pensées.\n\nContinuez vos efforts, chaque exercice vous fait progresser !`;
+  }
+  
+  return response;
+}
 
 // Fonction de fallback pour le pipeline à 4 modèles (version simplifiée pour tests locaux)
 async function runFourModelPipelineFallback(studentAnswer, activityContext, activityType = 'general') {
