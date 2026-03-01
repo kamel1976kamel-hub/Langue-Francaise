@@ -72,31 +72,7 @@ window.generateTableInput = function(chapterId, activityId, tableType) {
   return html;
 };
 
-// Fonction pour récupérer le contenu du tableau ou du textarea
-window.getActivityAnswer = function(chapterId, activityId, hasTable) {
-  if (hasTable) {
-    const inputs = document.querySelectorAll(`.table-input-${chapterId}-${activityId}`);
-    let result = {};
-    let filledCount = 0;
-    inputs.forEach(input => {
-      const row = input.dataset.row;
-      const col = input.dataset.col;
-      const value = input.value.trim();
-      if (!result[row]) result[row] = {};
-      result[row][col] = value;
-      if (value) filledCount++;
-    });
-    // Retourner null si aucun champ n'est rempli
-    if (filledCount === 0) return null;
-    return JSON.stringify(result, null, 2);
-  } else {
-    const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-    const value = textarea ? textarea.value.trim() : '';
-    // Retourner null si le textarea est vide
-    if (!value) return null;
-    return value;
-  }
-};
+// Fonction pour récupérer le contenu du tableau ou du textarea est définie dans index.html
 
 // Fonction pour soumettre une activité à l'IA
 window.submitActivity = async function(chapterId, activityId) {

@@ -1,6 +1,6 @@
 // Système de chat et discussions
 
-// La variable currentDiscussion est déclarée dans index.html pour éviter les conflits
+// La variable currentDiscussion et discussionData sont déclarées dans index.html pour éviter les conflits
 
 const discussionData = {
   techniques: {

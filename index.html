@@ -2922,7 +2922,8 @@
       let activityWindowZ = 80;
       const supportDocCache = new Map();
 
-      const activityContent = {
+      // Rendre activityContent accessible globalement pour les fonctions externes
+      window.activityContent = {
         "explicatif-1": {
           1: {
             title: "Séquence 1 · Activité 1 – Le tri inductif de textes",
