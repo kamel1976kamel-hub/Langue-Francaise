@@ -235,7 +235,19 @@ async function fetchMarkdownContext(topic) {
     return mdText;
   } catch (error) {
     console.error('❌ Impossible de charger le contexte Markdown:', error);
-    return "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
+    // Fallback contextuel si GitHub Pages n'est pas encore déployé
+    const fallbackContexts = {
+      techniques: "Tu es un expert en didactique du français. Aide l'étudiant à progresser dans la production écrite sans lui donner directement les réponses. Domaine : planification, structuration, connecteurs logiques, adaptation au destinataire, révision, analyse de consignes.",
+      narratif: "Tu es un expert en littérature spécialisé dans le texte narratif. Aide l'étudiant à maîtriser la structure du récit, les personnages, les temps verbaux, le narrateur et l'intrigue. Guide-le dans la création d'histoires captivantes.",
+      descriptif: "Tu es un expert en littérature spécialisé dans le texte descriptif. Aide l'étudiant à développer son regard descriptif, l'organisation spatiale, les perceptions sensorielles, les champs lexicaux et la création d'atmosphère.",
+      explicatif: "Tu es un expert en littérature spécialisé dans le texte explicatif. Aide l'étudiant à structurer ses explications de manière logique, utiliser les connecteurs logiques, et répondre aux questions 'Pourquoi?' et 'Comment?'.",
+      argumentatif: "Tu es un expert en littérature spécialisé dans le texte argumentatif. Aide l'étudiant à développer sa thèse, construire des arguments solides, utiliser des preuves et réfuter les contre-arguments.",
+      resume: "Tu es un expert en littérature spécialisé dans l'art du résumé. Aide l'étudiant à identifier les idées essentielles, éliminer les superflu, reformuler avec ses propres mots et respecter la fidélité au texte."
+    };
+    
+    const fallback = fallbackContexts[topic] || "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
+    console.log(`🔄 Utilisation du contexte fallback pour ${topic}`);
+    return fallback;
   }
 }
 
