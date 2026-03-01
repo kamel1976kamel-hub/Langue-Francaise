@@ -660,6 +660,15 @@
               <div class="flex items-center gap-1.5 mb-1">
                 <span id="ia-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
                 <span id="ia-status" class="text-[8px]" style="color: var(--bs-text-muted);">IA : initialisation…</span>
+                <button 
+                  onclick="if(window.debugPipelineStatus) window.debugPipelineStatus(); else console.log('Débogage pas encore chargé')" 
+                  class="ml-1 p-0.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-600 transition-colors"
+                  title="Déboguer la pipeline IA"
+                >
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                </button>
               </div>
               <div class="w-full h-1 rounded-full overflow-hidden" style="background-color: var(--bs-border-color);">
                 <div id="ia-progress" class="h-full bg-amber-500 transition-all duration-300" style="width: 0%"></div>
@@ -7619,14 +7628,15 @@
         progressEl.style.width = progress + "%";
       }
     }
+    </script>
     
     <!-- Scripts JavaScript modulaires -->
-    <script src="./js/main.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/ui-elements.js"></script>
-    <script src="./js/chat-system.js"></script>
-    <script src="./js/audio-system.js"></script>
-    <script src="./js/activities.js"></script>
+    <script src="./main.js"></script>
+    <script src="./utils.js"></script>
+    <script src="./ui-elements.js"></script>
+    <script src="./chat-system.js"></script>
+    <script src="./audio-system.js"></script>
+    <script src="./activities.js"></script>
     
     <!-- Script de compatibilité IA -->
     <script>
@@ -7640,6 +7650,11 @@
                 }
             };
         }
+        
+        // Fonction pour simuler l'effet de frappe pour le chat
+        window.simulateTypingEffectForChat = function(text) {
+            addChatMessage(text, 'ai');
+        };
         
         console.log("Script de compatibilité IA chargé");
     </script>

@@ -25,10 +25,92 @@ function areAllModulesReady() {
          typeof window.initializeActivities === 'function';
 }
 
+// Fonction de débogage pour vérifier l'état de la pipeline
+window.debugPipelineStatus = function() {
+  console.log('=== ÉTAT DE LA PIPELINE IA ===');
+  
+  // Vérification des modules
+  const modulesReady = areAllModulesReady();
+  console.log('Modules prêts:', modulesReady);
+  
+  // Vérification spécifique de la pipeline
+  const pipelineExists = typeof window.runFourModelPipeline === 'function';
+  console.log('Pipeline disponible:', pipelineExists);
+  
+  // Vérification du token GitHub
+  const githubToken = localStorage.getItem('github_token') || sessionStorage.getItem('github_token');
+  console.log('Token GitHub présent:', !!githubToken);
+  console.log('Token GitHub valide:', githubToken ? githubToken.substring(0, 10) + '...' : 'Aucun');
+  
+  // Vérification de l'environnement
+  console.log('Environnement:', location.hostname);
+  console.log('Protocole:', location.protocol);
+  console.log('Mode fallback activé:', location.hostname === 'localhost' || location.protocol === 'file:');
+  
+  // Test de connexion API
+  if (githubToken && pipelineExists) {
+    console.log('Test de connexion API GitHub Models...');
+    fetch('https://api.github.com/models', {
+      headers: {
+        'Authorization': `Bearer ${githubToken}`,
+        'User-Agent': 'CoursFrancais/1.0'
+      }
+    })
+    .then(response => {
+      console.log('Statut connexion API:', response.status);
+      if (response.ok) {
+        console.log('✅ Connexion API GitHub Models réussie');
+      } else {
+        console.log('❌ Erreur connexion API:', response.statusText);
+      }
+    })
+    .catch(err => {
+      console.error('❌ Erreur de connexion API:', err);
+    });
+  }
+  
+  console.log('==============================');
+  return {
+    modulesReady,
+    pipelineExists,
+    hasToken: !!githubToken,
+    isLocalMode: location.hostname === 'localhost' || location.protocol === 'file:'
+  };
+};
+
+// Fonction pour tester la pipeline avec un message simple
+window.testPipeline = async function() {
+  console.log('=== TEST DE LA PIPELINE ===');
+  
+  if (!window.runFourModelPipeline) {
+    console.error('❌ Pipeline non disponible');
+    return false;
+  }
+  
+  try {
+    const testMessage = "Bonjour, je suis un test.";
+    const testContext = "Test de fonctionnement de la pipeline IA";
+    
+    console.log('Envoi du message de test...');
+    const startTime = Date.now();
+    
+    const response = await window.runFourModelPipeline(testMessage, testContext, 'test');
+    
+    const endTime = Date.now();
+    console.log('✅ Test réussi en', endTime - startTime, 'ms');
+    console.log('Réponse:', response);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Test échoué:', error);
+    return false;
+  }
+};
+
 // Configuration des modèles pour l'architecture à 4 modèles via GitHub Models API
 const modelConfiguration = {
   logicEvaluator: 'deepseek/deepseek-r1', // Évaluateur Logique
-  pedagogueTutor: 'openai/gpt-5-chat-preview', // Tuteur Pédagogue
+  pedagogueTutor: 'openai/gpt-3.5-turbo', // Tuteur Pédagogue
   documentary: 'meta/llama-4-scout-17b-16e', // Documentaliste
   qualityController: 'microsoft/phi-4-mini-reasoning' // Contrôleur de Qualité
 };
@@ -38,9 +120,6 @@ let logicEvaluatorClient = null;
 let pedagogueTutorClient = null;
 let documentaryClient = null;
 let qualityControllerClient = null;
-
-// Variable globale pour l'IA principale (utilisée dans l'application existante)
-let webllmEngine = null;
 
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
@@ -90,6 +169,9 @@ async function initializeFourModelPipeline() {
 
 // Fonction pour envoyer une requête à un modèle via l'API GitHub Models
 async function callGitHubModel(model, messages, temperature = 0.7) {
+  console.log(`🔄 Appel au modèle: ${model}`);
+  console.log(`📝 Messages: ${messages.length} message(s)`);
+  
   try {
     // Utilisation de l'endpoint correct pour GitHub Models
     const response = await fetch(`https://api.github.com/models/${model}/chat/completions`, {
@@ -107,14 +189,19 @@ async function callGitHubModel(model, messages, temperature = 0.7) {
       })
     });
 
+    console.log(`📡 Réponse API: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Erreur API détaillée:`, errorText);
       throw new Error(`Erreur API: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log(`✅ Réponse reçue de ${model}:`, data.choices?.[0]?.message?.content?.substring(0, 100) + '...');
     return data.choices[0].message.content;
   } catch (err) {
-    console.error("Erreur lors de l'appel au modèle:", err);
+    console.error(`❌ Erreur lors de l'appel au modèle ${model}:`, err);
     return "Erreur de connexion au service IA. Veuillez vérifier votre connexion Internet.";
   }
 }

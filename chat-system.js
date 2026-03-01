@@ -1,7 +1,6 @@
 // Système de chat et discussions
 
-// Déclaration unique de la variable currentDiscussion
-let currentDiscussion = 'techniques';
+// La variable currentDiscussion est déclarée dans index.html pour éviter les conflits
 
 const discussionData = {
   techniques: {
