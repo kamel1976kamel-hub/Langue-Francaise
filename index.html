@@ -6727,19 +6727,13 @@
             .then(response => {
               simulateTypingEffectForChat(response);
             })
-            .catch(() => {
-              // Fallback si l'IA n'est pas disponible
-              setTimeout(() => {
-                const aiResponse = generateAIResponse(message, window.currentDiscussion);
-                simulateTypingEffectForChat(aiResponse);
-              }, 500);
+            .catch(err => {
+              console.error('Erreur IA :', err);
+              addChatMessage("Désolé, une erreur technique est survenue. Veuillez réessayer.", 'ai');
             });
         } else {
-          // Fallback si l'IA n'est pas chargée
-          setTimeout(() => {
-            const aiResponse = generateAIResponse(message, window.currentDiscussion);
-            simulateTypingEffectForChat(aiResponse);
-          }, 1000);
+          console.error('Pipeline IA indisponible.');
+          addChatMessage("Le service IA est temporairement indisponible. Veuillez réessayer plus tard.", 'ai');
         }
       };
 
@@ -6797,61 +6791,6 @@
         
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-
-      function generateAIResponse(studentMessage, topic) {
-        // Réponses adaptées selon le sujet de discussion
-        const responsesByTopic = {
-          techniques: [
-            "Excellente question ! Pour la production écrite, il est essentiel de bien analyser la consigne avant de commencer. Quel type de texte devez-vous rédiger ?",
-            "C'est une approche intéressante. La planification est effectivement cruciale. Avez-vous déjà établi un plan pour votre texte ?",
-            "Très pertinent ! La cohérence textuelle se travaille à travers les connecteurs logiques. Pouvez-vous me donner un exemple ?",
-            "Absolument ! La révision fait partie intégrante du processus d'écriture. Quelles sont vos stratégies de révision ?",
-            "Bon point ! L'adaptation au destinataire est fondamentale. À qui s'adresse votre texte ?"
-          ],
-          narratif: [
-            "Excellente question sur la narration ! La structure du récit est essentielle. Avez-vous identifié votre élément perturbateur ?",
-            "C'est une approche intéressante pour vos personnages. Quels traits de caractère souhaitez-vous mettre en avant ?",
-            "Très pertinent ! Le choix du narrateur influence toute l'histoire. Quel type de narrateur envisagez-vous ?",
-            "Absolument ! Les temps verbaux créent le rythme du récit. Comment alternez-vous passé et présent ?",
-            "Bon point ! Les dialogues doivent révéler le caractère des personnages. Comment faites-vous parler vos personnages ?"
-          ],
-          descriptif: [
-            "Excellente question sur la description ! Le point de vue est crucial. D'où observez-vous votre sujet ?",
-            "C'est une belle approche des procédés descriptifs. Utilisez-vous des comparaisons ou métaphores ?",
-            "Très pertinent ! Les champs lexicaux créent l'atmosphère. Quels registres privilégiez-vous ?",
-            "Absolument ! L'organisation spatiale guide le lecteur. Suivez-vous un parcours précis ?",
-            "Bon point ! La subjectivité transforme la description. Voulez-vous un effet réaliste ou impressionniste ?"
-          ],
-          explicatif: [
-            "Excellente question ! La définition claire du sujet est la base. Avez-vous bien délimité votre thème ?",
-            "C'est une approche logique. Les connecteurs structurent l'explication. Lesquels utilisez-vous ?",
-            "Très pertinent ! Les exemples illustrent vos propos. Avez-vous des exemples concrets ?",
-            "Absolument ! La relation cause-conséquence est essentielle. Comment montrez-vous ces liens ?",
-            "Bon point ! La synthèse finale doit être claire. Savez-vous reformuler vos idées ?"
-          ],
-          argumentatif: [
-            "Excellente question argumentative ! Votre thèse doit être claire et précise. L'avez-vous formulée ?",
-            "C'est une approche solide. Les arguments doivent être étayés. Quelles preuves apportez-vous ?",
-            "Très pertinent ! Anticiper les objections renforce votre position. Quelles contre-arguments envisagez-vous ?",
-            "Absolument ! La réfutation doit être respectueuse mais ferme. Comment réfutez-vous ?",
-            "Bon point ! La conclusion doit convaincre. Avez-vous un appel à l'action ?"
-          ],
-          resume: [
-            "Excellente question sur le résumé ! Identifier les idées principales est la première étape. Les avez-vous repérées ?",
-            "C'est une bonne approche. Éliminer les détails demande du discernement. Que gardez-vous ?",
-            "Très pertinent ! La reformulation est essentielle. Savez-vous paraphraser avec vos mots ?",
-            "Absolument ! Respecter la longueur impose des choix. Quelle est votre contrainte ?",
-            "Bon point ! La fidélité au texte original est primordiale. Vérifiez-vous vos informations ?"
-          ]
-        };
-        
-        // Utiliser les réponses du sujet ou les réponses par défaut
-        const responses = responsesByTopic[topic] || responsesByTopic.techniques;
-        
-        // Choisir une réponse basée sur la longueur du message pour plus de variété
-        const index = studentMessage.length % responses.length;
-        return responses[index];
       }
 
       function escapeHtml(text) {

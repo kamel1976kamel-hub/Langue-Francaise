@@ -224,8 +224,23 @@ function updateColumn4(data) {
   }
 }
 
+// Fonction pour charger le contexte depuis un fichier
+async function fetchContextFromFile(topic) {
+  try {
+    const response = await fetch(`./contexts/${topic}.txt`);
+    if (!response.ok) {
+      throw new Error(`Fichier ${topic}.txt non trouvé`);
+    }
+    const text = await response.text();
+    return text.trim();
+  } catch (e) {
+    console.error('Impossible de charger le contexte :', e);
+    return "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
+  }
+}
+
 // ============ CHAT AVEC IA (vue Chat) ============
-window.sendAIChatMessage = function() {
+window.sendAIChatMessage = async function() {
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
   
@@ -237,12 +252,14 @@ window.sendAIChatMessage = function() {
   // Vider l'input
   input.value = '';
   
-  // Obtenir le contexte spécifique du sujet actuel
-    const topicContext = window.currentDiscussion && window.discussionData[window.currentDiscussion] 
-    ? window.discussionData[window.currentDiscussion].context 
-    : 'Tu es un tuteur expert en français. Aide l\'étudiant sans faire le travail à sa place.';
+  // Récupérer le contexte depuis le fichier correspondant au topic
+  let topicContext = "Tu es un tuteur expert en français.";
+  if (window.currentDiscussion) {
+    const topic = window.currentDiscussion;
+    topicContext = await fetchContextFromFile(topic);
+  }
   
-  // Obtenir la réponse de l'IA (pipeline à 4 modèles si disponible)
+  // Appeler le pipeline IA - PLUS DE FALLBACK
   if (typeof window.runFourModelPipeline === 'function') {
     window.runFourModelPipeline(message, topicContext)
       .then(response => {
@@ -252,27 +269,13 @@ window.sendAIChatMessage = function() {
           addChatMessage(response, 'ai');
         }
       })
-      .catch(() => {
-        // Fallback si l'IA n'est pas disponible
-        setTimeout(() => {
-          const aiResponse = generateAIResponse(message, window.currentDiscussion);
-          if (typeof simulateTypingEffectForChat !== 'undefined') {
-            simulateTypingEffectForChat(aiResponse);
-          } else {
-            addChatMessage(aiResponse, 'ai');
-          }
-        }, 500);
+      .catch(err => {
+        console.error('Erreur IA :', err);
+        addChatMessage("Désolé, une erreur technique est survenue. Veuillez réessayer.", 'ai');
       });
   } else {
-    // Fallback si l'IA n'est pas chargée
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(message, currentDiscussion);
-      if (typeof simulateTypingEffectForChat !== 'undefined') {
-        simulateTypingEffectForChat(aiResponse);
-      } else {
-        addChatMessage(aiResponse, 'ai');
-      }
-    }, 1000);
+    console.error('Pipeline IA indisponible.');
+    addChatMessage("Le service IA est temporairement indisponible. Veuillez réessayer plus tard.", 'ai');
   }
 };
 
@@ -331,57 +334,6 @@ function addChatMessage(text, sender) {
   
   chatMessages.appendChild(messageDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function generateAIResponse(studentMessage, topic) {
-  // Réponses adaptées selon le sujet de discussion
-  const responsesByTopic = {
-    techniques: [
-      "Excellente question ! Pour la production écrite, il est essentiel de bien analyser la consigne avant de commencer. Quel type de texte devez-vous rédiger ?",
-      "C'est une approche intéressante. La planification est effectivement cruciale. Avez-vous déjà établi un plan pour votre texte ?",
-      "Très pertinent ! La cohérence textuelle se travaille à travers les connecteurs logiques. Pouvez-vous me donner un exemple ?",
-      "Absolument ! La révision fait partie intégrante du processus d'écriture. Quelles sont vos stratégies de révision ?",
-      "Bon point ! L'adaptation au destinataire est fondamentale. À qui s'adresse votre texte ?"
-    ],
-    narratif: [
-      "Excellente question sur la narration ! La structure du récit est essentielle. Avez-vous identifié votre élément perturbateur ?",
-      "C'est une approche intéressante pour vos personnages. Quels traits de caractère souhaitez-vous mettre en avant ?",
-      "Très pertinent ! Le choix du narrateur influence toute l'histoire. Quel type de narrateur envisagez-vous ?",
-      "Absolument ! Les temps verbaux créent le rythme du récit. Comment alternez-vous passé et présent ?",
-      "Bon point ! Les dialogues doivent révéler le caractère des personnages. Comment faites-vous parler vos personnages ?"
-    ],
-    descriptif: [
-      "Excellente question sur la description ! Le point de vue est crucial. D'où observez-vous votre sujet ?",
-      "C'est une approche intéressante pour votre organisation spatiale. Comment structureriez-vous votre description ?",
-      "Très pertinent ! Les procédés descriptifs rendent la scène vivante. Quels effets cherchez-vous à produire ?",
-      "Absolument ! Le choix des détails est essentiel. Quels éléments souhaitez-vous mettre en avant ?",
-      "Bon point ! La richesse du vocabulaire descriptif est importante. Avez-vous pensé aux registres sensoriels ?"
-    ],
-    explicatif: [
-      "Excellente question sur l'explication ! La définition du sujet est primordiale. De quoi s'agit-il exactement ?",
-      "C'est une approche intéressante pour votre démarche. Comment organiseriez-vous vos idées de manière logique ?",
-      "Très pertinent ! Les connecteurs logiques assurent la cohérence. Pouvez-vous me donner un exemple ?",
-      "Absolument ! Les exemples rendent l'explication plus claire. Quels exemples pourriez-vous ajouter ?",
-      "Bon point ! La cause et la conséquence sont liées. Pouvez-vous établir cette relation ?"
-    ],
-    argumentatif: [
-      "Excellente question sur l'argumentation ! Votre thèse est-elle clairement formulée ?",
-      "C'est une approche intéressante pour vos arguments. Comment les organisez-vous de manière convaincante ?",
-      "Très pertinent ! Les preuves appuient vos arguments. Quelles preuves pouvez-vous apporter ?",
-      "Absolument ! La réfutation est essentielle. Avez-vous anticipé les objections ?",
-      "Bon point ! La conclusion renforce votre thèse. Comment conclurez-vous de manière percutante ?"
-    ],
-    resume: [
-      "Excellente question sur le résumé ! L'idée principale est-elle clairement identifiée ?",
-      "C'est une approche intéressante pour votre hiérarchisation. Comment distinguez-vous l'essentiel de l'accessoire ?",
-      "Très pertinent ! La reformulation est au cœur du résumé. Avez-vous utilisé vos propres mots ?",
-      "Absolument ! La concision est essentielle. Avez-vous éliminé les redondances ?",
-      "Bon point ! La fidélité au texte original est primordiale. Avez-vous respecté le sens ?"
-    ]
-  };
-  
-  const topicResponses = responsesByTopic[topic] || responsesByTopic.techniques;
-  return topicResponses[Math.floor(Math.random() * topicResponses.length)];
 }
 
 // Fonction utilitaire pour échapper le HTML

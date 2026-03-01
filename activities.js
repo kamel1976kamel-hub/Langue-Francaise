@@ -74,6 +74,21 @@ window.generateTableInput = function(chapterId, activityId, tableType) {
 
 // Fonction pour récupérer le contenu du tableau ou du textarea est définie dans index.html
 
+// Fonction pour charger le contexte depuis un fichier
+async function fetchContextFromFile(topic) {
+  try {
+    const response = await fetch(`./contexts/${topic}.txt`);
+    if (!response.ok) {
+      throw new Error(`Fichier ${topic}.txt non trouvé`);
+    }
+    const text = await response.text();
+    return text.trim();
+  } catch (e) {
+    console.error('Impossible de charger le contexte :', e);
+    return "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
+  }
+}
+
 // Fonction pour soumettre une activité à l'IA
 window.submitActivity = async function(chapterId, activityId) {
   const activity = window.activityContent && window.activityContent[chapterId] ? window.activityContent[chapterId][activityId] : null;
@@ -122,8 +137,9 @@ window.submitActivity = async function(chapterId, activityId) {
     return;
   }
 
-  if (!window.runFourModelPipeline) {
-    feedbackTextEl.textContent = 'L\'IA n\'est pas encore chargée. Veuillez patienter.';
+  // Vérifier si la pipeline IA est disponible - PLUS DE FALLBACK
+  if (typeof window.runFourModelPipeline !== 'function') {
+    feedbackTextEl.textContent = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
     feedbackEl.classList.remove('hidden');
     return;
   }
@@ -131,33 +147,30 @@ window.submitActivity = async function(chapterId, activityId) {
   feedbackTextEl.textContent = 'Correction en cours...';
   feedbackEl.classList.remove('hidden');
 
-  // Contexte adapté selon le type d'activité - se concentrer sur la correction de la réponse de l'élève
-  let contexte = `Activité : ${activity.title}\n\nConsigne originale : ${activity.instructions || 'Non spécifiée'}\n\nVoici la réponse de l'élève à corriger et analyser en détail :\n\n${answer}\n\nIMPORTANT : Analyse la réponse de l'élève ligne par ligne. Pour chaque élément du tableau, indique si c'est correct ou incorrect, et explique pourquoi. Donne des conseils précis pour améliorer chaque réponse. Sois spécifique et constructif.`;
-  
-  // Identifier le type de texte principal basé sur le chapitre pour un feedback plus ciblé
-  let texteType = '';
+  // Récupérer le contexte depuis le fichier selon le type de texte
+  let texteType = 'techniques'; // défaut
   if (chapterId.includes('explicatif')) {
     texteType = 'explicatif';
-    contexte += `\n\nCe texte est de type explicatif. Vérifie que la réponse aide à comprendre un phénomène en répondant aux questions "Pourquoi ?" et "Comment ?".`;
   } else if (chapterId.includes('narratif')) {
     texteType = 'narratif';
-    contexte += `\n\nCe texte est de type narratif. Vérifie que la réponse traite d'événements dans un ordre temporel avec des personnages, une intrigue et une progression chronologique.`;
   } else if (chapterId.includes('descriptif')) {
     texteType = 'descriptif';
-    contexte += `\n\nCe texte est de type descriptif. Vérifie que la réponse présente des caractéristiques statiques avec des détails sensoriels et une organisation spatiale.`;
   } else if (chapterId.includes('argumentatif')) {
     texteType = 'argumentatif';
-    contexte += `\n\nCe texte est de type argumentatif. Vérifie que la réponse présente un point de vue défendu par des arguments et des exemples pour convaincre le lecteur.`;
   } else if (chapterId.includes('resume')) {
-    texteType = 'résumé';
-    contexte += `\n\nCe texte est de type résumé. Vérifie que la réponse synthétise les idées principales de manière concise tout en conservant l'essentiel du texte original.`;
+    texteType = 'resume';
   }
+
+  // Charger le contexte depuis le fichier
+  const baseContexte = await fetchContextFromFile(texteType);
   
-  // Si c'est une activité avec tableau, adapter le contexte pour corriger les éléments du tableau
+  // Contexte adapté pour l'activité spécifique
+  let contexte = `Activité : ${activity.title}\n\nConsigne originale : ${activity.instructions || 'Non spécifiée'}\n\nVoici la réponse de l'élève à corriger et analyser en détail :\n\n${answer}\n\nIMPORTANT : Analyse la réponse de l'élève ligne par ligne. Pour chaque élément du tableau, indique si c'est correct ou incorrect, et explique pourquoi. Donne des conseils précis pour améliorer chaque réponse. Sois spécifique et constructif.`;
+  
+  // Si c'est une activité avec tableau, adapter le contexte
   if (activity.hasTable) {
     contexte += `\n\nL'élève a répondu avec un tableau. Corrige chaque élément du tableau et donne des conseils précis pour améliorer sa réponse.`;
     
-    // Adapter selon le type de tableau pour une correction spécifique
     if (activity.tableType === 'tri-inductif') {
       contexte += `\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.`;
     } else if (activity.tableType === 'definir-sujet') {
@@ -174,12 +187,11 @@ window.submitActivity = async function(chapterId, activityId) {
   }
 
   try {
-    if (typeof window.runFourModelPipeline !== 'function') {
-      feedbackTextEl.textContent = 'Le pipeline IA n\'est pas encore prêt. Veuillez patienter.';
-      return;
-    }
+    // Combiner le contexte de base avec le contexte de l'activité
+    const contexteFinal = `${baseContexte}\n\n${contexte}`;
     
-    const reponse = await window.runFourModelPipeline(answer, contexte);
+    const reponse = await window.runFourModelPipeline(answer, contexteFinal);
+    
     // Afficher la réponse de l'IA avec un effet de frappe simulé
     if (typeof simulateTypingEffect !== 'undefined') {
       simulateTypingEffect(feedbackTextEl, reponse, activity.hasTable);
@@ -192,7 +204,8 @@ window.submitActivity = async function(chapterId, activityId) {
       }
     }
   } catch (e) {
-    feedbackTextEl.textContent = `Erreur : ${e.message}`;
+    console.error('Erreur IA :', e);
+    feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
   }
 };
 
