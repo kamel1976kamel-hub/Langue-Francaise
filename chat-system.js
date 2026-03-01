@@ -224,17 +224,18 @@ function updateColumn4(data) {
   }
 }
 
-// Fonction pour charger le contexte depuis un fichier
+// Fonction pour charger le contexte depuis GitHub Pages
 async function fetchContextFromFile(topic) {
   try {
-    const response = await fetch(`./contexts/${topic}.txt`);
+    const response = await fetch(`/contexts/${topic}.txt`);
     if (!response.ok) {
-      throw new Error(`Fichier ${topic}.txt non trouvé`);
+      throw new Error(`Fichier ${topic}.txt non trouvé (status: ${response.status})`);
     }
     const text = await response.text();
+    console.log(`✅ Contexte ${topic}.txt chargé (${text.length} caractères)`);
     return text.trim();
   } catch (e) {
-    console.error('Impossible de charger le contexte :', e);
+    console.error('❌ Impossible de charger le contexte :', e);
     return "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
   }
 }
