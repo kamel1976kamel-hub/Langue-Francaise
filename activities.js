@@ -132,7 +132,7 @@ window.submitActivity = async function(chapterId, activityId) {
   feedbackEl.classList.remove('hidden');
 
   // Contexte adapté selon le type d'activité - se concentrer sur la correction de la réponse de l'élève
-  let contexte = `Activité : ${activity.title}\n\nVoici la réponse de l'élève à corriger :\n\n${answer}\n\nConsigne : Corrige la réponse de l'élève, fais des remarques constructives et donne des conseils pour améliorer.`;
+  let contexte = `Activité : ${activity.title}\n\nConsigne originale : ${activity.instructions || 'Non spécifiée'}\n\nVoici la réponse de l'élève à corriger et analyser en détail :\n\n${answer}\n\nIMPORTANT : Analyse la réponse de l'élève ligne par ligne. Pour chaque élément du tableau, indique si c'est correct ou incorrect, et explique pourquoi. Donne des conseils précis pour améliorer chaque réponse. Sois spécifique et constructif.`;
   
   // Identifier le type de texte principal basé sur le chapitre pour un feedback plus ciblé
   let texteType = '';

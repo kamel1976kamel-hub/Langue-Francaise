@@ -2,109 +2,10 @@
 
 // La variable currentDiscussion et discussionData sont déclarées dans index.html pour éviter les conflits
 
-const discussionData = {
-  techniques: {
-    title: "Techniques et pratiques de l'écrit",
-    welcomeMessage: "Bonjour ! Je suis votre assistant pour le module 'Techniques et pratiques de l'écrit'. Posez-moi vos questions sur la production écrite, les techniques de rédaction, ou les pratiques d'écriture. Je suis là pour vous aider !",
-    context: "Tu es un expert en français et en pédagogie. Tu aides les élèves à maîtriser les techniques et pratiques de l'écrit. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la production écrite, la planification, la révision, l'analyse de consignes, la recherche documentaire, la cohérence textuelle et la correction.",
-    column4: {
-      title: "Techniques et pratiques de l'écrit",
-      finalities: "Ce module vise à développer les compétences rédactionnelles des étudiants en les familiarisant avec les techniques et pratiques essentielles de la production écrite.",
-      objectives: [
-        "Comprendre les mécanismes de la production écrite",
-        "Maîtriser les techniques de planification",
-        "Développer des stratégies de révision",
-        "Adapter son écriture selon le contexte"
-      ],
-      content: "Le module couvre : l'analyse de la consigne, la recherche documentaire, l'élaboration d'un plan, la rédaction des parties, la cohérence textuelle, la correction et la réécriture."
-    }
-  },
-  narratif: {
-    title: "Texte narratif",
-    welcomeMessage: "Bienvenue dans l'atelier sur le texte narratif ! Je peux vous aider à comprendre la structure narrative, les types de narrateurs, les temps du récit, et les techniques pour créer des personnages et des situations captivantes. Qu'aimeriez-vous explorer ?",
-    context: "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes narratifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la structure du récit (situation initiale, élément perturbateur, péripéties, dénouement), les types de narrateurs, les temps verbaux, la création de personnages et les dialogues.",
-    column4: {
-      title: "Texte narratif",
-      finalities: "Maîtriser l'art de raconter des histoires avec une structure cohérente et des personnages vivants.",
-      objectives: [
-        "Comprendre la structure du récit (situation initiale, élément perturbateur, péripéties, dénouement)",
-        "Maîtriser les différents types de narrateurs",
-        "Utiliser les temps verbaux appropriés",
-        "Créer des personnages crédibles"
-      ],
-      content: "Le texte narratif comprend : la situation initiale, l'élément perturbateur, les péripéties, le dénouement. Étude des modes de narration, des dialogues, et des techniques de description."
-    }
-  },
-  descriptif: {
-    title: "Texte descriptif",
-    welcomeMessage: "Bonjour ! Ici nous explorons le texte descriptif. Je peux vous guider sur l'organisation du regard, les procédés descriptifs, l'impressionnisme et le réalisme. Quel aspect de la description souhaitez-vous approfondir ?",
-    context: "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes descriptifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur l'organisation spatiale et temporelle, les procédés descriptifs (comparaisons, métaphores), les figures de style, les champs lexicaux et les registres de description.",
-    column4: {
-      title: "Texte descriptif",
-      finalities: "Développer la capacité à décrire avec précision et créativité en utilisant des procédés stylistiques variés.",
-      objectives: [
-        "Organiser la description selon différents points de vue",
-        "Maîtriser les procédés descriptifs (comparaison, métaphore, etc.)",
-        "Créer des atmosphères et des impressions",
-        "Utiliser les champs lexicaux appropriés"
-      ],
-      content: "Le texte descriptif aborde : l'organisation spatiale et temporelle, les figures de style, les registres de description (objectif/subjectif), et la création d'effets sensoriels."
-    }
-  },
-  explicatif: {
-    title: "Texte explicatif",
-    welcomeMessage: "Bienvenue dans le module sur le texte explicatif ! Je suis là pour vous aider à structurer vos explications, utiliser les connecteurs logiques, et rendre vos textes clairs et pédagogiques. Par quoi commençons-nous ?",
-    context: "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes explicatifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la définition du sujet, l'organisation logique des idées, les connecteurs et marqueurs de relation, les causes et conséquences, les exemples et analogies.",
-    column4: {
-      title: "Texte explicatif",
-      finalities: "Acquérir les compétences nécessaires pour expliquer des concepts de manière claire, logique et accessible.",
-      objectives: [
-        "Définir et délimiter le sujet",
-        "Organiser les idées de manière logique",
-        "Utiliser les connecteurs et marqueurs de relation",
-        "Illustrer par des exemples pertinents"
-      ],
-      content: "Le texte explicatif traite : la définition du sujet, les causes et conséquences, les exemples et analogies, la synthèse et la reformulation pour une meilleure compréhension."
-    }
-  },
-  argumentatif: {
-    title: "Texte argumentatif",
-    welcomeMessage: "Bonjour ! Dans cet atelier sur le texte argumentatif, je peux vous aider à construire des arguments solides, réfuter des thèses opposées, et convaincre votre lecteur. Quelle stratégie argumentative souhaitez-vous travailler ?",
-    context: "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes argumentatifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la formulation d'une thèse, la construction d'arguments solides, les preuves et exemples, la réfutation des objections, et les techniques de persuasion.",
-    column4: {
-      title: "Texte argumentatif",
-      finalities: "Développer l'aptitude à construire des arguments cohérents et à convaincre par la raison.",
-      objectives: [
-        "Formuler une thèse claire et précise",
-        "Construire des arguments solides avec preuves",
-        "Anticiper et réfuter les objections",
-        "Utiliser les techniques de persuasion"
-      ],
-      content: "Le texte argumentatif couvre : la thèse et les enjeux, les arguments et preuves, les contre-arguments et réfutation, la conclusion persuasive et l'appel à l'action."
-    }
-  },
-  resume: {
-    title: "Résumé",
-    welcomeMessage: "Bienvenue dans le module sur le résumé ! Je vais vous aider à identifier les idées essentielles, synthétiser l'information, et produire des résumés concis et fidèles. Quel type de texte souhaitez-vous apprendre à résumer ?",
-    context: "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des résumés de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant à identifier les idées principales, éliminer les détails superflus, reformuler avec ses propres mots, et respecter les contraintes de longueur.",
-    column4: {
-      title: "Résumé",
-      finalities: "Maîtriser l'art de la synthèse pour extraire l'essentiel d'un texte tout en préservant son sens.",
-      objectives: [
-        "Identifier les idées principales et secondaires",
-        "Éliminer les détails superflus",
-        "Reformuler avec ses propres mots",
-        "Respecter les contraintes de longueur"
-      ],
-      content: "Le résumé comprend : l'analyse du texte source, la hiérarchisation de l'information, la reformulation paraphrastique, et la vérification de la fidélité au texte original."
-    }
-  }
-};
-
 // ============ SÉLECTION DE DISCUSSION ============
 window.selectDiscussion = function(topic) {
-  currentDiscussion = topic;
-  const data = discussionData[topic];
+  window.currentDiscussion = topic;
+  const data = window.discussionData[topic];
   
   // Mettre à jour l'apparence des boutons
   document.querySelectorAll('.discussion-item').forEach(btn => {
@@ -203,7 +104,7 @@ function addMessageToHistory(topic, text, sender) {
 
 // ============ RÉINITIALISER LA CONVERSATION ============
 window.resetCurrentDiscussion = function() {
-  if (!currentDiscussion) return;
+  if (!window.currentDiscussion) return;
   
   // Confirmer la réinitialisation
   if (!confirm('Voulez-vous vraiment réinitialiser cette conversation ? Tous les messages seront supprimés.')) {
@@ -211,11 +112,11 @@ window.resetCurrentDiscussion = function() {
   }
   
   // Supprimer l'historique du localStorage
-  const key = 'chatHistory_' + currentDiscussion;
+  const key = 'chatHistory_' + window.currentDiscussion;
   localStorage.removeItem(key);
   
   // Réafficher le message de bienvenue
-  const data = discussionData[currentDiscussion];
+  const data = window.discussionData[window.currentDiscussion];
   const chatMessages = document.getElementById('chatMessages');
   chatMessages.innerHTML = `
     <div class="flex gap-3">
@@ -244,7 +145,7 @@ window.resetCurrentDiscussion = function() {
     </div>
   `;
   
-  console.log('Conversation réinitialisée:', currentDiscussion);
+  console.log('Conversation réinitialisée:', window.currentDiscussion);
 };
 
 function createMessageHTML(msg) {
@@ -337,8 +238,8 @@ window.sendAIChatMessage = function() {
   input.value = '';
   
   // Obtenir le contexte spécifique du sujet actuel
-  const topicContext = currentDiscussion && discussionData[currentDiscussion] 
-    ? discussionData[currentDiscussion].context 
+    const topicContext = window.currentDiscussion && window.discussionData[window.currentDiscussion] 
+    ? window.discussionData[window.currentDiscussion].context 
     : 'Tu es un tuteur expert en français. Aide l\'étudiant sans faire le travail à sa place.';
   
   // Obtenir la réponse de l'IA (pipeline à 4 modèles si disponible)
@@ -354,7 +255,7 @@ window.sendAIChatMessage = function() {
       .catch(() => {
         // Fallback si l'IA n'est pas disponible
         setTimeout(() => {
-          const aiResponse = generateAIResponse(message, currentDiscussion);
+          const aiResponse = generateAIResponse(message, window.currentDiscussion);
           if (typeof simulateTypingEffectForChat !== 'undefined') {
             simulateTypingEffectForChat(aiResponse);
           } else {
@@ -379,8 +280,8 @@ function addChatMessage(text, sender) {
   const chatMessages = document.getElementById('chatMessages');
   
   // Sauvegarder le message dans l'historique
-  if (currentDiscussion) {
-    addMessageToHistory(currentDiscussion, text, sender);
+    if (window.currentDiscussion) {
+    addMessageToHistory(window.currentDiscussion, text, sender);
   }
   
   const messageDiv = document.createElement('div');
@@ -395,9 +296,10 @@ function addChatMessage(text, sender) {
           <p class="text-sm text-white">${escapeHtml(text)}</p>
         </div>
         <p class="text-xs mt-1 text-right" style="color: var(--bs-text-muted);">Vous • ${time}</p>
-      </div>
-      <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
-        <span class="text-white text-xs font-bold">V</span>
+        </div>
+        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
+          <span class="text-white text-xs font-bold">V</span>
+        </div>
       </div>
     `;
   } else {
@@ -480,4 +382,11 @@ function generateAIResponse(studentMessage, topic) {
   
   const topicResponses = responsesByTopic[topic] || responsesByTopic.techniques;
   return topicResponses[Math.floor(Math.random() * topicResponses.length)];
+}
+
+// Fonction utilitaire pour échapper le HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }

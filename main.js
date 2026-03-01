@@ -110,7 +110,7 @@ window.testPipeline = async function() {
 // Configuration des modèles pour l'architecture à 4 modèles via GitHub Models API
 const modelConfiguration = {
   logicEvaluator: 'deepseek/deepseek-r1', // Évaluateur Logique
-  pedagogueTutor: 'openai/gpt-3.5-turbo', // Tuteur Pédagogue
+  pedagogueTutor: 'openai/gpt-4', // Tuteur Pédagogue
   documentary: 'meta/llama-4-scout-17b-16e', // Documentaliste
   qualityController: 'microsoft/phi-4-mini-reasoning' // Contrôleur de Qualité
 };
@@ -173,6 +173,10 @@ async function callGitHubModel(model, messages, temperature = 0.7) {
   console.log(`📝 Messages: ${messages.length} message(s)`);
   
   try {
+    // Créer un AbortController pour le timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
+    
     // Utilisation de l'endpoint correct pour GitHub Models
     const response = await fetch(`https://api.github.com/models/${model}/chat/completions`, {
       method: 'POST',
@@ -186,9 +190,11 @@ async function callGitHubModel(model, messages, temperature = 0.7) {
         messages: messages,
         temperature: temperature,
         max_tokens: 1000
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     console.log(`📡 Réponse API: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
@@ -201,6 +207,10 @@ async function callGitHubModel(model, messages, temperature = 0.7) {
     console.log(`✅ Réponse reçue de ${model}:`, data.choices?.[0]?.message?.content?.substring(0, 100) + '...');
     return data.choices[0].message.content;
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.error(`❌ Timeout pour le modèle ${model}:`, err);
+      return "Le service IA met trop de temps à répondre. Veuillez réessayer.";
+    }
     console.error(`❌ Erreur lors de l'appel au modèle ${model}:`, err);
     return "Erreur de connexion au service IA. Veuillez vérifier votre connexion Internet.";
   }
@@ -296,7 +306,7 @@ window.demanderIA = async function(prompt, contexte) {
     return await window.runFourModelPipeline(prompt, contexte);
   } else {
     // Fallback si le pipeline à 4 modèles n'est pas disponible
-    return "L'IA n'est pas encore prête. Veuillez patienter.";
+    return "L'IA est en cours de chargement. Veuillez patienter.";
   }
 }
 

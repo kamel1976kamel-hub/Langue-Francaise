@@ -12,7 +12,6 @@
       type="module"
       src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.0.1/model-viewer.min.js"
     ></script>
-    <script type="module" src="https://esm.run/@mlc-ai/web-llm"></script>
     <style>
       /* ============================================
          DESIGN SYSTEM - Variables CSS Bootstrap-like
@@ -6387,7 +6386,7 @@
       let currentModule = null;
 
       // ============ DONNÉES DES DISCUSSIONS ============
-      const discussionData = {
+      window.discussionData = {
         techniques: {
           title: "Techniques et pratiques de l'écrit",
           welcomeMessage: "Bonjour ! Je suis votre assistant pour le module 'Techniques et pratiques de l'écrit'. Posez-moi vos questions sur la production écrite, les techniques de rédaction, ou les pratiques d'écriture. Je suis là pour vous aider !",
@@ -6486,12 +6485,12 @@
         }
       };
 
-      let currentDiscussion = 'techniques';
+      window.currentDiscussion = 'techniques';
 
       // ============ SÉLECTION DE DISCUSSION ============
       window.selectDiscussion = function(topic) {
-        currentDiscussion = topic;
-        const data = discussionData[topic];
+        window.currentDiscussion = topic;
+        const data = window.discussionData[topic];
         
         // Mettre à jour l'apparence des boutons
         document.querySelectorAll('.discussion-item').forEach(btn => {
@@ -6588,7 +6587,7 @@
       
       // ============ RÉINITIALISER LA CONVERSATION ============
       window.resetCurrentDiscussion = function() {
-        if (!currentDiscussion) return;
+        if (!window.currentDiscussion) return;
         
         // Confirmer la réinitialisation
         if (!confirm('Voulez-vous vraiment réinitialiser cette conversation ? Tous les messages seront supprimés.')) {
@@ -6596,11 +6595,11 @@
         }
         
         // Supprimer l'historique du localStorage
-        const key = 'chatHistory_' + currentDiscussion;
+        const key = 'chatHistory_' + window.currentDiscussion;
         localStorage.removeItem(key);
         
         // Réafficher le message de bienvenue
-        const data = discussionData[currentDiscussion];
+        const data = window.discussionData[window.currentDiscussion];
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = `
           <div class="flex gap-3">
@@ -6629,7 +6628,7 @@
           </div>
         `;
         
-        console.log('Conversation réinitialisée:', currentDiscussion);
+        console.log('Conversation réinitialisée:', window.currentDiscussion);
       };
 
       function createMessageHTML(msg) {
@@ -6722,11 +6721,11 @@
         input.value = '';
         
         // Obtenir le contexte spécifique du sujet actuel
-        const topicContext = currentDiscussion && discussionData[currentDiscussion] 
-          ? discussionData[currentDiscussion].context 
+        const topicContext = window.currentDiscussion && window.discussionData[window.currentDiscussion] 
+          ? window.discussionData[window.currentDiscussion].context 
           : 'Tu es un tuteur expert en français. Aide l\'étudiant sans faire le travail à sa place.';
         
-        // Obtenir la réponse de l'IA (WebLLM si disponible, sinon simulation)
+        // Obtenir la réponse de l'IA (pipeline à 4 modèles si disponible)
         if (window.demanderIA) {
           window.demanderIA(message, topicContext)
             .then(response => {
@@ -6735,14 +6734,14 @@
             .catch(() => {
               // Fallback si l'IA n'est pas disponible
               setTimeout(() => {
-                const aiResponse = generateAIResponse(message, currentDiscussion);
+                const aiResponse = generateAIResponse(message, window.currentDiscussion);
                 simulateTypingEffectForChat(aiResponse);
               }, 500);
             });
         } else {
           // Fallback si l'IA n'est pas chargée
           setTimeout(() => {
-            const aiResponse = generateAIResponse(message, currentDiscussion);
+            const aiResponse = generateAIResponse(message, window.currentDiscussion);
             simulateTypingEffectForChat(aiResponse);
           }, 1000);
         }
@@ -6752,8 +6751,8 @@
         const chatMessages = document.getElementById('chatMessages');
         
         // Sauvegarder le message dans l'historique
-        if (currentDiscussion) {
-          addMessageToHistory(currentDiscussion, text, sender);
+        if (window.currentDiscussion) {
+          addMessageToHistory(window.currentDiscussion, text, sender);
         }
         
         const messageDiv = document.createElement('div');
@@ -7612,8 +7611,8 @@
     </script>
     <!-- IA chargée directement sans module pour éviter CORS en local -->
     <script>
-    // WebLLM inline pour éviter les problèmes de module/CORS
-    let webllmEngine = null;
+    // Pipeline à 4 modèles inline pour éviter les problèmes de module/CORS
+    let pipelineEngine = null;
     
     function setIaStatus(text, color, progress) {
       const statusEl = document.getElementById("ia-status");
