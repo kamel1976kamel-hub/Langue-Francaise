@@ -396,54 +396,85 @@ class WritingAssistant {
   }
 
   setupEventListeners() {
+    console.log('🔧 Configuration des événements de l\'assistant d\'écriture');
+    
     // Observer les changements dans les textareas
     document.addEventListener('input', (e) => {
+      console.log('⌨️ Événement input détecté sur:', e.target.tagName, e.target.id || 'sans-id');
+      
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+        console.log('✅ Élément valide pour l\'analyse, lancement de checkText');
         this.checkText(e.target);
+      } else {
+        console.log('❌ Élément ignoré (ni INPUT ni TEXTAREA):', e.target.tagName);
       }
     });
 
     // Fermer les nuages au clic extérieur
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.writing-cloud')) {
+        console.log('🖱️ Clic extérieur détecté, fermeture des nuages');
         this.removeAllClouds();
       }
     });
+    
+    console.log('✅ Événements de l\'assistant configurés avec succès');
   }
 
   checkText(element) {
+    console.log('🚀 checkText appelé pour l\'élément:', element);
+    console.log('📝 Valeur actuelle:', `"${element.value}"`);
+    console.log('📏 Longueur du texte:', element.value.length);
+    
     // Annuler le timer précédent
     clearTimeout(this.typingTimer);
+    console.log('⏰ Timer précédent annulé');
     
     // Programmer une vérification après 300ms de pause (plus réactif)
     this.typingTimer = setTimeout(async () => {
+      console.log('⏱️ Timer déclenché après 300ms');
+      
       const text = element.value;
-      if (!text) return; // Accepter même 1 caractère
-
-      console.log('🔍 Assistant analyse:', text); // Debug
-      console.log('📍 Élément analysé:', element); // Debug
-      console.log('📍 Parent de l\'élément:', element.parentNode); // Debug
+      console.log('🔍 Analyse du texte:', `"${text}"`);
+      
+      if (!text) {
+        console.log('❌ Texte vide, abandon de l\'analyse');
+        return;
+      }
+      
+      console.log('� Élément analysé:', element);
+      console.log('📍 Tag de l\'élément:', element.tagName);
+      console.log('📍 ID de l\'élément:', element.id || 'pas d\'ID');
+      console.log('📍 Parent de l\'élément:', element.parentNode);
+      console.log('📍 Classes du parent:', element.parentNode.className || 'pas de classe');
 
       // PLUS de vérification de longueur minimum - accepter dès le premier caractère
       
       // Utiliser LanguageTool seulement si le texte est assez long
       let errors = [];
-      if (this.languageToolEnabled && text.trim().length >= 10) { // Augmenté à 10 caractères
+      console.log('🤖 Vérification si LanguageTool peut être utilisé...');
+      
+      if (this.languageToolEnabled && text.trim().length >= 10) { 
+        console.log('✅ LanguageTool activé et texte assez long, tentative d\'API...');
         try {
           errors = await this.checkWithLanguageTool(text);
-          console.log('✅ LanguageTool utilisé avec succès');
+          console.log('✅ LanguageTool utilisé avec succès, erreurs trouvées:', errors.length);
         } catch (error) {
           console.warn('⚠️ LanguageTool indisponible, utilisation du fallback:', error.message);
+          console.log('🔄 Basculement vers le système fallback');
           errors = this.highlightErrors(text);
         }
       } else {
         console.log('📝 Texte trop court pour LanguageTool (<10 caractères), utilisation du fallback seulement');
+        console.log('🔄 Utilisation directe du fallback');
         errors = this.highlightErrors(text);
       }
       
-      console.log('📊 Erreurs trouvées:', errors.length); // Debug
+      console.log('📊 Erreurs finales trouvées:', errors.length);
+      console.log('📋 Détail des erreurs:', errors);
       
       // Afficher les nuages dans TOUS les cas (activités ET chats)
+      console.log('☁️ Lancement de l\'affichage des nuages...');
       this.showSuggestions(element, errors);
       
     }, 300); // Réduit de 800ms à 300ms pour plus de réactivité
@@ -577,23 +608,35 @@ class WritingAssistant {
   }
 
   showSuggestions(element, errors) {
+    console.log('☁️ showSuggestions appelé avec', errors.length, 'erreurs');
+    console.log('🎨 Élément cible pour les nuages:', element);
+    
     // Supprimer les anciens nuages
+    console.log('🧹 Suppression des anciens nuages...');
     this.removeAllClouds();
+    console.log('✅ Anciens nuages supprimés');
 
     console.log(`💡 Affichage de ${errors.length} corrections en nuage violet`);
 
     if (errors.length === 0) {
+      console.log('✅ Aucune erreur détectée, création du nuage d\'information...');
       // Afficher un nuage d'information si aucune erreur mais texte présent
       const text = element.value;
       if (text && text.trim().length > 0) {
+        console.log('📝 Texte présent pour nuage d\'info:', `"${text}"`);
         this.createInfoCloud(element, text);
+      } else {
+        console.log('❌ Texte vide, pas de nuage d\'info');
       }
       return;
     }
 
+    console.log('❌ Erreurs détectées, création des nuages de correction...');
     // Créer un nuage violet pour chaque erreur
     errors.forEach((error, index) => {
+      console.log(`☁️ Planification du nuage ${index + 1}/${errors.length} pour l'erreur:`, error);
       setTimeout(() => {
+        console.log(`🎨 Création du nuage ${index + 1}...`);
         this.createCloud(element, error, index);
       }, index * 150); // Animation décalée plus rapide
     });
@@ -646,10 +689,15 @@ class WritingAssistant {
   }
 
   createCloud(element, error, index) {
-    console.log('🎨 Création du nuage pour:', element, 'erreur:', error);
+    console.log('🎨 createCloud appelé');
+    console.log('📍 Élément cible:', element);
+    console.log('❌ Erreur à afficher:', error);
+    console.log('🔢 Index du nuage:', index);
     
     const cloud = document.createElement('div');
     cloud.className = 'writing-cloud';
+    console.log('☁️ Élément nuage créé:', cloud);
+    
     cloud.style.cssText = `
       position: absolute;
       top: ${-60 - (index * 70)}px;
@@ -674,6 +722,7 @@ class WritingAssistant {
 
     // Ajouter l'animation CSS
     if (!document.querySelector('#cloud-animations')) {
+      console.log('🎭 Ajout des animations CSS...');
       const style = document.createElement('style');
       style.id = 'cloud-animations';
       style.textContent = `
@@ -725,10 +774,13 @@ class WritingAssistant {
         }
       `;
       document.head.appendChild(style);
+      console.log('✅ Animations CSS ajoutées au head');
     }
 
     // Contenu du nuage
     const icon = this.getErrorIcon(error.type);
+    console.log('🎭 Icône pour l\'erreur:', icon);
+    
     cloud.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
         <span style="font-size: 16px;">${icon}</span>
@@ -746,21 +798,27 @@ class WritingAssistant {
         </button>
       </div>
     `;
+    
+    console.log('📝 Contenu HTML du nuage généré');
 
     // S'assurer que le parent est positionné
     element.parentNode.style.position = 'relative';
-    console.log('📍 Parent positionné:', element.parentNode.style.position);
+    console.log('📍 Parent positionné en relative:', element.parentNode.style.position);
     
     // Ajouter le nuage
     element.parentNode.appendChild(cloud);
     console.log('☁️ Nuage ajouté au DOM');
-    console.log('📊 Nombre total de nuages:', document.querySelectorAll('.writing-cloud').length);
+    console.log('📊 Nombre total de nuages après ajout:', document.querySelectorAll('.writing-cloud').length);
 
     // Auto-suppression après 8 secondes
     setTimeout(() => {
       if (cloud.parentNode) {
+        console.log('⏰ Auto-suppression du nuage...');
         cloud.style.animation = 'cloudFloat 0.3s ease-in reverse';
-        setTimeout(() => cloud.remove(), 300);
+        setTimeout(() => {
+          cloud.remove();
+          console.log('✅ Nuage supprimé du DOM');
+        }, 300);
       }
     }, 8000);
   }
