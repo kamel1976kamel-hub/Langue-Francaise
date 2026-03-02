@@ -1834,25 +1834,38 @@
             </div>
             
             <!-- Zone de saisie -->
-            <div class="px-6 py-4 border-t" style="border-color: var(--bs-border-color); background-color: rgba(255,255,255,0.02);">
-              <div class="flex gap-2">
-                <input 
-                  type="text" 
-                  id="chatInput" 
-                  placeholder="Posez votre question..." 
-                  class="flex-1 px-4 py-3 rounded-lg text-sm border"
-                  style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
-                  onkeypress="if(event.key==='Enter') sendAIChatMessage()"
-                >
-                <button 
-                  onclick="sendAIChatMessage()"
-                  class="px-4 py-3 rounded-lg transition-colors"
-                  style="background-color: var(--bs-primary); color: white;"
-                >
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                  </svg>
-                </button>
+            <div class="p-4 border-t" style="border-color: var(--bs-border-color);">
+              <div class="smart-textarea-container">
+                <div class="flex gap-2">
+                  <input 
+                    type="text" 
+                    id="chatInput" 
+                    placeholder="Posez votre question..." 
+                    class="flex-1 px-4 py-3 rounded-lg text-sm border"
+                    style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
+                    onkeypress="if(event.key==='Enter') sendAIChatMessage()"
+                    oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
+                  >
+                  <button 
+                    onclick="sendAIChatMessage()"
+                    class="px-4 py-3 rounded-lg transition-colors"
+                    style="background-color: var(--bs-primary); color: white;"
+                  >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="flex justify-between items-center mt-2 text-xs" style="color: var(--bs-secondary);">
+                  <span> L'assistant d'écriture vous aide à formuler votre question</span>
+                  <button 
+                    class="px-2 py-1 rounded transition-colors"
+                    style="background-color: var(--bs-primary-bg-subtle); color: var(--bs-primary-text);"
+                    onclick="window.writingAssistant && window.writingAssistant.toggleAudio()"
+                  >
+                    Audio
+                  </button>
+                </div>
               </div>
             </div>
           </main>
@@ -4147,15 +4160,15 @@
               <tbody>
                 <tr>
                   <td style="border:1px solid #cbd5e1; padding:8px; font-weight:bold; background:#fef3c7;">A (Récit)</td>
-                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="A" data-col="question" style="width:100%; border:none; padding:4px; font-size:12px;" placeholder="À remplir..."></td>
-                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="A" data-col="intention" style="width:100%; border:none; padding:4px; font-size:12px;" placeholder="À remplir..."></td>
-                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="A" data-col="indices" style="width:100%; border:none; padding:4px; font-size:12px;" placeholder="À remplir..."></td>
+                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="A" data-col="question" style="width:100%; border:none; padding:4px; font-size:12px;" placeholder="À remplir..." oninput="window.writingAssistant && window.writingAssistant.checkText(this)"></td>
+                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="A" data-col="intention" style="width:100%; border:none; padding:4px; font-size:12px;" placeholder="À remplir..." oninput="window.writingAssistant && window.writingAssistant.checkText(this)"></td>
+                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="A" data-col="indices" style="width:100%; border:none; padding:4px; font-size:12px;" placeholder="À remplir..." oninput="window.writingAssistant && window.writingAssistant.checkText(this)"></td>
                 </tr>
                 <tr style="background:#f8fafc;">
                   <td style="border:1px solid #cbd5e1; padding:8px; font-weight:bold; background:#dbeafe;">B (Description)</td>
                   <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="B" data-col="question" style="width:100%; border:none; padding:4px; font-size:12px; background:#f8fafc;" placeholder="À remplir..."></td>
                   <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="B" data-col="intention" style="width:100%; border:none; padding:4px; font-size:12px; background:#f8fafc;" placeholder="À remplir..."></td>
-                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="B" data-col="indices" style="width:100%; border:none; padding:4px; font-size:12px; background:#f8fafc;" placeholder="À remplir..."></td>
+                  <td style="border:1px solid #cbd5e1; padding:4px;"><input type="text" class="table-input-${chapterId}-${activityId}" data-row="texte" data-col="type" style="width:100%; border:none; padding:4px; font-size:12px; background:#f8fafc;" placeholder="Type de texte" oninput="window.writingAssistant && window.writingAssistant.checkText(this)"></td>
                 </tr>
                 <tr>
                   <td style="border:1px solid #cbd5e1; padding:8px; font-weight:bold; background:#d1fae5;">C (Explicatif)</td>
@@ -4302,7 +4315,26 @@
           `;
         }
         // Fallback sur textarea si type de tableau inconnu
-        return `<textarea id="activity-answer-${chapterId}-${activityId}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500" rows="4" placeholder="Votre réponse..."></textarea>`;
+        return `
+          <div class="smart-textarea-container">
+            <textarea 
+              id="activity-answer-${chapterId}-${activityId}" 
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500" 
+              rows="4" 
+              placeholder="Votre réponse..."
+              oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
+            ></textarea>
+            <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
+              <span>💡 L'assistant d'écriture vous aide en temps réel</span>
+              <button 
+                class="px-2 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                onclick="window.writingAssistant && window.writingAssistant.toggleAudio()"
+              >
+                🔊 Audio
+              </button>
+            </div>
+          </div>
+        `;
       }
       
       // Fonction pour récupérer le contenu du tableau ou du textarea
@@ -6121,6 +6153,7 @@
                 placeholder="Écrire un message..."
                 class="flex-1 px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 onkeypress="if(event.key==='Enter')sendTeacherStudentMessage('${studentId}', '${studentName}')"
+                oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
               >
               <button 
                 onclick="sendTeacherStudentMessage('${studentId}', '${studentName}')"
@@ -7035,6 +7068,7 @@
                 class="flex-1 px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2"
                 style="background-color: var(--bs-body-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
                 onkeypress="if(event.key==='Enter')sendChatMessage('${chatId}')"
+                oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
               >
               <button 
                 onclick="sendChatMessage('${chatId}')"
