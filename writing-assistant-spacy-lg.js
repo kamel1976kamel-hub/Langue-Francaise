@@ -376,8 +376,9 @@ class WritingAssistantSpacyLG {
   }
 
   showSuggestions(element, errors) {
-    // Effacer les nuages précédents
-    this.clearClouds(element);
+    // NE PAS effacer les nuages précédents automatiquement
+    // L'utilisateur doit les fermer manuellement avec le bouton X
+    // this.clearClouds(element);
     
     // Trier les erreurs par sévérité
     const sortedErrors = errors.sort((a, b) => {
@@ -396,6 +397,7 @@ class WritingAssistantSpacyLG {
   createCloud(element, error, index) {
     const cloud = document.createElement('div');
     cloud.className = 'spacy-lg-cloud';
+    cloud.dataset.elementId = element.id; // Associer le nuage à l'élément
     
     const topPosition = -140 - (index * 120); // Espacement augmenté pour lg
     cloud.style.cssText = `
@@ -649,8 +651,25 @@ class WritingAssistantSpacyLG {
   }
 
   clearClouds(element) {
-    const clouds = element.parentNode.querySelectorAll('.spacy-lg-cloud');
-    clouds.forEach(cloud => cloud.remove());
+    // Supprimer uniquement les nuages associés à cet élément
+    const clouds = document.querySelectorAll('.spacy-lg-cloud');
+    clouds.forEach(cloud => {
+      if (cloud.dataset.elementId === element.id || !cloud.dataset.elementId) {
+        cloud.remove();
+      }
+    });
+    this.clouds = [];
+  }
+
+  // Nouvelle fonction pour nettoyer tous les nuages manuellement
+  clearAllClouds() {
+    const clouds = document.querySelectorAll('.spacy-lg-cloud');
+    clouds.forEach(cloud => {
+      cloud.style.animation = 'cloudFloatLG 0.3s ease-in reverse';
+      setTimeout(() => cloud.remove(), 300);
+    });
+    this.clouds = [];
+    console.log(' Tous les nuages spaCy lg ont été fermés');
   }
 
   clearHighlights(element) {
@@ -659,7 +678,7 @@ class WritingAssistantSpacyLG {
   }
 
   showSuccess(element) {
-    console.log('✅ Aucune erreur détectée par spaCy lg');
+    console.log(' Aucune erreur détectée par spaCy lg');
   }
 
   showErrorDetails(error, highlightElement) {
