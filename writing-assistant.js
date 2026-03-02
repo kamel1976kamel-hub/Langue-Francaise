@@ -523,6 +523,10 @@ class WritingAssistant {
       const regex = new RegExp(`\\b${erreur}\\b`, 'gi');
       const matches = text.match(regex);
       if (matches) {
+        // Éviter les doublons : si "c'et" est trouvé, ne pas ajouter "et" séparément
+        if (erreur === 'et' && text.includes('c\'et')) {
+          continue; // Skip "et" si "c'et" est déjà présent
+        }
         console.log(`❌ Erreur orthographe trouvée: ${erreur} → ${correction}`); // Debug
         errors.push({
           type: 'orthographe',
@@ -658,9 +662,11 @@ class WritingAssistant {
     cloud.className = 'writing-cloud';
     console.log('☁️ Élément nuage créé:', cloud);
     
+    // Améliorer le positionnement pour éviter les superpositions
+    const topPosition = -60 - (index * 80); // Augmenté de 70 à 80px
     cloud.style.cssText = `
       position: absolute;
-      top: ${-60 - (index * 70)}px;
+      top: ${topPosition}px;
       left: 50%;
       transform: translateX(-50%);
       background: linear-gradient(135deg, #8b5cf6, #7c3aed);
@@ -737,8 +743,12 @@ class WritingAssistant {
       console.log('✅ Animations CSS ajoutées au head');
     }
 
-    // Contenu du nuage
+    // Contenu du nuage avec IDs uniques pour éviter les conflits
     const icon = this.getErrorIcon(error.type);
+    const cloudId = `cloud-${Date.now()}-${index}`;
+    const audioBtnId = `audio-${cloudId}`;
+    const applyBtnId = `apply-${cloudId}`;
+    
     console.log('🎭 Icône pour l\'erreur:', icon);
     
     cloud.innerHTML = `
@@ -750,10 +760,10 @@ class WritingAssistant {
       </div>
       <div class="cloud-explanation">${error.explanation}</div>
       <div class="cloud-audio">
-        <button class="cloud-audio-btn" onclick="window.writingAssistant.speakCorrection('${error.explanation.replace(/'/g, "\\'")}')" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;">
+        <button id="${audioBtnId}" class="cloud-audio-btn" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;">
           🔊 Écouter l'explication
         </button>
-        <button class="cloud-audio-btn" onclick="window.writingAssistant.applyCorrectionFromCloud(this, '${error.correction}', ${error.offset || 0}, ${error.length || 0})" style="margin-left: 8px; background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;">
+        <button id="${applyBtnId}" class="cloud-audio-btn" style="margin-left: 8px; background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;">
           ✏️ Appliquer
         </button>
       </div>
@@ -769,6 +779,30 @@ class WritingAssistant {
     element.parentNode.appendChild(cloud);
     console.log('☁️ Nuage ajouté au DOM');
     console.log('📊 Nombre total de nuages après ajout:', document.querySelectorAll('.writing-cloud').length);
+
+    // Ajouter les événements après l'ajout au DOM
+    setTimeout(() => {
+      const audioBtn = document.getElementById(audioBtnId);
+      const applyBtn = document.getElementById(applyBtnId);
+      
+      if (audioBtn) {
+        audioBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          console.log('🔊 Bouton audio cliqué pour:', error.explanation);
+          this.speakCorrection(error.explanation);
+        });
+        console.log('✅ Événement audio ajouté');
+      }
+      
+      if (applyBtn) {
+        applyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          console.log('✏️ Bouton appliquer cliqué pour:', error.correction);
+          this.applyCorrectionFromCloud(applyBtn, error.correction, error.offset || 0, error.length || 0);
+        });
+        console.log('✅ Événement appliquer ajouté');
+      }
+    }, 100);
 
     // Auto-suppression après 8 secondes
     setTimeout(() => {
