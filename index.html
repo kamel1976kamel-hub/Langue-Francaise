@@ -7731,8 +7731,17 @@
       document.addEventListener('DOMContentLoaded', function() {
         const chatInput = document.getElementById('chatInput');
         if (chatInput) {
+          // Forcer la largeur maximale au chargement
+          chatInput.style.width = '100%';
+          chatInput.style.flex = '1';
+          
           // Adapter la hauteur automatiquement
           chatInput.addEventListener('input', function() {
+            // Forcer la largeur à chaque input
+            this.style.width = '100%';
+            this.style.flex = '1';
+            
+            // Adapter la hauteur
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
           });
@@ -7743,6 +7752,19 @@
               e.preventDefault();
               sendAIChatMessage();
             }
+          });
+          
+          // Observer les changements dans le DOM pour maintenir la largeur
+          const observer = new MutationObserver(function() {
+            chatInput.style.width = '100%';
+            chatInput.style.flex = '1';
+          });
+          
+          observer.observe(chatInput.parentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
           });
           
           // Empêcher la fermeture des nuages en cliquant ailleurs

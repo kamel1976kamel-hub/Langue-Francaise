@@ -521,9 +521,15 @@ class WritingAssistantSpacyLG {
     let startX, startY, initialX, initialY;
 
     const startDrag = (e) => {
+      // Ne pas démarrer le drag si on clique sur les boutons
       if (e.target.closest('.cloud-audio-btn-lg, .cloud-close-btn-lg')) {
         return;
       }
+      
+      // Empêcher TOUTE autre action
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       
       isDragging = true;
       startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
@@ -537,12 +543,15 @@ class WritingAssistantSpacyLG {
       cloud.style.transition = 'none';
       cloud.style.cursor = 'grabbing';
       cloud.style.transform = 'scale(1.05)';
+      
+      console.log('🖱️ Début du drag du nuage');
     };
 
     const drag = (e) => {
       if (!isDragging) return;
       
       e.preventDefault();
+      e.stopPropagation();
       
       const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
       const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
@@ -565,31 +574,26 @@ class WritingAssistantSpacyLG {
       cloud.style.cursor = 'move';
       cloud.style.transform = 'scale(1)';
       cloud.style.transition = 'all 0.3s ease';
+      
+      console.log('🖱️ Fin du drag du nuage');
     };
 
-    // Événements de souris
-    cloud.addEventListener('mousedown', startDrag);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', endDrag);
+    // Événements de souris - CAPTURER pour avoir la priorité
+    cloud.addEventListener('mousedown', startDrag, true);
+    document.addEventListener('mousemove', drag, true);
+    document.addEventListener('mouseup', endDrag, true);
     
     // Événements tactiles
-    cloud.addEventListener('touchstart', startDrag);
-    document.addEventListener('touchmove', drag);
-    document.addEventListener('touchend', endDrag);
+    cloud.addEventListener('touchstart', startDrag, true);
+    document.addEventListener('touchmove', drag, true);
+    document.addEventListener('touchend', endDrag, true);
     
-    // EMPÊCHER TOUTE FERMETURE AUTOMATIQUE
+    // UN SEUL écouteur de clic pour empêcher la fermeture
     cloud.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-    });
-    
-    // Empêcher la fermeture au clic sur le contenu
-    cloud.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-    });
+    }, true);
   }
 
   speakCorrection(text) {
