@@ -1,6 +1,7 @@
 // Assistant d'écriture intelligent avec infobulles et audio
 class WritingAssistant {
   constructor() {
+    this.typingTimer = null;
     this.corrections = {
       // Fautes d'orthographe courantes
       orthographe: {
@@ -407,23 +408,35 @@ class WritingAssistant {
   }
 
   checkText(element) {
-    const text = element.value;
-    if (!text || text.length < 2) return;
-
-    console.log('🔍 Assistant analyse:', text); // Debug
-
-    // Créer une version avec les erreurs surlignées
-    const highlightedText = this.highlightErrors(text);
+    // Annuler le timer précédent
+    clearTimeout(this.typingTimer);
     
-    // Si on est dans une activité, afficher les suggestions
-    if (element.closest('.activity-content')) {
-      this.showSuggestions(element, highlightedText);
-    }
-    
-    // Si on est dans un chat, afficher aussi les suggestions
-    if (element.closest('.smart-textarea-container') || element.id === 'chatInput') {
-      this.showSuggestions(element, highlightedText);
-    }
+    // Programmer une vérification après 800ms de pause
+    this.typingTimer = setTimeout(() => {
+      const text = element.value;
+      if (!text || text.length < 3) return;
+
+      console.log('🔍 Assistant analyse:', text); // Debug
+
+      // Vérifier si le texte contient des mots complets (pas en train d'écrire)
+      const words = text.split(/\s+/);
+      const hasCompleteWords = words.some(word => word.length >= 3);
+      
+      if (!hasCompleteWords) return;
+
+      // Créer une version avec les erreurs surlignées
+      const highlightedText = this.highlightErrors(text);
+      
+      // Si on est dans une activité, afficher les suggestions
+      if (element.closest('.activity-content')) {
+        this.showSuggestions(element, highlightedText);
+      }
+      
+      // Si on est dans un chat, afficher aussi les suggestions
+      if (element.closest('.smart-textarea-container') || element.id === 'chatInput') {
+        this.showSuggestions(element, highlightedText);
+      }
+    }, 800);
   }
 
   highlightErrors(text) {
