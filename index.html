@@ -7699,44 +7699,41 @@
     <script src="writing-assistant-grammalecte.js"></script>
     
     <!-- Bibliothèque Grammalecte v2.3.0 (stable) pour correction française avancée -->
-    <script src="https://cdn.jsdelivr.net/npm/grammalecte@2.3.0/dist/grammalecte.min.js"></script>
-    
-    <!-- Script de détection et initialisation de Grammalecte -->
     <script>
-      // Système robuste de détection de Grammalecte
-      let checkCount = 0;
-      const maxChecks = 10;
-      
-      function checkGrammalecte() {
-        checkCount++;
-        console.log(`🔍 Vérification Grammalecte (${checkCount}/${maxChecks})...`);
+      // Approche alternative pour charger Grammalecte
+      (function() {
+        console.log('🔍 Début du chargement de Grammalecte...');
         
-        if (typeof grammalecte !== 'undefined') {
-          console.log('✅ Grammalecte détecté !');
-          console.log('🇫🇷 Version:', grammalecte.oInfo ? grammalecte.oInfo.sVersion : 'inconnue');
+        // Créer un script pour charger Grammalecte
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/grammalecte@2.3.0/dist/grammalecte.min.js';
+        script.onload = function() {
+          console.log('✅ Script Grammalecte chargé');
           
-          // Initialiser l'assistant si nécessaire
-          if (window.writingAssistant && !window.writingAssistant.grammalecteEnabled) {
-            console.log('🔄 Réinitialisation de l\'assistant avec Grammalecte...');
-            window.writingAssistant.initGrammalecte();
-          }
-          return true;
-        }
+          // Attendre un peu pour l'initialisation
+          setTimeout(() => {
+            if (typeof grammalecte !== 'undefined') {
+              console.log('✅ Grammalecte détecté !');
+              console.log('🇫🇷 Version:', grammalecte.oInfo ? grammalecte.oInfo.sVersion : 'inconnue');
+              
+              // Initialiser l'assistant
+              if (window.writingAssistant) {
+                console.log('🔄 Initialisation de l\'assistant avec Grammalecte...');
+                window.writingAssistant.initGrammalecte();
+              }
+            } else {
+              console.warn('⚠️ Grammalecte non détecté après chargement du script');
+            }
+          }, 1000);
+        };
         
-        if (checkCount < maxChecks) {
-          setTimeout(checkGrammalecte, 500);
-        } else {
-          console.warn('⚠️ Grammalecte non détecté après 5 secondes, utilisation du fallback uniquement');
-          return false;
-        }
-      }
-      
-      // Démarrer la vérification après le chargement
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', checkGrammalecte);
-      } else {
-        checkGrammalecte();
-      }
+        script.onerror = function() {
+          console.error('❌ Erreur de chargement du script Grammalecte');
+        };
+        
+        // Ajouter le script à la page
+        document.head.appendChild(script);
+      })();
     </script>
   </body>
 </html>
