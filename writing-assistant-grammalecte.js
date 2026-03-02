@@ -30,6 +30,11 @@ class WritingAssistant {
         bSpellChecker: false
       });
       
+      // Afficher la version de Grammalecte
+      if (this.grammalecte && this.grammalecte.oInfo) {
+        console.log(`🇫🇷 Grammalecte version: ${this.grammalecte.oInfo.sVersion || 'inconnue'}`);
+      }
+      
       console.log('✅ Grammalecte initialisé avec succès');
       this.grammalecteEnabled = true;
     } catch (error) {
