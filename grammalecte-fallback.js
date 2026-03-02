@@ -30,10 +30,16 @@ window.grammalecte = {
         ruleId: "c_et_c_est"
       },
       {
-        pattern: /\best au lei de\b/gi,
-        replacement: "est au lieu de",
-        message: "Erreur de vocabulaire : \"est au lei de\" devrait être \"est au lieu de\".",
-        ruleId: "est_au_lei_de"
+        pattern: /\bc'est "est"\b/gi,
+        replacement: "c'est et",
+        message: "Erreur de vocabulaire : \"c'est \"est\" au lieu de \"et\" devrait être \"c'est et\".",
+        ruleId: "c_est_est_au_lieu_de_et"
+      },
+      {
+        pattern: /\bmais "mias"\b/gi,
+        replacement: "mais que",
+        message: "Erreur de vocabulaire : \"mais \"mias\" au lieu de \"que\" devrait être \"mais que\".",
+        ruleId: "mais_mias_au_lieu_de_que"
       },
       {
         pattern: /\bmieu de mias\b/gi,
