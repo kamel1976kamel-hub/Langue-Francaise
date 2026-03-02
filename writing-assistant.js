@@ -593,6 +593,8 @@ class WritingAssistant {
   }
 
   createCloud(element, error, index) {
+    console.log('🎨 Création du nuage pour:', element, 'erreur:', error);
+    
     const cloud = document.createElement('div');
     cloud.className = 'writing-cloud';
     cloud.style.cssText = `
@@ -605,13 +607,17 @@ class WritingAssistant {
       padding: 12px 16px;
       border-radius: 20px;
       box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
-      z-index: 1000;
+      z-index: 10000;
       min-width: 250px;
       max-width: 350px;
       font-size: 13px;
       animation: cloudFloat 0.5s ease-out;
       border: 2px solid rgba(255, 255, 255, 0.2);
+      display: block !important;
+      visibility: visible !important;
     `;
+
+    console.log('📍 Position du nuage calculée:', cloud.style.cssText);
 
     // Ajouter l'animation CSS
     if (!document.querySelector('#cloud-animations')) {
@@ -688,9 +694,14 @@ class WritingAssistant {
       </div>
     `;
 
-    // Positionner le nuage
+    // S'assurer que le parent est positionné
     element.parentNode.style.position = 'relative';
+    console.log('📍 Parent positionné:', element.parentNode.style.position);
+    
+    // Ajouter le nuage
     element.parentNode.appendChild(cloud);
+    console.log('☁️ Nuage ajouté au DOM');
+    console.log('📊 Nombre total de nuages:', document.querySelectorAll('.writing-cloud').length);
 
     // Auto-suppression après 8 secondes
     setTimeout(() => {
