@@ -403,10 +403,10 @@ class WritingAssistant {
       }
     });
 
-    // Fermer l'infobulle au clic
+    // Fermer les nuages au clic extérieur
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.writing-assistant-tooltip') && !e.target.classList.contains('writing-error-highlight')) {
-        this.hideTooltip();
+      if (!e.target.closest('.writing-cloud')) {
+        this.removeAllClouds();
       }
     });
   }
@@ -728,18 +728,6 @@ class WritingAssistant {
     return icons[type] || '❌';
   }
 
-  getErrorColor(type) {
-    const colors = {
-      'orthographe': '#e53e3e',
-      'grammaire': '#ed8936',
-      'vocabulaire': '#38a169',
-      'style': '#805ad5',
-      'ponctuation': '#3182ce',
-      'divers': '#718096'
-    };
-    return colors[type] || '#e53e3e';
-  }
-
   // Nouvelle méthode pour appliquer les corrections depuis le nuage
   applyCorrectionFromCloud(button, correction, offset, length) {
     // Trouver l'élément input associé
@@ -773,38 +761,6 @@ class WritingAssistant {
     
     // Recalculer après correction
     setTimeout(() => this.checkText(input), 100);
-  }
-
-  showTooltip(element, error, x, y) {
-    this.hideTooltip();
-
-    const tooltip = document.createElement('div');
-    tooltip.className = 'writing-assistant-tooltip';
-    tooltip.innerHTML = `
-      <div class="correction-title">💡 Suggestion</div>
-      <div class="correction-text">${error.explanation}</div>
-      <button class="audio-btn" onclick="writingAssistant.speakCorrection('${error.explanation.replace(/'/g, "\\'")}')">
-        🔊 Écouter l'explication
-      </button>
-    `;
-
-    document.body.appendChild(tooltip);
-    
-    // Positionner l'infobulle
-    tooltip.style.left = x + 'px';
-    tooltip.style.top = (y - tooltip.offsetHeight - 10) + 'px';
-
-    // Afficher avec animation
-    setTimeout(() => tooltip.classList.add('show'), 10);
-
-    this.currentTooltip = tooltip;
-  }
-
-  hideTooltip() {
-    if (this.currentTooltip) {
-      this.currentTooltip.remove();
-      this.currentTooltip = null;
-    }
   }
 
   speakCorrection(text) {
