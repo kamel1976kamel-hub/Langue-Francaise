@@ -227,13 +227,8 @@ function updateColumn4(data) {
 // Fonction pour charger le contexte Markdown depuis GitHub Pages
 async function fetchMarkdownContext(topic) {
   try {
-    // Essayer le chemin relatif d'abord
-    let response = await fetch(`/contexts/${topic}.md`);
-    
-    // Si ça échoue, essayer le chemin complet
-    if (!response.ok) {
-      response = await fetch(`https://kamel1976kamel-hub.github.io/Langue-Francaise/contexts/${topic}.md`);
-    }
+    // Utiliser directement le chemin absolu qui fonctionne
+    const response = await fetch(`https://kamel1976kamel-hub.github.io/Langue-Francaise/contexts/${topic}.md`);
     
     if (!response.ok) throw new Error(`Fichier ${topic}.md non trouvé (status: ${response.status})`);
     
