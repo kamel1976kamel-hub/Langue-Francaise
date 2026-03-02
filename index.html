@@ -4017,26 +4017,6 @@
         openActivityWindow(chapterId, activityId);
       });
 
-      // Gestion du hash initial pour charger le bon module
-      const initial = (location.hash || "").replace("#", "");
-      if (initial && chapters[initial]) {
-        // Développer le parcours correspondant
-        const pathType = initial.split('-')[0];
-        const modulesDiv = document.getElementById(`modules-${pathType}`);
-        const arrow = document.getElementById(`arrow-${pathType}`);
-        if (modulesDiv && modulesDiv.classList.contains("hidden")) {
-          modulesDiv.classList.remove("hidden");
-          if (arrow) arrow.style.transform = "rotate(90deg)";
-        }
-        // Appel retardé après la définition de la fonction
-        setTimeout(() => selectModule(initial), 0);
-      }
-
-      window.addEventListener("hashchange", () => {
-        const id = (location.hash || "").replace("#", "");
-        if (chapters[id]) selectModule(id);
-      });
-
       // ============ SYSTÈME D'AUTHENTIFICATION ============
       const users = [
         { username: "enseignant", password: "prof123", role: "teacher", displayName: "Enseignant" },
