@@ -443,15 +443,9 @@ class WritingAssistant {
         errors = this.highlightErrors(text);
       }
       
-      // Si on est dans une activité, afficher les suggestions
-      if (element.closest('.activity-content')) {
-        this.showSuggestions(element, errors);
-      }
+      // Afficher les nuages dans TOUS les cas (activités ET chats)
+      this.showSuggestions(element, errors);
       
-      // Si on est dans un chat, afficher aussi les suggestions
-      if (element.closest('.smart-textarea-container') || element.id === 'chatInput') {
-        this.showSuggestions(element, errors);
-      }
     }, 800);
   }
 
@@ -585,64 +579,130 @@ class WritingAssistant {
   showSuggestions(element, errors) {
     if (errors.length === 0) return;
 
-    console.log(`💡 Affichage de ${errors.length} suggestions`);
+    console.log(`💡 Affichage de ${errors.length} corrections en nuage violet`);
 
-    // Créer un panneau de suggestions
-    let suggestionsPanel = element.parentNode.querySelector('.writing-suggestions');
-    if (!suggestionsPanel) {
-      suggestionsPanel = document.createElement('div');
-      suggestionsPanel.className = 'writing-suggestions';
-      suggestionsPanel.style.cssText = `
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        z-index: 1000;
-        max-height: 200px;
-        overflow-y: auto;
-        margin-top: 4px;
+    // Supprimer les anciens nuages
+    this.removeAllClouds();
+
+    // Créer un nuage violet pour chaque erreur
+    errors.forEach((error, index) => {
+      setTimeout(() => {
+        this.createCloud(element, error, index);
+      }, index * 200); // Animation décalée
+    });
+  }
+
+  createCloud(element, error, index) {
+    const cloud = document.createElement('div');
+    cloud.className = 'writing-cloud';
+    cloud.style.cssText = `
+      position: absolute;
+      top: ${-60 - (index * 70)}px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+      z-index: 1000;
+      min-width: 250px;
+      max-width: 350px;
+      font-size: 13px;
+      animation: cloudFloat 0.5s ease-out;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    `;
+
+    // Ajouter l'animation CSS
+    if (!document.querySelector('#cloud-animations')) {
+      const style = document.createElement('style');
+      style.id = 'cloud-animations';
+      style.textContent = `
+        @keyframes cloudFloat {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px) scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+        .writing-cloud {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .cloud-error {
+          font-weight: bold;
+          color: #fbbf24;
+          font-size: 14px;
+        }
+        .cloud-correction {
+          font-weight: bold;
+          color: #86efac;
+          font-size: 14px;
+        }
+        .cloud-explanation {
+          margin-top: 6px;
+          opacity: 0.9;
+          line-height: 1.4;
+        }
+        .cloud-audio {
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .cloud-audio-btn {
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .cloud-audio-btn:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
       `;
-      element.parentNode.style.position = 'relative';
-      element.parentNode.appendChild(suggestionsPanel);
+      document.head.appendChild(style);
     }
 
-    // Générer le HTML des suggestions
-    let suggestionsHTML = '<div style="padding: 8px; font-size: 12px; font-weight: bold; color: #4a5568; border-bottom: 1px solid #e2e8f0;">💡 Suggestions d\'écriture</div>';
-    
-    errors.forEach((error, index) => {
-      const icon = this.getErrorIcon(error.type);
-      const color = this.getErrorColor(error.type);
-      
-      suggestionsHTML += `
-        <div class="suggestion-item" style="padding: 8px 12px; border-bottom: 1px solid #f7fafc; cursor: pointer; hover:background:#f7fafc;" onclick="window.writingAssistant.applyCorrection(this, '${error.correction}', ${error.offset || 0}, ${error.length || 0})">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: ${color}; font-size: 14px;">${icon}</span>
-            <span style="flex: 1; font-size: 13px; color: #2d3748;">
-              <strong style="color: #e53e3e;">${error.word}</strong> → <strong style="color: #38a169;">${error.correction}</strong>
-            </span>
-            <button onclick="event.stopPropagation(); window.writingAssistant.speakCorrection('${error.explanation}')" style="background: none; border: none; color: #3182ce; cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 3px;" title="Écouter l'explication">
-              🔊
-            </button>
-          </div>
-          <div style="font-size: 11px; color: #718096; margin-top: 2px; margin-left: 22px;">
-            ${error.explanation}
-          </div>
-        </div>
-      `;
-    });
+    // Contenu du nuage
+    const icon = this.getErrorIcon(error.type);
+    cloud.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <span style="font-size: 16px;">${icon}</span>
+        <span class="cloud-error">"${error.word}"</span>
+        <span>→</span>
+        <span class="cloud-correction">"${error.correction}"</span>
+      </div>
+      <div class="cloud-explanation">${error.explanation}</div>
+      <div class="cloud-audio">
+        <button class="cloud-audio-btn" onclick="window.writingAssistant.speakCorrection('${error.explanation.replace(/'/g, "\\'")}')">
+          🔊 Écouter l'explication
+        </button>
+        <button class="cloud-audio-btn" onclick="window.writingAssistant.applyCorrectionFromCloud(this, '${error.correction}', ${error.offset || 0}, ${error.length || 0})" style="margin-left: 8px;">
+          ✏️ Appliquer
+        </button>
+      </div>
+    `;
 
-    suggestionsPanel.innerHTML = suggestionsHTML;
+    // Positionner le nuage
+    element.parentNode.style.position = 'relative';
+    element.parentNode.appendChild(cloud);
 
-    // Auto-suppression après 10 secondes
+    // Auto-suppression après 8 secondes
     setTimeout(() => {
-      if (suggestionsPanel && suggestionsPanel.parentNode) {
-        suggestionsPanel.remove();
+      if (cloud.parentNode) {
+        cloud.style.animation = 'cloudFloat 0.3s ease-in reverse';
+        setTimeout(() => cloud.remove(), 300);
       }
-    }, 10000);
+    }, 8000);
+  }
+
+  removeAllClouds() {
+    document.querySelectorAll('.writing-cloud').forEach(cloud => cloud.remove());
   }
 
   getErrorIcon(type) {
@@ -669,26 +729,39 @@ class WritingAssistant {
     return colors[type] || '#e53e3e';
   }
 
-  // Nouvelle méthode pour appliquer les corrections LanguageTool
-  applyCorrection(element, correction, offset, length) {
+  // Nouvelle méthode pour appliquer les corrections depuis le nuage
+  applyCorrectionFromCloud(button, correction, offset, length) {
+    // Trouver l'élément input associé
+    const cloud = button.closest('.writing-cloud');
+    const container = cloud.parentNode;
+    const input = container.querySelector('input, textarea');
+    
+    if (!input) {
+      console.error('❌ Input non trouvé pour la correction');
+      return;
+    }
+
     if (offset && length) {
       // Correction LanguageTool avec position précise
-      const text = element.value;
+      const text = input.value;
       const before = text.substring(0, offset);
       const after = text.substring(offset + length);
-      element.value = before + correction + after;
+      input.value = before + correction + after;
     } else {
       // Correction fallback (ancien système)
-      const text = element.value;
+      const text = input.value;
       const parts = text.split(' ');
       const correctedWord = correction.split(' / ')[0];
       const lastWord = parts[parts.length - 1];
       parts[parts.length - 1] = correctedWord;
-      element.value = parts.join(' ');
+      input.value = parts.join(' ');
     }
     
+    // Supprimer tous les nuages après correction
+    this.removeAllClouds();
+    
     // Recalculer après correction
-    setTimeout(() => this.checkText(element), 100);
+    setTimeout(() => this.checkText(input), 100);
   }
 
   showTooltip(element, error, x, y) {
