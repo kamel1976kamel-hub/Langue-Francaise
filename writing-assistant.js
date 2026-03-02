@@ -428,16 +428,18 @@ class WritingAssistant {
       
       if (!hasCompleteWords) return;
 
-      // Utiliser LanguageTool si disponible, sinon fallback
+      // Utiliser LanguageTool seulement si le texte est assez long
       let errors = [];
-      if (this.languageToolEnabled) {
+      if (this.languageToolEnabled && text.trim().length >= 5) {
         try {
           errors = await this.checkWithLanguageTool(text);
+          console.log('✅ LanguageTool utilisé avec succès');
         } catch (error) {
-          console.warn('⚠️ LanguageTool indisponible, utilisation du fallback:', error);
+          console.warn('⚠️ LanguageTool indisponible, utilisation du fallback:', error.message);
           errors = this.highlightErrors(text);
         }
       } else {
+        console.log('📝 Texte trop court pour LanguageTool, utilisation du fallback');
         errors = this.highlightErrors(text);
       }
       
@@ -456,6 +458,11 @@ class WritingAssistant {
   // Méthode LanguageTool
   async checkWithLanguageTool(text) {
     try {
+      // Vérifier que le texte est assez long pour LanguageTool
+      if (text.trim().length < 5) {
+        throw new Error('Texte trop court pour LanguageTool');
+      }
+
       const formData = new FormData();
       formData.append('text', text);
       formData.append('language', 'fr');
@@ -467,6 +474,9 @@ class WritingAssistant {
       });
 
       if (!response.ok) {
+        if (response.status === 400) {
+          throw new Error('Texte invalide ou trop court pour LanguageTool');
+        }
         throw new Error(`LanguageTool API error: ${response.status}`);
       }
 
@@ -714,42 +724,90 @@ class WritingAssistant {
   }
 
   speakCorrection(text) {
-    if (!this.audioEnabled || !this.speechSynthesis) return;
+    if (!this.audioEnabled) {
+      console.log('🔊 Audio désactivé');
+      return;
+    }
 
-    // Arrêter toute lecture en cours
-    this.speechSynthesis.cancel();
+    // Arrêter la lecture en cours
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
 
+    console.log('🔊 Lecture audio:', text);
+
+    // Créer une nouvelle instance de synthèse vocale
     const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Configuration pour le français
     utterance.lang = 'fr-FR';
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 0.8;
+    utterance.rate = 0.9;  // Vitesse légèrement réduite
+    utterance.pitch = 1.0; // Ton normal
+    utterance.volume = 1.0; // Volume maximum
 
-    // Ajouter un indicateur visuel
-    const btn = event.target;
-    btn.classList.add('playing');
-    btn.textContent = '🔊 Lecture...';
+    // Essayer de trouver une voix française
+    const voices = window.speechSynthesis.getVoices();
+    const frenchVoice = voices.find(voice => 
+      voice.lang.startsWith('fr') || 
+      voice.name.includes('French') ||
+      voice.name.includes('Français')
+    );
+    
+    if (frenchVoice) {
+      utterance.voice = frenchVoice;
+      console.log('🔊 Voix française utilisée:', frenchVoice.name);
+    } else {
+      console.log('⚠️ Voix française non trouvée, utilisation de la voix par défaut');
+    }
 
-    utterance.onend = () => {
-      btn.classList.remove('playing');
-      btn.innerHTML = '🔊 Écouter l\'explication';
+    // Gérer les événements
+    utterance.onstart = () => {
+      console.log('🔊 Début de la lecture audio');
     };
 
-    this.speechSynthesis.speak(utterance);
+    utterance.onend = () => {
+      console.log('🔊 Fin de la lecture audio');
+    };
+
+    utterance.onerror = (event) => {
+      console.error('❌ Erreur lecture audio:', event.error);
+    };
+
+    // Démarrer la lecture
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('❌ Impossible de démarrer la lecture audio:', error);
+    }
   }
 
-  // Activer/désactiver l'audio
   toggleAudio() {
     this.audioEnabled = !this.audioEnabled;
-    if (!this.audioEnabled) {
-      this.speechSynthesis.cancel();
-    }
-    return this.audioEnabled;
+    console.log('🔊 Audio', this.audioEnabled ? 'activé' : 'désactivé');
+    
+    // Afficher un message temporaire
+    const message = document.createElement('div');
+    message.textContent = `🔊 Audio ${this.audioEnabled ? 'activé' : 'désactivé'}`;
+    message.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${this.audioEnabled ? '#48bb78' : '#f56565'};
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      z-index: 10000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    `;
+    document.body.appendChild(message);
+    
+    setTimeout(() => message.remove(), 2000);
   }
 }
 
 // Initialiser l'assistant
-const writingAssistant = new WritingAssistant();
-
-// Rendre accessible globalement
-window.writingAssistant = writingAssistant;
+window.addEventListener('DOMContentLoaded', () => {
+  window.writingAssistant = new WritingAssistant();
+  console.log('✅ Assistant d\'écriture avec LanguageTool chargé');
+});
