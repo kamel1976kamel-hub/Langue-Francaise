@@ -421,6 +421,8 @@ class WritingAssistant {
       if (!text || text.length < 3) return;
 
       console.log('🔍 Assistant analyse:', text); // Debug
+      console.log('📍 Élément analysé:', element); // Debug
+      console.log('📍 Parent de l\'élément:', element.parentNode); // Debug
 
       // Vérifier si le texte contient des mots complets (pas en train d'écrire)
       const words = text.split(/\s+/);
@@ -442,6 +444,8 @@ class WritingAssistant {
         console.log('📝 Texte trop court pour LanguageTool (<10 caractères), utilisation du fallback seulement');
         errors = this.highlightErrors(text);
       }
+      
+      console.log('📊 Erreurs trouvées:', errors.length); // Debug
       
       // Afficher les nuages dans TOUS les cas (activités ET chats)
       this.showSuggestions(element, errors);
