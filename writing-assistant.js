@@ -2,13 +2,246 @@
 class WritingAssistant {
   constructor() {
     this.typingTimer = null;
+    this.currentTooltip = null;
     this.languageToolEnabled = true;
-    this.languageToolUrl = 'https://api.languagetool.org/v2/check'; // API publique
-    // Alternative locale : 'http://localhost:8081/v2/check' (si vous avez un serveur local)
+    this.audioEnabled = true;
+    this.grammalecteEnabled = true; // Nouveau : Grammalecte activé
     
-    this.corrections = {
-      // Gardé comme fallback si LanguageTool indisponible
-      orthographe: {
+    // Initialiser Grammalecte si disponible
+    if (typeof grammalecte !== 'undefined') {
+      console.log(' Grammalecte détecté, initialisation...');
+      this.initGrammalecte();
+    } else {
+      console.warn(' Grammalecte non disponible, utilisation du fallback');
+      this.grammalecteEnabled = false;
+    }
+    
+    this.setupEventListeners();
+    this.addStyles();
+  }
+
+  // Initialisation de Grammalecte
+  async initGrammalecte() {
+    try {
+      // Initialisation de Grammalecte
+      this.grammalecte = new grammalecte.Grammalecte({
+        // Options pour l'éducation
+        bDebug: false,
+        bContextMenu: false,
+        bToolbar: false,
+        bTextFormatter: false,
+        bSpellChecker: false
+      });
+      
+      console.log(' Grammalecte initialisé avec succès');
+      this.grammalecteEnabled = true;
+    } catch (error) {
+      console.error(' Erreur initialisation Grammalecte:', error);
+      this.grammalecteEnabled = false;
+    }
+  }
+
+  // API publique
+  // Alternative locale : 'http://localhost:8081/v2/check' (si vous avez un serveur local)
+  
+  this.corrections = {
+    // Gardé comme fallback si LanguageTool indisponible
+    orthographe: {
+      'a': 'à (préposition) / a (verbe avoir)',
+      'ou': 'où (lieu) / ou (conjonction)',
+      'et': 'est (verbe être) / et (conjonction)',
+      'ses': 'ces (adjectif démonstratif) / ses (possessif)',
+      'sa': 'ça (pronom démonstratif) / sa (possessif)',
+      'la': 'là (lieu) / la (article)',
+      'leur': 'leurs (adjectif possessif pluriel)',
+      'dans': 'don (verbe donner) / dans (préposition)',
+      'on': 'ont (verbe avoir) / on (pronom)',
+      'ni': 'n\'i (conjonction) / ni (négation)',
+      'quand': 'quant (conjonction) / quand (conjonction temporelle)',
+      'quelque': 'quel que (pronom) / quelque (adjectif)',
+      'tout': 'tous (adjectif pluriel) / tout (adjectif)',
+      'plus': 'plus (comparatif) / plut (verbe plaire)',
+      'temps': 'tans (pronom) / temps (nom)',
+      'avant': 'avants (adjectif) / avant (préposition)',
+      'pendant': 'pendants (adjectif) / pendant (préposition)',
+      'depuis': 'dépuis (inexistant) / depuis (préposition)',
+      'vers': 'ver (verbe) / vers (préposition)',
+      'avec': 'aveque (ancien français) / avec (préposition)',
+      'pour': 'poure (ancien français) / pour (préposition)',
+      'sur': 'sûr (adjectif) / sur (préposition)',
+      'sous': 'sou (nom) / sous (préposition)',
+      'entre': 'entre (préposition) / entre (préposition)',
+      'parmi': 'parmi (préposition) / parmis (inexistant)',
+      'parce': 'par ce (locution) / parce que (conjonction)',
+      'lorsque': 'lors que (conjonction) / lorsque (conjonction)',
+      'puisque': 'puis que (locution) / puisque (conjonction)',
+      'bien': 'bient (inexistant) / bien (adverbe)',
+      'mieux': 'mieu (inexistant) / mieux (adverbe comparatif)',
+      'peut': 'peu (adverbe) / peut (verbe pouvoir)',
+      'peux': 'peu (adverbe) / peux (verbe pouvoir)',
+      'peuvent': 'peuvent (verbe pouvoir) / peuven (inexistant)',
+      'fais': 'fait (nom) / fais (verbe faire)',
+      'fait': 'fais (verbe faire) / fait (nom)',
+      'font': 'fond (nom) / font (verbe faire)',
+      'sont': 'son (possessif) / sont (verbe être)',
+      'été': 'eter (inexistant) / été (nom / verbe)',
+      'été': 'etais (verbe être) / été (nom)',
+      'avais': 'avais (verbe avoir) / avais (verbe avoir)',
+      'aurais': 'aurais (verbe avoir) / aurais (conditionnel)',
+      'serais': 'serais (verbe être) / serais (conditionnel)',
+      'frais': 'fré (verbe faire) / frais (adjectif)',
+      'frais': 'frais (adjectif) / frais (nom)',
+      'cré': 'crée (verbe créer) / cré (nom)',
+      'cré': 'créer (verbe) / cré (nom)',
+      'crée': 'créer (verbe) / crée (verbe)',
+      'ver': 'ver (nom) / vers (préposition) / vert (adjectif)',
+      'vert': 'ver (nom) / vers (préposition) / vert (adjectif)',
+      'vers': 'ver (nom) / vers (préposition) / vert (adjectif)',
+      'mer': 'mer (nom) / mère (nom) / maire (nom)',
+      'mère': 'mer (nom) / mère (nom) / maire (nom)',
+      'maire': 'mer (nom) / mère (nom) / maire (nom)',
+      'père': 'père (nom) / perd (verbe perdre)',
+      'perd': 'père (nom) / perd (verbe perdre)',
+      'per': 'père (nom) / perd (verbe perdre) / per (préposition)',
+      'per': 'père (nom) / perd (verbe perdre) / pair (adjectif)',
+      'pair': 'père (nom) / perd (verbe perdre) / per (préposition)',
+      'paire': 'père (nom) / perd (verbe perdre) / per (préposition)',
+      'paire': 'père (nom) / perd (verbe perdre) / pair (adjectif)',
+      // Ajouts pour les erreurs courantes
+      'pere': 'père (nom - famille)',
+      'mere': 'mère (nom - famille)',
+      'frere': 'frère (nom - famille)',
+      'soeur': 'sœur (nom - famille)',
+      'aller': 'aller (verbe) / va (verbe aller au présent)',
+      'vas': 'va (verbe aller) / vas (incorrect)',
+      'vais': 'va (verbe aller) / vais (1ère personne)',
+      'vait': 'vais (verbe aller) / vait (verbe voir)',
+      'fais': 'fait (verbe faire) / fais (1ère personne)',
+      'fait': 'fais (verbe faire) / fait (nom / 3ème personne)',
+      'sais': 'sait (verbe savoir) / sais (1ère personne)',
+      'sait': 'sais (verbe savoir) / sait (3ème personne)',
+      // Erreurs de frappe courantes
+      'vior': 'voir (verbe)',
+      'voire': 'voir (verbe) / voire (conjonction)',
+      'voir': 'voire (conjonction) / voir (verbe)',
+      'laisen': 'leçon (nom)',
+      'lecon': 'leçon (nom)',
+      'leçons': 'leçon (nom singulier) / leçons (nom pluriel)',
+      'laçon': 'leçon (nom)',
+      'lassen': 'leçon (nom)',
+      'laesson': 'leçon (nom)',
+      'lessen': 'leçon (nom)',
+      'c\'et': 'c\'est (contraction de "cela est")',
+      'cet': 'cette (adjectif) / cet (masculin devant voyelle)',
+      'cette': 'cet (adjectif masculin) / cette (adjectif féminin)',
+      'cet': 'cette (féminin) / cet (masculin devant voyelle)',
+      'et': 'est (verbe être) / et (conjonction)',
+      'est': 'et (conjonction) / est (verbe être)',
+      'ses': 'ces (démonstratif) / ses (possessif)',
+      'ces': 'ses (possessif) / ces (démonstratif)',
+      'ce': 'se (pronom) / ce (démonstratif)',
+      'se': 'ce (démonstratif) / se (pronom)',
+      'sa': 'ça (pronom) / sa (possessif)',
+      'ça': 'sa (possessif) / ça (pronom)',
+      'mon': 'ma (féminin) / mon (masculin)',
+      'ma': 'mon (masculin) / ma (féminin)',
+      'mes': 'mes (correct) / mais (conjonction)',
+      'mais': 'mes (possessif) / mais (conjonction)',
+      'son': 'sont (verbe être) / son (possessif)',
+      'sont': 'son (possessif) / sont (verbe être)',
+      'ont': 'on (pronom) / ont (verbe avoir)',
+      'on': 'ont (verbe avoir) / on (pronom)',
+      'ou': 'où (lieu) / ou (conjonction)',
+      'où': 'ou (conjonction) / où (lieu)',
+      'ni': 'n\'i (conjonction) / ni (négation)',
+      'n\'i': 'ni (conjonction) / n\'i (ancien français)',
+      'dans': 'don (verbe) / dans (préposition)',
+      'don': 'dans (préposition) / don (nom)',
+      'sans': 'sang (nom) / sans (préposition)',
+      'sang': 'sans (préposition) / sang (nom)',
+      'avec': 'aveque (ancien) / avec (préposition)',
+      'aveque': 'avec (préposition) / aveque (ancien)',
+      'sur': 'sûr (adjectif) / sur (préposition)',
+      'sûr': 'sur (préposition) / sûr (adjectif)',
+      'sous': 'sou (nom) / sous (préposition)',
+      'sou': 'sous (préposition) / sou (nom)',
+      'pour': 'por (inexistant) / pour (préposition)',
+      'por': 'pour (préposition) / por (inexistant)',
+      'par': 'pars (verbe) / par (préposition)',
+      'pars': 'par (préposition) / pars (verbe)',
+      'vers': 'ver (nom) / vers (préposition)',
+      'ver': 'vers (préposition) / ver (nom)',
+      'vert': 'ver (nom) / vers (préposition) / vert (adjectif)',
+      'temp': 'temps (nom) / temps (nom)',
+      'temps': 'temp (incorrect) / temps (nom)',
+      'tant': 'temps (nom) / tant (adverbe)',
+      'tans': 'temps (nom) / tans (pronom)',
+      'camp': 'quant (conjonction) / camp (nom)',
+      'quant': 'camp (nom) / quant (conjonction)',
+      'quand': 'quant (conjonction) / quand (conjonction)',
+      'comme': 'commes (inexistant) / comme (conjonction)',
+      'comment': 'comment (correct) / coment (incorrect)',
+      'coment': 'comment (correct) / coment (incorrect)',
+      'quel': 'quels (pluriel) / quel (singulier)',
+      'quels': 'quel (singulier) / quels (pluriel)',
+      'quelle': 'quelles (pluriel) / quelle (singulier)',
+      'quelles': 'quelle (singulier) / quelles (pluriel)',
+      'trop': 'tro (inexistant) / trop (adverbe)',
+      'tro': 'trop (adverbe) / tro (inexistant)',
+      'tres': 'très (adverbe) / tres (incorrect)',
+      'très': 'tres (incorrect) / très (adverbe)',
+      'tre': 'très (adverbe) / tre (inexistant)',
+      'assez': 'assez (correct) / asser (incorrect)',
+      'asser': 'assez (correct) / asser (incorrect)',
+      'plus': 'plu (inexistant) / plus (adverbe)',
+      'plu': 'plus (adverbe) / plu (inexistant)',
+      'moin': 'moins (adverbe) / moin (incorrect)',
+      'moins': 'moin (incorrect) / moins (adverbe)',
+      'peu': 'peux (verbe) / peu (adverbe)',
+      'peux': 'peu (adverbe) / peux (verbe)',
+      'peut': 'peu (adverbe) / peut (verbe)',
+      'bien': 'bient (inexistant) / bien (adverbe)',
+      'bient': 'bien (adverbe) / bient (incorrect)',
+      'mieux': 'mieu (inexistant) / mieux (adverbe)',
+      'mieu': 'mieux (adverbe) / mieu (incorrect)',
+      'mal': 'mal (correct) / mâle (adjectif)',
+      'mâle': 'mal (adverbe) / mâle (adjectif)',
+      'aussi': 'aussi (correct) / aussy (incorrect)',
+      'aussy': 'aussi (correct) / aussy (incorrect)',
+      'encore': 'encore (correct) / ancore (incorrect)',
+      'ancore': 'encore (correct) / ancore (incorrect)',
+      'jamais': 'jamais (correct) / jamais (correct)',
+      'toujours': 'toujours (correct) / toujour (incorrect)',
+      'toujour': 'toujours (correct) / toujour (incorrect)',
+      'souvent': 'souvent (correct) / souvant (incorrect)',
+      'souvant': 'souvent (correct) / souvant (incorrect)',
+      'parfois': 'parfois (correct) / parfoi (incorrect)',
+      'parfoi': 'parfois (correct) / parfoi (incorrect)',
+      'rarement': 'rarement (correct) / raremant (incorrect)',
+      'raremant': 'rarement (correct) / raremant (incorrect)',
+      'quelquefois': 'quelquefois (correct) / quelquefoi (incorrect)',
+      'quelquefoi': 'quelquefois (correct) / quelquefoi (incorrect)',
+      'deja': 'déjà (adverbe) / deja (incorrect)',
+      'déjà': 'deja (incorrect) / déjà (adverbe)',
+      'deja': 'déjà (correct) / deja (incorrect)',
+      'maintenant': 'maintenant (correct) / maintenent (incorrect)',
+      'maintenent': 'maintenant (correct) / maintenent (incorrect)',
+      'aujourd\'hui': 'aujourd\'hui (correct) / aujourd\'hui (correct)',
+      'hier': 'hier (correct) / hier (correct)',
+      'demain': 'demain (correct) / demain (correct)',
+    },
+    // Fautes de grammaire
+    grammaire: {
+      // Accords
+      'ils a': 'ils ont (verbe avoir) / ils a (inexistant)',
+      'ils est': 'ils sont (verbe être) / ils est (inexistant)',
+      'elles a': 'elles ont (verbe avoir) / elles a (inexistant)',
+      'elles est': 'elles sont (verbe être) / elles est (inexistant)',
+      'vous a': 'vous avez (verbe avoir) / vous a (inexistant)',
+      'vous est': 'vous êtes (verbe être) / vous est (inexistant)',
+      // Conjugaisons incorrectes
+      'qui aller': 'qui va (verbe aller au présent) / qui aller (infinitif incorrect)',
+      'je aller': 'je vais (verbe aller au présent) / je aller (infinitif incorrect)',
         'a': 'à (préposition) / a (verbe avoir)',
         'ou': 'où (lieu) / ou (conjonction)',
         'et': 'est (verbe être) / et (conjonction)',
@@ -420,17 +653,26 @@ class WritingAssistant {
       const text = element.value;
       if (!text) return; // Accepter même 1 caractère
 
-      // PLUS de vérification de longueur minimum - accepter dès le premier caractère
-      
-      // Utiliser LanguageTool seulement si le texte est assez long
+      // Utiliser Grammalecte en priorité si disponible
       let errors = [];
-      if (this.languageToolEnabled && text.trim().length >= 10) { 
+      if (this.grammalecteEnabled && text.trim().length >= 3) {
+        try {
+          errors = await this.checkWithGrammalecte(text);
+          console.log('🇫🇷 Grammalecte utilisé avec succès');
+        } catch (error) {
+          console.warn('⚠️ Grammalecte indisponible, utilisation du fallback:', error.message);
+          errors = this.highlightErrors(text);
+        }
+      } else if (this.languageToolEnabled && text.trim().length >= 10) {
         try {
           errors = await this.checkWithLanguageTool(text);
+          console.log('✅ LanguageTool utilisé avec succès');
         } catch (error) {
+          console.warn('⚠️ LanguageTool indisponible, utilisation du fallback:', error.message);
           errors = this.highlightErrors(text);
         }
       } else {
+        console.log('📝 Texte trop court, utilisation du fallback seulement');
         errors = this.highlightErrors(text);
       }
       
@@ -438,6 +680,72 @@ class WritingAssistant {
       this.showSuggestions(element, errors);
       
     }, 300); // Réduit de 800ms à 300ms pour plus de réactivité
+  }
+
+  // Méthode Grammalecte
+  async checkWithGrammalecte(text) {
+    if (!this.grammalecte || !this.grammalecteEnabled) {
+      throw new Error('Grammalecte non initialisé');
+    }
+
+    try {
+      console.log('🇫🇷 Analyse avec Grammalecte:', text);
+      
+      // Analyser le texte avec Grammalecte
+      const result = await this.grammalecte.parseText(text);
+      
+      const errors = [];
+      
+      // Convertir les erreurs Grammalecte au format de notre système
+      if (result.grammarErrors && result.grammarErrors.length > 0) {
+        result.grammarErrors.forEach(error => {
+          errors.push({
+            type: this.getGrammalecteErrorType(error.ruleId),
+            word: error.beforeText || text.substring(error.start, error.end),
+            correction: error.suggestions && error.suggestions.length > 0 ? error.suggestions[0] : 'correction suggérée',
+            explanation: error.message || 'Erreur grammaticale détectée',
+            offset: error.start,
+            length: error.end - error.start
+          });
+        });
+      }
+      
+      if (result.spellingErrors && result.spellingErrors.length > 0) {
+        result.spellingErrors.forEach(error => {
+          errors.push({
+            type: 'orthographe',
+            word: error.word,
+            correction: error.suggestions && error.suggestions.length > 0 ? error.suggestions[0] : 'correction orthographique',
+            explanation: `Erreur orthographique : "${error.word}"`,
+            offset: error.start,
+            length: error.end - error.start
+          });
+        });
+      }
+      
+      console.log(`🇫🇷 Grammalecte a trouvé ${errors.length} erreurs`);
+      return errors;
+      
+    } catch (error) {
+      console.error('❌ Erreur Grammalecte:', error);
+      throw error;
+    }
+  }
+
+  // Déterminer le type d'erreur Grammalecte
+  getGrammalecteErrorType(ruleId) {
+    if (ruleId.includes('orthographe') || ruleId.includes('spelling')) {
+      return 'orthographe';
+    } else if (ruleId.includes('grammaire') || ruleId.includes('grammar')) {
+      return 'grammaire';
+    } else if (ruleId.includes('conjugaison') || ruleId.includes('verb')) {
+      return 'grammaire';
+    } else if (ruleId.includes('typographie') || ruleId.includes('typo')) {
+      return 'ponctuation';
+    } else if (ruleId.includes('vocabulaire') || ruleId.includes('style')) {
+      return 'vocabulaire';
+    }
+    return 'divers';
   }
 
   // Méthode LanguageTool
