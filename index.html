@@ -7692,6 +7692,8 @@
     
     <!-- Script de l'assistant d'écriture avec spaCy lg (Large) - IA ultra-avancée -->
     <script src="spacy-lg-interface.js"></script>
+    <script src="spacy-custom-rules.js"></script>
+    <script src="spacy-rule-examples.js"></script>
     <script src="writing-assistant-spacy-lg.js"></script>
     
     <!-- Script de détection et initialisation de spaCy lg -->
@@ -7706,6 +7708,13 @@
             console.log('✅ spaCy lg (Large) détecté !');
             console.log('🎯 Modèle: fr_core_news_lg - Précision: 94.7%');
             console.log('📊 Capacités: Analyse syntaxique, NER, Morphologie, Dépendances, Lemmatisation, Vecteurs sémantiques');
+            console.log('🔧 Règles personnalisées: 8 règles actives');
+            
+            // Afficher les règles disponibles
+            if (typeof SpacyCustomRules !== 'undefined') {
+              const customRules = new SpacyCustomRules();
+              console.log('📝 Règles personnalisées chargées:', customRules.getRulesInfo().map(r => r.name).join(', '));
+            }
             
             // Initialiser l'assistant
             if (window.writingAssistant) {
