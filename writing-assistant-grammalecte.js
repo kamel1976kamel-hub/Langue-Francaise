@@ -98,8 +98,8 @@ class WritingAssistant {
     try {
       console.log('🇫🇷 Analyse avec Grammalecte:', text);
       
-      // Analyser le texte avec Grammalecte
-      const result = await this.grammalecte.parseText(text);
+      // Utiliser la méthode parseText du fallback
+      const result = await grammalecte.parseText(text);
       
       const errors = [];
       
