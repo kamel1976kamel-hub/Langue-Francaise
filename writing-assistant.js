@@ -430,7 +430,7 @@ class WritingAssistant {
 
       // Utiliser LanguageTool seulement si le texte est assez long
       let errors = [];
-      if (this.languageToolEnabled && text.trim().length >= 5) {
+      if (this.languageToolEnabled && text.trim().length >= 10) { // Augmenté à 10 caractères
         try {
           errors = await this.checkWithLanguageTool(text);
           console.log('✅ LanguageTool utilisé avec succès');
@@ -439,7 +439,7 @@ class WritingAssistant {
           errors = this.highlightErrors(text);
         }
       } else {
-        console.log('📝 Texte trop court pour LanguageTool, utilisation du fallback');
+        console.log('📝 Texte trop court pour LanguageTool (<10 caractères), utilisation du fallback seulement');
         errors = this.highlightErrors(text);
       }
       
@@ -459,8 +459,8 @@ class WritingAssistant {
   async checkWithLanguageTool(text) {
     try {
       // Vérifier que le texte est assez long pour LanguageTool
-      if (text.trim().length < 5) {
-        throw new Error('Texte trop court pour LanguageTool');
+      if (text.trim().length < 10) {
+        throw new Error('Texte trop court pour LanguageTool (minimum 10 caractères)');
       }
 
       const formData = new FormData();
