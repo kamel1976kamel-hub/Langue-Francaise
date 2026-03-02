@@ -396,85 +396,45 @@ class WritingAssistant {
   }
 
   setupEventListeners() {
-    console.log('🔧 Configuration des événements de l\'assistant d\'écriture');
-    
     // Observer les changements dans les textareas
     document.addEventListener('input', (e) => {
-      console.log('⌨️ Événement input détecté sur:', e.target.tagName, e.target.id || 'sans-id');
-      
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
-        console.log('✅ Élément valide pour l\'analyse, lancement de checkText');
         this.checkText(e.target);
-      } else {
-        console.log('❌ Élément ignoré (ni INPUT ni TEXTAREA):', e.target.tagName);
       }
     });
 
     // Fermer les nuages au clic extérieur
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.writing-cloud')) {
-        console.log('🖱️ Clic extérieur détecté, fermeture des nuages');
         this.removeAllClouds();
       }
     });
-    
-    console.log('✅ Événements de l\'assistant configurés avec succès');
   }
 
   checkText(element) {
-    console.log('🚀 checkText appelé pour l\'élément:', element);
-    console.log('📝 Valeur actuelle:', `"${element.value}"`);
-    console.log('📏 Longueur du texte:', element.value.length);
-    
     // Annuler le timer précédent
     clearTimeout(this.typingTimer);
-    console.log('⏰ Timer précédent annulé');
     
     // Programmer une vérification après 300ms de pause (plus réactif)
     this.typingTimer = setTimeout(async () => {
-      console.log('⏱️ Timer déclenché après 300ms');
-      
       const text = element.value;
-      console.log('🔍 Analyse du texte:', `"${text}"`);
-      
-      if (!text) {
-        console.log('❌ Texte vide, abandon de l\'analyse');
-        return;
-      }
-      
-      console.log('� Élément analysé:', element);
-      console.log('📍 Tag de l\'élément:', element.tagName);
-      console.log('📍 ID de l\'élément:', element.id || 'pas d\'ID');
-      console.log('📍 Parent de l\'élément:', element.parentNode);
-      console.log('📍 Classes du parent:', element.parentNode.className || 'pas de classe');
+      if (!text) return; // Accepter même 1 caractère
 
       // PLUS de vérification de longueur minimum - accepter dès le premier caractère
       
       // Utiliser LanguageTool seulement si le texte est assez long
       let errors = [];
-      console.log('🤖 Vérification si LanguageTool peut être utilisé...');
-      
       if (this.languageToolEnabled && text.trim().length >= 10) { 
-        console.log('✅ LanguageTool activé et texte assez long, tentative d\'API...');
         try {
           errors = await this.checkWithLanguageTool(text);
-          console.log('✅ LanguageTool utilisé avec succès, erreurs trouvées:', errors.length);
         } catch (error) {
-          console.warn('⚠️ LanguageTool indisponible, utilisation du fallback:', error.message);
-          console.log('🔄 Basculement vers le système fallback');
           errors = this.highlightErrors(text);
         }
       } else {
-        console.log('📝 Texte trop court pour LanguageTool (<10 caractères), utilisation du fallback seulement');
-        console.log('🔄 Utilisation directe du fallback');
         errors = this.highlightErrors(text);
       }
       
-      console.log('📊 Erreurs finales trouvées:', errors.length);
-      console.log('📋 Détail des erreurs:', errors);
-      
       // Afficher les nuages dans TOUS les cas (activités ET chats)
-      console.log('☁️ Lancement de l\'affichage des nuages...');
       this.showSuggestions(element, errors);
       
     }, 300); // Réduit de 800ms à 300ms pour plus de réactivité
