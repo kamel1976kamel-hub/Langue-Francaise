@@ -1,9 +1,13 @@
-// Assistant d'écriture intelligent avec infobulles et audio
+// Assistant d'écriture intelligent avec LanguageTool et audio
 class WritingAssistant {
   constructor() {
     this.typingTimer = null;
+    this.languageToolEnabled = true;
+    this.languageToolUrl = 'https://api.languagetool.org/v2/check'; // API publique
+    // Alternative locale : 'http://localhost:8081/v2/check' (si vous avez un serveur local)
+    
     this.corrections = {
-      // Fautes d'orthographe courantes
+      // Gardé comme fallback si LanguageTool indisponible
       orthographe: {
         'a': 'à (préposition) / a (verbe avoir)',
         'ou': 'où (lieu) / ou (conjonction)',
@@ -412,7 +416,7 @@ class WritingAssistant {
     clearTimeout(this.typingTimer);
     
     // Programmer une vérification après 800ms de pause
-    this.typingTimer = setTimeout(() => {
+    this.typingTimer = setTimeout(async () => {
       const text = element.value;
       if (!text || text.length < 3) return;
 
@@ -424,19 +428,93 @@ class WritingAssistant {
       
       if (!hasCompleteWords) return;
 
-      // Créer une version avec les erreurs surlignées
-      const highlightedText = this.highlightErrors(text);
+      // Utiliser LanguageTool si disponible, sinon fallback
+      let errors = [];
+      if (this.languageToolEnabled) {
+        try {
+          errors = await this.checkWithLanguageTool(text);
+        } catch (error) {
+          console.warn('⚠️ LanguageTool indisponible, utilisation du fallback:', error);
+          errors = this.highlightErrors(text);
+        }
+      } else {
+        errors = this.highlightErrors(text);
+      }
       
       // Si on est dans une activité, afficher les suggestions
       if (element.closest('.activity-content')) {
-        this.showSuggestions(element, highlightedText);
+        this.showSuggestions(element, errors);
       }
       
       // Si on est dans un chat, afficher aussi les suggestions
       if (element.closest('.smart-textarea-container') || element.id === 'chatInput') {
-        this.showSuggestions(element, highlightedText);
+        this.showSuggestions(element, errors);
       }
     }, 800);
+  }
+
+  // Méthode LanguageTool
+  async checkWithLanguageTool(text) {
+    try {
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('language', 'fr');
+      formData.append('enabledRules', 'GONNA,MORFOLOGIK_RULE_FR_FR,COMMA_PARENTHESIS_WHITESPACE,DATE_FORMAT,FRENCH_WHITESPACE,PUNCTUATION_PARAGRAPH_END');
+      
+      const response = await fetch(this.languageToolUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`LanguageTool API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📝 LanguageTool réponses:', data.matches);
+      
+      return this.convertLanguageToolErrors(data.matches);
+    } catch (error) {
+      console.error('❌ Erreur LanguageTool:', error);
+      throw error;
+    }
+  }
+
+  // Convertir les erreurs LanguageTool en format interne
+  convertLanguageToolErrors(matches) {
+    const errors = [];
+    
+    matches.forEach(match => {
+      const error = {
+        type: this.categorizeError(match.rule.category.id),
+        word: match.context.text.substring(match.offset, match.offset + match.length),
+        correction: match.replacements.length > 0 ? match.replacements.map(r => r.value).join(' / ') : 'Correction suggérée',
+        explanation: match.message || `Erreur détectée : ${match.rule.description}`,
+        offset: match.offset,
+        length: match.length
+      };
+      
+      errors.push(error);
+    });
+
+    console.log(`📊 LanguageTool a trouvé ${errors.length} erreurs`);
+    return errors;
+  }
+
+  // Catégoriser les erreurs LanguageTool
+  categorizeError(categoryId) {
+    const categories = {
+      'TYPOS': 'orthographe',
+      'GRAMMAR': 'grammaire',
+      'STYLE': 'style',
+      'PUNCTUATION': 'ponctuation',
+      'CASING': 'orthographe',
+      'CONFUSION_WORDS': 'vocabulaire',
+      'GRAMMAR_SPELLING': 'grammaire',
+      'MISC': 'divers'
+    };
+    
+    return categories[categoryId] || 'divers';
   }
 
   highlightErrors(text) {
@@ -497,43 +575,110 @@ class WritingAssistant {
   showSuggestions(element, errors) {
     if (errors.length === 0) return;
 
+    console.log(`💡 Affichage de ${errors.length} suggestions`);
+
     // Créer un panneau de suggestions
     let suggestionsPanel = element.parentNode.querySelector('.writing-suggestions');
     if (!suggestionsPanel) {
       suggestionsPanel = document.createElement('div');
-      suggestionsPanel.className = 'writing-suggestions mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg';
+      suggestionsPanel.className = 'writing-suggestions';
+      suggestionsPanel.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 4px;
+      `;
+      element.parentNode.style.position = 'relative';
       element.parentNode.appendChild(suggestionsPanel);
     }
 
-    suggestionsPanel.innerHTML = `
-      <div class="flex items-center gap-2 mb-2">
-        <span class="text-amber-600 font-semibold">💡 Suggestions d'écriture</span>
-        <button class="text-amber-500 hover:text-amber-700 text-sm" onclick="this.closest('.writing-suggestions').remove()">
-          ✕
-        </button>
-      </div>
-      <div class="space-y-2">
-        ${errors.slice(0, 3).map(error => `
-          <div class="flex items-start gap-2 text-sm">
-            <span class="text-amber-500 mt-0.5">⚠️</span>
-            <div class="flex-1">
-              <span class="font-medium text-amber-700">${error.word}</span>
-              <span class="text-amber-600"> → ${error.correction}</span>
-              <button class="ml-2 text-amber-500 hover:text-amber-700" onclick="writingAssistant.speakCorrection('${error.explanation.replace(/'/g, "\\'")}')">
-                🔊
-              </button>
-            </div>
+    // Générer le HTML des suggestions
+    let suggestionsHTML = '<div style="padding: 8px; font-size: 12px; font-weight: bold; color: #4a5568; border-bottom: 1px solid #e2e8f0;">💡 Suggestions d\'écriture</div>';
+    
+    errors.forEach((error, index) => {
+      const icon = this.getErrorIcon(error.type);
+      const color = this.getErrorColor(error.type);
+      
+      suggestionsHTML += `
+        <div class="suggestion-item" style="padding: 8px 12px; border-bottom: 1px solid #f7fafc; cursor: pointer; hover:background:#f7fafc;" onclick="window.writingAssistant.applyCorrection(this, '${error.correction}', ${error.offset || 0}, ${error.length || 0})">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: ${color}; font-size: 14px;">${icon}</span>
+            <span style="flex: 1; font-size: 13px; color: #2d3748;">
+              <strong style="color: #e53e3e;">${error.word}</strong> → <strong style="color: #38a169;">${error.correction}</strong>
+            </span>
+            <button onclick="event.stopPropagation(); window.writingAssistant.speakCorrection('${error.explanation}')" style="background: none; border: none; color: #3182ce; cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 3px;" title="Écouter l'explication">
+              🔊
+            </button>
           </div>
-        `).join('')}
-      </div>
-    `;
+          <div style="font-size: 11px; color: #718096; margin-top: 2px; margin-left: 22px;">
+            ${error.explanation}
+          </div>
+        </div>
+      `;
+    });
+
+    suggestionsPanel.innerHTML = suggestionsHTML;
 
     // Auto-suppression après 10 secondes
     setTimeout(() => {
-      if (suggestionsPanel.parentNode) {
+      if (suggestionsPanel && suggestionsPanel.parentNode) {
         suggestionsPanel.remove();
       }
     }, 10000);
+  }
+
+  getErrorIcon(type) {
+    const icons = {
+      'orthographe': '❌',
+      'grammaire': '⚠️',
+      'vocabulaire': '💡',
+      'style': '🎨',
+      'ponctuation': '📝',
+      'divers': 'ℹ️'
+    };
+    return icons[type] || '❌';
+  }
+
+  getErrorColor(type) {
+    const colors = {
+      'orthographe': '#e53e3e',
+      'grammaire': '#ed8936',
+      'vocabulaire': '#38a169',
+      'style': '#805ad5',
+      'ponctuation': '#3182ce',
+      'divers': '#718096'
+    };
+    return colors[type] || '#e53e3e';
+  }
+
+  // Nouvelle méthode pour appliquer les corrections LanguageTool
+  applyCorrection(element, correction, offset, length) {
+    if (offset && length) {
+      // Correction LanguageTool avec position précise
+      const text = element.value;
+      const before = text.substring(0, offset);
+      const after = text.substring(offset + length);
+      element.value = before + correction + after;
+    } else {
+      // Correction fallback (ancien système)
+      const text = element.value;
+      const parts = text.split(' ');
+      const correctedWord = correction.split(' / ')[0];
+      const lastWord = parts[parts.length - 1];
+      parts[parts.length - 1] = correctedWord;
+      element.value = parts.join(' ');
+    }
+    
+    // Recalculer après correction
+    setTimeout(() => this.checkText(element), 100);
   }
 
   showTooltip(element, error, x, y) {
