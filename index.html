@@ -1844,7 +1844,7 @@
                     class="flex-1 px-4 py-3 rounded-lg text-sm border"
                     style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
                     onkeypress="if(event.key==='Enter') sendAIChatMessage()"
-                    oninput="console.log('🔥 oninput direct appelé'); if(window.writingAssistant) { console.log('🔥 writingAssistant trouvé'); window.writingAssistant.checkText(this); } else { console.log('❌ writingAssistant non trouvé'); }"
+                    oninput="console.log('🔥 oninput direct appelé'); setTimeout(() => { if(window.writingAssistant) { console.log('🔥 writingAssistant trouvé'); window.writingAssistant.checkText(this); } else { console.log('❌ writingAssistant toujours non trouvé'); } }, 100);"
                   >
                   <button 
                     onclick="sendAIChatMessage()"
