@@ -585,7 +585,7 @@ class WritingAssistant {
     cloud.className = 'writing-cloud';
     
     // Augmenter l'espacement vertical pour éviter la superposition
-    const topPosition = -80 - (index * 100); // Augmenté de -60/-80 à -80/-100
+    const topPosition = -120 - (index * 100); // Augmenté de -80/-100 à -120/-100
     cloud.style.cssText = `
       position: absolute;
       top: ${topPosition}px;
@@ -604,6 +604,8 @@ class WritingAssistant {
       border: 2px solid rgba(255, 255, 255, 0.2);
       display: block !important;
       visibility: visible !important;
+      cursor: move; // Curseur de déplacement
+      user-select: none; // Éviter la sélection pendant le déplacement
     `;
 
     // Ajouter l'animation CSS
@@ -684,7 +686,99 @@ class WritingAssistant {
       console.log('🎵 Lancement automatique de l\'audio pour:', error.explanation);
       this.speakCorrection(error.explanation);
       
+      // 🖱️ RENDRE LE NUAGE DÉPLAÇABLE
+      this.makeCloudDraggable(cloud);
+      
     }, 100);
+  }
+
+  // Fonction pour rendre un nuage déplaçable
+  makeCloudDraggable(cloud) {
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    // Fonction de démarrage du drag
+    const startDrag = (e) => {
+      if (e.target.closest('.cloud-audio-btn, .cloud-close-btn')) {
+        return; // Ne pas déplacer si on clique sur un bouton
+      }
+      
+      isDragging = true;
+      startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+      startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+      
+      const rect = cloud.getBoundingClientRect();
+      initialX = rect.left;
+      initialY = rect.top;
+      
+      cloud.style.zIndex = 10001; // Mettre au premier plan pendant le déplacement
+      cloud.style.transition = 'none'; // Désactiver les transitions pendant le drag
+      cloud.style.cursor = 'grabbing';
+    };
+
+    // Fonction de déplacement
+    const drag = (e) => {
+      if (!isDragging) return;
+      
+      e.preventDefault();
+      
+      const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+      const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+      
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+      
+      const newX = initialX + deltaX;
+      const newY = initialY + deltaY;
+      
+      cloud.style.left = newX + 'px';
+      cloud.style.top = newY + 'px';
+      cloud.style.transform = 'none'; // Enlever le transform pendant le déplacement
+    };
+
+    // Fonction de fin de drag
+    const endDrag = () => {
+      if (!isDragging) return;
+      
+      isDragging = false;
+      cloud.style.zIndex = 10000; // Remettre le z-index normal
+      cloud.style.transition = ''; // Réactiver les transitions
+      cloud.style.cursor = 'move';
+    };
+
+    // Événements souris
+    cloud.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', endDrag);
+
+    // Événements tactiles (mobile)
+    cloud.addEventListener('touchstart', startDrag);
+    document.addEventListener('touchmove', drag);
+    document.addEventListener('touchend', endDrag);
+
+    // Nettoyage des événements lors de la suppression du nuage
+    const cleanup = () => {
+      cloud.removeEventListener('mousedown', startDrag);
+      document.removeEventListener('mousemove', drag);
+      document.removeEventListener('mouseup', endDrag);
+      cloud.removeEventListener('touchstart', startDrag);
+      document.removeEventListener('touchmove', drag);
+      document.removeEventListener('touchend', endDrag);
+    };
+
+    // Observer la suppression du nuage pour nettoyer les événements
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (node === cloud) {
+            cleanup();
+            observer.disconnect();
+          }
+        });
+      });
+    });
+
+    observer.observe(cloud.parentNode, { childList: true, subtree: true });
   }
 
   getErrorIcon(type) {
