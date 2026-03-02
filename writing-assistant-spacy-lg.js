@@ -527,7 +527,7 @@ class WritingAssistantSpacyLG {
       cloud.style.zIndex = 10001;
       cloud.style.transition = 'none';
       cloud.style.cursor = 'grabbing';
-      cloud.style.transform = 'scale(1.05)'; // Légère augmentation pendant le drag
+      cloud.style.transform = 'scale(1.05)';
     };
 
     const drag = (e) => {
@@ -553,19 +553,25 @@ class WritingAssistantSpacyLG {
       if (!isDragging) return;
       
       isDragging = false;
-      cloud.style.zIndex = 10000;
-      cloud.style.transition = '';
       cloud.style.cursor = 'move';
       cloud.style.transform = 'scale(1)';
+      cloud.style.transition = 'all 0.3s ease';
     };
 
-    // Événements souris et tactiles
+    // Événements de souris
     cloud.addEventListener('mousedown', startDrag);
     document.addEventListener('mousemove', drag);
     document.addEventListener('mouseup', endDrag);
+    
+    // Événements tactiles
     cloud.addEventListener('touchstart', startDrag);
     document.addEventListener('touchmove', drag);
     document.addEventListener('touchend', endDrag);
+    
+    // Empêcher la fermeture automatique au clic
+    cloud.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
   }
 
   speakCorrection(text) {
