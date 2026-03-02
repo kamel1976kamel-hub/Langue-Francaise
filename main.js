@@ -267,8 +267,6 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
 
 // Fonction de démonstration pour GitHub Pages
 async function runFourModelPipelineDemo(studentAnswer, activityContext, activityType = 'general') {
-  console.log("🎭 Mode démo : Simulation de la pipeline IA");
-  
   // Simuler un temps de traitement
   await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
   
