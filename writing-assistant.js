@@ -415,21 +415,17 @@ class WritingAssistant {
     // Annuler le timer précédent
     clearTimeout(this.typingTimer);
     
-    // Programmer une vérification après 800ms de pause
+    // Programmer une vérification après 300ms de pause (plus réactif)
     this.typingTimer = setTimeout(async () => {
       const text = element.value;
-      if (!text || text.length < 3) return;
+      if (!text) return; // Accepter même 1 caractère
 
       console.log('🔍 Assistant analyse:', text); // Debug
       console.log('📍 Élément analysé:', element); // Debug
       console.log('📍 Parent de l\'élément:', element.parentNode); // Debug
 
-      // Vérifier si le texte contient des mots complets (pas en train d'écrire)
-      const words = text.split(/\s+/);
-      const hasCompleteWords = words.some(word => word.length >= 3);
+      // PLUS de vérification de longueur minimum - accepter dès le premier caractère
       
-      if (!hasCompleteWords) return;
-
       // Utiliser LanguageTool seulement si le texte est assez long
       let errors = [];
       if (this.languageToolEnabled && text.trim().length >= 10) { // Augmenté à 10 caractères
@@ -450,7 +446,7 @@ class WritingAssistant {
       // Afficher les nuages dans TOUS les cas (activités ET chats)
       this.showSuggestions(element, errors);
       
-    }, 800);
+    }, 300); // Réduit de 800ms à 300ms pour plus de réactivité
   }
 
   // Méthode LanguageTool
@@ -581,19 +577,72 @@ class WritingAssistant {
   }
 
   showSuggestions(element, errors) {
-    if (errors.length === 0) return;
+    // Supprimer les anciens nuages
+    this.removeAllClouds();
 
     console.log(`💡 Affichage de ${errors.length} corrections en nuage violet`);
 
-    // Supprimer les anciens nuages
-    this.removeAllClouds();
+    if (errors.length === 0) {
+      // Afficher un nuage d'information si aucune erreur mais texte présent
+      const text = element.value;
+      if (text && text.trim().length > 0) {
+        this.createInfoCloud(element, text);
+      }
+      return;
+    }
 
     // Créer un nuage violet pour chaque erreur
     errors.forEach((error, index) => {
       setTimeout(() => {
         this.createCloud(element, error, index);
-      }, index * 200); // Animation décalée
+      }, index * 150); // Animation décalée plus rapide
     });
+  }
+
+  createInfoCloud(element, text) {
+    const cloud = document.createElement('div');
+    cloud.className = 'writing-cloud info-cloud';
+    cloud.style.cssText = `
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+      z-index: 10000;
+      min-width: 250px;
+      max-width: 350px;
+      font-size: 13px;
+      animation: cloudFloat 0.5s ease-out;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: block !important;
+      visibility: visible !important;
+    `;
+
+    cloud.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 16px;">✅</span>
+        <span style="font-weight: bold;">Pas d'erreur détectée</span>
+      </div>
+      <div style="margin-top: 6px; opacity: 0.9; font-size: 12px;">
+        Continuez d'écrire... (${text.length} caractère${text.length > 1 ? 's' : ''})
+      </div>
+    `;
+
+    // S'assurer que le parent est positionné
+    element.parentNode.style.position = 'relative';
+    element.parentNode.appendChild(cloud);
+
+    // Auto-suppression après 3 secondes (plus court pour le nuage d'info)
+    setTimeout(() => {
+      if (cloud.parentNode) {
+        cloud.style.animation = 'cloudFloat 0.3s ease-in reverse';
+        setTimeout(() => cloud.remove(), 300);
+      }
+    }, 3000);
   }
 
   createCloud(element, error, index) {
