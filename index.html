@@ -7672,13 +7672,8 @@
             typeChar();
         };
 
-        // Charger l'assistant d'écriture
-        const script = document.createElement('script');
-        script.src = 'writing-assistant.js';
-        script.onload = function() {
-            console.log('✅ Assistant d\'écriture chargé');
-        };
-        document.head.appendChild(script);
+        // L'assistant d'écriture est déjà chargé via writing-assistant-grammalecte.js
+        console.log('✅ Assistant d\'écriture déjà chargé');
         
         console.log("Script de compatibilité IA chargé");
     </script>
