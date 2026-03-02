@@ -11,9 +11,19 @@ class SpacyLGInterface {
   // Initialisation du modèle spaCy lg
   async init() {
     try {
-      console.log('🧠 Initialisation du modèle spaCy lg (Large)...');
+      console.log('🧠 Tentative d\'initialisation du modèle spaCy lg (Large)...');
       
-      // Test de connexion et chargement du modèle
+      // Pour l'instant, nous utilisons directement le fallback avancé
+      // L'API spaCy n'est pas encore déployée
+      console.log('📝 Utilisation du fallback avancé (émulation spaCy lg)');
+      this.enabled = false;
+      this.fallbackEnabled = true;
+      this.modelLoaded = true;
+      
+      return true;
+      
+      // Code pour quand l'API sera disponible
+      /*
       const response = await fetch(`${this.apiEndpoint}/init`, {
         method: 'POST',
         headers: {
@@ -33,15 +43,23 @@ class SpacyLGInterface {
         console.log(`📊 Capacités: ${result.capabilities.join(', ')}`);
         return true;
       }
+      */
     } catch (error) {
-      console.warn('⚠️ spaCy lg non disponible, utilisation du fallback avancé');
+      console.log('📝 Utilisation du fallback avancé (émulation spaCy lg)');
       this.enabled = false;
-      return false;
+      this.fallbackEnabled = true;
+      this.modelLoaded = true;
+      return true;
     }
   }
 
   // Analyse complète avec spaCy lg
   async analyzeText(text) {
+    // Pour l'instant, nous utilisons directement le fallback avancé
+    // L'API spaCy n'est pas encore déployée
+    return this.advancedFallbackAnalysis(text);
+    
+    /*
     if (!this.enabled) {
       return this.advancedFallbackAnalysis(text);
     }
@@ -81,6 +99,7 @@ class SpacyLGInterface {
       console.error('❌ Erreur spaCy lg:', error);
       return this.advancedFallbackAnalysis(text);
     }
+    */
   }
 
   // Conversion des résultats spaCy lg en erreurs pédagogiques
