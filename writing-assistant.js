@@ -699,70 +699,128 @@ class WritingAssistant {
     console.log('☁️ Élément nuage créé:', cloud);
     
     cloud.style.cssText = `
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
-      color: white !important;
-      padding: 20px !important;
-      border-radius: 20px !important;
-      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5) !important;
-      z-index: 999999 !important;
-      min-width: 300px !important;
-      max-width: 400px !important;
-      font-size: 14px !important;
-      animation: none !important;
-      border: 3px solid rgba(255, 255, 255, 0.5) !important;
+      position: absolute;
+      top: ${-60 - (index * 70)}px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+      z-index: 10000;
+      min-width: 250px;
+      max-width: 350px;
+      font-size: 13px;
+      animation: cloudFloat 0.5s ease-out;
+      border: 2px solid rgba(255, 255, 255, 0.2);
       display: block !important;
       visibility: visible !important;
-      opacity: 1 !important;
     `;
 
-    console.log('📍 Position du nuage calculée (mode test):', cloud.style.cssText);
+    console.log('📍 Position du nuage calculée:', cloud.style.cssText);
+
+    // Ajouter l'animation CSS
+    if (!document.querySelector('#cloud-animations')) {
+      console.log('🎭 Ajout des animations CSS...');
+      const style = document.createElement('style');
+      style.id = 'cloud-animations';
+      style.textContent = `
+        @keyframes cloudFloat {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px) scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+        .writing-cloud {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .cloud-error {
+          font-weight: bold;
+          color: #fbbf24;
+          font-size: 14px;
+        }
+        .cloud-correction {
+          font-weight: bold;
+          color: #86efac;
+          font-size: 14px;
+        }
+        .cloud-explanation {
+          margin-top: 6px;
+          opacity: 0.9;
+          line-height: 1.4;
+        }
+        .cloud-audio {
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .cloud-audio-btn {
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .cloud-audio-btn:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `;
+      document.head.appendChild(style);
+      console.log('✅ Animations CSS ajoutées au head');
+    }
 
     // Contenu du nuage
     const icon = this.getErrorIcon(error.type);
     console.log('🎭 Icône pour l\'erreur:', icon);
     
     cloud.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-        <span style="font-size: 18px;">${icon}</span>
-        <span class="cloud-error" style="color: #fbbf24; font-weight: bold;">"${error.word}"</span>
-        <span style="color: white;">→</span>
-        <span class="cloud-correction" style="color: #86efac; font-weight: bold;">"${error.correction}"</span>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <span style="font-size: 16px;">${icon}</span>
+        <span class="cloud-error">"${error.word}"</span>
+        <span>→</span>
+        <span class="cloud-correction">"${error.correction}"</span>
       </div>
-      <div class="cloud-explanation" style="margin-top: 6px; opacity: 0.9; line-height: 1.4;">
-        ${error.explanation}
-      </div>
-      <div class="cloud-audio" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.3);">
-        <button class="cloud-audio-btn" onclick="window.writingAssistant.speakCorrection('${error.explanation.replace(/'/g, "\\'")}')" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 6px 12px; border-radius: 12px; font-size: 12px; cursor: pointer;">
+      <div class="cloud-explanation">${error.explanation}</div>
+      <div class="cloud-audio">
+        <button class="cloud-audio-btn" onclick="window.writingAssistant.speakCorrection('${error.explanation.replace(/'/g, "\\'")}')" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;">
           🔊 Écouter l'explication
         </button>
-        <button class="cloud-audio-btn" onclick="window.writingAssistant.applyCorrectionFromCloud(this, '${error.correction}', ${error.offset || 0}, ${error.length || 0})" style="margin-left: 8px; background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 6px 12px; border-radius: 12px; font-size: 12px; cursor: pointer;">
+        <button class="cloud-audio-btn" onclick="window.writingAssistant.applyCorrectionFromCloud(this, '${error.correction}', ${error.offset || 0}, ${error.length || 0})" style="margin-left: 8px; background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;">
           ✏️ Appliquer
         </button>
       </div>
-      <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">
-        🧪 Nuage de test - visible au centre de l'écran
-      </div>
     `;
     
-    console.log('� Contenu HTML du nuage généré');
+    console.log('📝 Contenu HTML du nuage généré');
 
-    // Ajouter directement au body pour le test
-    document.body.appendChild(cloud);
-    console.log('☁️ Nuage ajouté directement au body (mode test)');
+    // S'assurer que le parent est positionné
+    element.parentNode.style.position = 'relative';
+    console.log('📍 Parent positionné en relative:', element.parentNode.style.position);
+    
+    // Ajouter le nuage
+    element.parentNode.appendChild(cloud);
+    console.log('☁️ Nuage ajouté au DOM');
     console.log('📊 Nombre total de nuages après ajout:', document.querySelectorAll('.writing-cloud').length);
 
-    // Auto-suppression après 15 secondes (plus long pour le test)
+    // Auto-suppression après 8 secondes
     setTimeout(() => {
       if (cloud.parentNode) {
-        console.log('⏰ Auto-suppression du nuage test...');
-        cloud.remove();
-        console.log('✅ Nuage test supprimé du DOM');
+        console.log('⏰ Auto-suppression du nuage...');
+        cloud.style.animation = 'cloudFloat 0.3s ease-in reverse';
+        setTimeout(() => {
+          cloud.remove();
+          console.log('✅ Nuage supprimé du DOM');
+        }, 300);
       }
-    }, 15000);
+    }, 8000);
   }
 
   removeAllClouds() {
