@@ -221,6 +221,30 @@ window.submitActivity = async function(chapterId, activityId) {
   }
 };
 
+// Fonction pour créer un textarea avec assistant d'écriture
+window.createSmartTextarea = function(chapterId, activityId, placeholder = "Votre réponse...") {
+  return `
+    <div class="smart-textarea-container">
+      <textarea 
+        id="activity-answer-${chapterId}-${activityId}"
+        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        rows="6"
+        placeholder="${placeholder}"
+        oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
+      ></textarea>
+      <div class="flex justify-between items-center mt-2 text-xs text-gray-500">
+        <span>💡 L'assistant d'écriture vous aide en temps réel</span>
+        <button 
+          class="px-2 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+          onclick="window.writingAssistant && window.writingAssistant.toggleAudio()"
+        >
+          🔊 Audio
+        </button>
+      </div>
+    </div>
+  `;
+};
+
 // Fonction pour formater la réponse de l'IA en tableau si elle contient des données tabulaires
 function formatFeedbackAsTable(response) {
   // Si la réponse contient déjà des balises HTML, on les garde

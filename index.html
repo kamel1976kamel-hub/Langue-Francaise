@@ -7647,6 +7647,14 @@
             
             typeChar();
         };
+
+        // Charger l'assistant d'écriture
+        const script = document.createElement('script');
+        script.src = 'writing-assistant.js';
+        script.onload = function() {
+            console.log('✅ Assistant d\'écriture chargé');
+        };
+        document.head.appendChild(script);
         
         console.log("Script de compatibilité IA chargé");
     </script>
