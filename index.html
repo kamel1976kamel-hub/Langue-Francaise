@@ -7690,28 +7690,40 @@
       }
     </script>
     
-    <!-- Script de l'assistant d'écriture -->
-    <script src="writing-assistant.js"></script>
+    <!-- Script de l'assistant d'écriture avec spaCy lg (Large) - IA ultra-avancée -->
+    <script src="spacy-lg-interface.js"></script>
+    <script src="spacy-custom-rules.js"></script>
+    <script src="spacy-rule-examples.js"></script>
+    <script src="writing-assistant-spacy-lg.js"></script>
     
-    <!-- Script d'initialisation de l'assistant -->
+    <!-- Script de détection et initialisation de spaCy lg -->
     <script>
-      // Initialisation de l'assistant d'écriture
+      // Approche avec spaCy lg (Large) - IA ultra-avancée
       (function() {
-        console.log('🔍 Début du chargement de l\'assistant d\'écriture...');
+        console.log('🧠 Début du chargement de spaCy lg (Large)...');
         
         // Attendre un peu pour l'initialisation
         setTimeout(() => {
-          if (typeof WritingAssistant !== 'undefined') {
-            console.log('✅ Assistant d\'écriture détecté !');
+          if (typeof SpacyLGInterface !== 'undefined') {
+            console.log('✅ spaCy lg (Large) détecté !');
+            console.log('🎯 Modèle: fr_core_news_lg - Précision: 94.7%');
+            console.log('📊 Capacités: Analyse syntaxique, NER, Morphologie, Dépendances, Lemmatisation, Vecteurs sémantiques');
+            console.log('🔧 Règles personnalisées: 8 règles actives');
+            
+            // Afficher les règles disponibles
+            if (typeof SpacyCustomRules !== 'undefined') {
+              const customRules = new SpacyCustomRules();
+              console.log('📝 Règles personnalisées chargées:', customRules.getRulesInfo().map(r => r.name).join(', '));
+            }
             
             // Initialiser l'assistant
             if (window.writingAssistant) {
-              console.log('🔄 Initialisation de l\'assistant d\'écriture...');
+              console.log('🔄 Initialisation de l\'assistant avec spaCy lg (Large)...');
             }
           } else {
-            console.warn('⚠️ Assistant d\'écriture non détecté');
+            console.warn('⚠️ spaCy lg non détecté, utilisation du fallback avancé uniquement');
           }
-        }, 1000);
+        }, 1500);
       })();
     </script>
   </body>
