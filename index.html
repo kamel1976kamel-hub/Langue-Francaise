@@ -4075,21 +4075,17 @@
         const chapter = chapters[chapterId];
         if (!chapter) return;
 
-        // Vérifier que les éléments DOM existent
-        const contentMeta = document.getElementById("contentMeta");
-        const contentTitle = document.getElementById("contentTitle");
-        const contentBody = document.getElementById("contentBody");
+        // Utiliser les éléments qui existent réellement dans le HTML
+        const theoryContent = document.getElementById("theoryContent");
         
-        if (!contentMeta || !contentTitle || !contentBody) {
-          console.warn('Éléments de contenu non disponibles, retry dans 100ms...');
+        if (!theoryContent) {
+          console.warn('Élément theoryContent non disponible, retry dans 100ms...');
           setTimeout(() => selectModule(chapterId), 100);
           return;
         }
 
-        // Mettre à jour le contenu théorique (colonne droite)
-        contentMeta.textContent = chapter.meta;
-        contentTitle.textContent = chapter.title;
-        contentBody.innerHTML = chapter.body;
+        // Mettre à jour le contenu théorique avec les éléments disponibles
+        theoryContent.innerHTML = chapter.body;
 
         // Charger les activités dans la colonne du milieu
         loadActivities(chapterId);
