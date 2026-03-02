@@ -335,26 +335,41 @@ class WritingAssistantSpacyLGFixed {
       const applyBtn = document.getElementById(applyBtnId);
       const closeBtn = document.getElementById(closeBtnId);
       
+      console.log('🔍 Recherche des boutons:', { audioBtnId, applyBtnId, closeBtnId });
+      console.log('🔍 Boutons trouvés:', { audioBtn, applyBtn, closeBtn });
+      
       if (audioBtn) {
         audioBtn.addEventListener('click', (e) => {
+          console.log('🔊 Bouton audio cliqué - Lecture de l\'explication');
           e.stopPropagation();
           this.speakCorrection(error.explanation);
         });
+        console.log('✅ Bouton audio configuré');
+      } else {
+        console.warn('⚠️ Bouton audio non trouvé');
       }
       
       if (applyBtn) {
         applyBtn.addEventListener('click', (e) => {
+          console.log('✏️ Bouton appliquer cliqué - Application de la correction');
           e.stopPropagation();
           this.applyCorrection(element, error);
         });
+        console.log('✅ Bouton appliquer configuré');
+      } else {
+        console.warn('⚠️ Bouton appliquer non trouvé');
       }
       
       if (closeBtn) {
         closeBtn.addEventListener('click', (e) => {
+          console.log('❌ Bouton fermer cliqué - Fermeture du nuage');
           e.stopPropagation();
           cloud.style.animation = 'cloudFloatLG 0.4s ease-in reverse';
           setTimeout(() => cloud.remove(), 400);
         });
+        console.log('✅ Bouton fermer configuré');
+      } else {
+        console.warn('⚠️ Bouton fermer non trouvé');
       }
 
       // 🎵 Lancement automatique de l'audio
@@ -364,7 +379,7 @@ class WritingAssistantSpacyLGFixed {
       // 🖱️ Rendre le nuage déplaçable avec SYSTÈME RADICALEMENT DIFFÉRENT
       this.makeCloudDraggableFixed(cloud);
       
-    }, 100);
+    }, 200); // Augmenté pour laisser le temps au DOM de se construire
   }
 
   makeCloudDraggableFixed(cloud) {
@@ -374,6 +389,7 @@ class WritingAssistantSpacyLGFixed {
     const startDrag = (e) => {
       // Ne pas démarrer le drag si on clique sur les boutons
       if (e.target.closest('.cloud-audio-btn-lg, .cloud-close-btn-lg')) {
+        console.log('🖱️ Clic sur bouton - PAS de drag');
         return;
       }
       
@@ -431,27 +447,50 @@ class WritingAssistantSpacyLGFixed {
       console.log('🖱️ DRAG TERMINÉ');
     };
 
-    // SYSTÈME DE DRAG TOTALEMENT ISOLÉ
+    // SYSTÈME DE DRAG TOTALEMENT ISOLÉ - MAIS AVEC EXCEPTIONS POUR LES BOUTONS
     cloud.addEventListener('mousedown', startDrag, { capture: true, passive: false });
     document.addEventListener('mousemove', drag, { capture: true, passive: false });
     document.addEventListener('mouseup', endDrag, { capture: true, passive: false });
     
-    // BLOQUER TOUT AUTRE ÉVÉNEMENT SUR LE NUAGE
+    // BLOQUER SEULEMENT LES CLICS SUR LE CONTENU DU NUAGE (PAS SUR LES BOUTONS)
     cloud.addEventListener('click', (e) => {
+      // Ne pas bloquer si on clique sur les boutons
+      if (e.target.closest('.cloud-audio-btn-lg, .cloud-close-btn-lg')) {
+        console.log('🖱️ Clic autorisé sur bouton');
+        return; // Laisser l'événement se propager aux boutons
+      }
+      
+      // Bloquer seulement les clics sur le contenu du nuage
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      return false;
+      console.log('🖱️ Clic bloqué sur contenu du nuage');
     }, { capture: true, passive: false });
     
-    cloud.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      return false;
-    }, { capture: true, passive: false });
+    // Ajouter des logs pour les boutons
+    const audioBtn = cloud.querySelector('.cloud-audio-btn-lg');
+    const applyBtn = cloud.querySelector('.cloud-audio-btn-lg:not([id*="audio"])');
+    const closeBtn = cloud.querySelector('.cloud-close-btn-lg');
     
-    console.log('🖱️ SYSTÈME DE DRAG FIXE INSTALLÉ');
+    if (audioBtn) {
+      audioBtn.addEventListener('click', (e) => {
+        console.log('🔊 Bouton audio cliqué');
+      });
+    }
+    
+    if (applyBtn) {
+      applyBtn.addEventListener('click', (e) => {
+        console.log('✏️ Bouton appliquer cliqué');
+      });
+    }
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        console.log('❌ Bouton fermer cliqué');
+      });
+    }
+    
+    console.log('🖱️ SYSTÈME DE DRAG FIXE INSTALLÉ avec boutons fonctionnels');
   }
 
   speakCorrection(text) {
