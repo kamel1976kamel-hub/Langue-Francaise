@@ -70,7 +70,7 @@ class WritingAssistantSpacyLG {
       clearTimeout(timeout);
       timeout = setTimeout(async () => {
         await this.checkText(element);
-      }, 600); // Délai augmenté pour l'analyse lg
+      }, 800); // Délai augmenté pour éviter les conflits
     });
   }
 
@@ -95,258 +95,105 @@ class WritingAssistantSpacyLG {
       }
       
       if (errors.length > 0) {
-        this.highlightErrors(element, errors);
+        console.log(`🧠 spaCy lg (Large) a trouvé ${errors.length} erreur(s) avec confiance moyenne ${errors.reduce((sum, e) => sum + (e.confidence || 0.5), 0) / errors.length}`);
+        this.showHighlights(element, errors);
         this.showSuggestions(element, errors);
       } else {
+        this.clearHighlights(element);
+        this.clearClouds(element);
         this.showSuccess(element);
       }
-      
     } catch (error) {
-      console.error('❌ Erreur analyse spaCy lg:', error);
+      console.error('❌ Erreur lors de l\'analyse spaCy lg:', error);
     }
   }
 
   applyCustomRules(text) {
     if (!this.customRules) return [];
     
-    // Créer un document simulé pour les règles personnalisées
-    const simulatedDoc = this.createSimulatedDocument(text);
-    
     try {
-      return this.customRules.applyRules(simulatedDoc);
+      // Simuler un document spaCy pour les règles personnalisées
+      const mockDoc = this.createMockSpacyDoc(text);
+      return this.customRules.applyRules(mockDoc);
     } catch (error) {
-      console.error('❌ Erreur règles personnalisées:', error);
+      console.error('❌ Erreur dans les règles personnalisées:', error);
       return [];
     }
   }
 
-  createSimulatedDocument(text) {
-    // Simulation simplifiée d'un document spaCy pour le fallback
+  createMockSpacyDoc(text) {
+    // Créer une simulation de document spaCy pour les règles
     const tokens = text.split(/\s+/).map((word, index) => ({
       text: word,
-      lemma: this.getLemma(word),
-      pos: this.getPOS(word),
-      morph: this.getMorphology(word),
-      idx: text.indexOf(word),
+      lemma: word.toLowerCase(),
+      pos: this.guessPOS(word),
+      idx: text.indexOf(word, index > 0 ? text.slice(0, text.indexOf(word)).split(/\s+/).join(' ').length + 1 : 0),
       i: index,
-      dep: this.getDependency(word, index),
+      morph: this.guessMorphology(word),
+      dep: this.guessDependency(word, index),
       head: null
     }));
-    
-    // Définir les relations de dépendance
-    tokens.forEach((token, index) => {
-      if (index > 0) {
-        token.head = tokens[index - 1];
-      }
-    });
     
     return tokens;
   }
 
-  getLemma(word) {
-    const lemmas = {
-      'mange': 'manger',
-      'mangeaient': 'manger',
-      'mangé': 'manger',
-      'mangée': 'manger',
-      'mangés': 'manger',
-      'mangées': 'manger',
-      'sont': 'être',
-      'sommes': 'être',
-      'est': 'être',
-      'suis': 'être',
-      'étais': 'être',
-      'était': 'être',
-      'étions': 'être',
-      'étiez': 'être',
-      'étaient': 'être',
-      'ont': 'avoir',
-      'avons': 'avoir',
-      'ai': 'avoir',
-      'as': 'avoir',
-      'a': 'avoir',
-      'avais': 'avoir',
-      'avait': 'avoir',
-      'avions': 'avoir',
-      'aviez': 'avoir',
-      'avaient': 'avoir',
-      'vont': 'aller',
-      'allons': 'aller',
-      'vais': 'aller',
-      'vas': 'aller',
-      'va': 'aller',
-      'allait': 'aller',
-      'allaient': 'aller',
-      'font': 'faire',
-      'faisons': 'faire',
-      'fais': 'faire',
-      'faisait': 'faire',
-      'faisaient': 'faire',
-      'disent': 'dire',
-      'disons': 'dire',
-      'dis': 'dire',
-      'dit': 'dire',
-      'disait': 'dire',
-      'disaient': 'dire'
-    };
-    
-    return lemmas[word.toLowerCase()] || word.toLowerCase();
+  guessPOS(word) {
+    // Deviner la partie du discours de manière simple
+    if (word.match(/^(le|la|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|nos|votre|vos)$/i)) return 'DET';
+    if (word.match(/^(je|tu|il|elle|nous|vous|ils|elles|me|te|le|la|lui|nous|vous|leur|y|en)$/i)) return 'PRON';
+    if (word.match(/^(être|avoir|aller|faire|dire|prendre|voir|savoir|pouvoir|vouloir|devoir|falloir|valoir|venir|partir|sortir|entrer|arriver|rester|tomber|mourir|naître|devenir|rendre|mettre|tenir|comprendre|apprendre|enseigner|trouver|chercher|donner|recevoir|acheter|vendre|payer|coûter|peser|mesurer|compter|ajouter|enlever|retirer|oublier|se souvenir|connaître|croire|penser|parler|répondre|demander|questionner|écouter|entendre|voir|regarder|sentir|goûter|toucher|sembler|paraître|devenir|rester|demeurer|partir|arriver|sortir|entrer|rentrer|monter|descendre|passer|traverser|franchir|atteindre|gagner|perdre|battre|vaincre|triompher|réussir|échouer|manquer|rat|)$/i)) return 'VERB';
+    if (word.match(/^(et|ou|mais|où|donc|or|ni|car|si|lorsque|quand|comme|que|qui|quoi|où|quand|comment|pourquoi|quel|quelle|quels|quelles)$/i)) return 'CCONJ';
+    if (word.match(/^(de|du|des|au|aux|à|par|pour|sur|sous|avec|sans|contre|entre|parmi|pendant|depuis|vers|jusque|selon|malgré|pendant|devant|derrière|dessous|dessus|après|avant|pendant)$/i)) return 'ADP';
+    if (word.match(/^(très|plus|moins|bien|mal|trop|assez|peu|beaucoup|fort|faible|grand|petit|long|court|haut|bas|vite|lentement|doucement|fortement|facilement|difficilement|simplement|normalement|habituellement|généralement|souvent|rarement|jamais|toujours|parfois|quelquefois|encore|déjà|bientôt|tard|tôt|hier|aujourd\'hui|demain|maintenant|alors|ensuite|puis|après|avant|pendant|pendant que|lorsque|quand|comme|si|bien que|quoique|malgré|selon|vers|chez|par|pour|sur|sous|avec|sans|contre|entre|parmi|pendant|depuis|jusque|selon)$/i)) return 'ADV';
+    return 'NOUN';
   }
 
-  getPOS(word) {
-    const posMap = {
-      'les': 'DET',
-      'le': 'DET',
-      'la': 'DET',
-      'l\'': 'DET',
-      'un': 'DET',
-      'une': 'DET',
-      'des': 'DET',
-      'du': 'DET',
-      'de': 'ADP',
-      'à': 'ADP',
-      'et': 'CCONJ',
-      'mais': 'CCONJ',
-      'ou': 'CCONJ',
-      'car': 'CCONJ',
-      'donc': 'CCONJ',
-      'ni': 'CCONJ',
-      'que': 'SCONJ',
-      'qui': 'PRON',
-      'que': 'PRON',
-      'où': 'PRON',
-      'dont': 'PRON',
-      'je': 'PRON',
-      'tu': 'PRON',
-      'il': 'PRON',
-      'elle': 'PRON',
-      'nous': 'PRON',
-      'vous': 'PRON',
-      'ils': 'PRON',
-      'elles': 'PRON',
-      'mon': 'PRON',
-      'ton': 'PRON',
-      'son': 'PRON',
-      'ma': 'PRON',
-      'ta': 'PRON',
-      'sa': 'PRON',
-      'mes': 'PRON',
-      'tes': 'PRON',
-      'ses': 'PRON',
-      'notre': 'PRON',
-      'votre': 'PRON',
-      'leurs': 'PRON',
-      'très': 'ADV',
-      'bien': 'ADV',
-      'mal': 'ADV',
-      'plus': 'ADV',
-      'moins': 'ADV',
-      'peu': 'ADV',
-      'beaucoup': 'ADV',
-      'assez': 'ADV',
-      'trop': 'ADV',
-      'vite': 'ADV',
-      'lentement': 'ADV',
-      'ici': 'ADV',
-      'là': 'ADV',
-      'maintenant': 'ADV',
-      'hier': 'ADV',
-      'demain': 'ADV',
-      'aujourd\'hui': 'ADV',
-      'toujours': 'ADV',
-      'jamais': 'ADV',
-      'souvent': 'ADV',
-      'parfois': 'ADV',
-      'rarement': 'ADV',
-      'quelquefois': 'ADV'
-    };
+  guessMorphology(word) {
+    // Deviner la morphologie de manière simple
+    const morph = {};
     
-    return posMap[word.toLowerCase()] || 'NOUN';
+    // Genre
+    if (word.match(/e$/)) morph.Gender = 'Fem';
+    else if (word.match(/^[lmnrtbdcg]/)) morph.Gender = 'Masc';
+    
+    // Nombre
+    if (word.match(/s$/)) morph.Number = 'Plur';
+    else morph.Number = 'Sing';
+    
+    // Temps pour les verbes
+    if (word.match(/(é|er|ez)$/)) morph.Tense = 'Past';
+    else if (word.match(/(ons|ez|ent)$/)) morph.Tense = 'Pres';
+    else if (word.match(/(ais|ait|aient)$/)) morph.Tense = 'Imp';
+    
+    // Mode
+    if (word.match(/(ons|ez|ent)$/)) morph.Mood = 'Ind';
+    else if (word.match(/e$/)) morph.Mood = 'Subj';
+    
+    return morph;
   }
 
-  getMorphology(word) {
-    const morphology = {
-      'les': { Number: 'Plur', Gender: 'Masc' },
-      'le': { Number: 'Sing', Gender: 'Masc' },
-      'la': { Number: 'Sing', Gender: 'Fem' },
-      'une': { Number: 'Sing', Gender: 'Fem' },
-      'des': { Number: 'Plur', Gender: 'Masc' },
-      'sont': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'sommes': { Number: 'Plur', Person: '1', Mood: 'Ind', Tense: 'Pres' },
-      'est': { Number: 'Sing', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'suis': { Number: 'Sing', Person: '1', Mood: 'Ind', Tense: 'Pres' },
-      'mange': { Number: 'Sing', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'mangent': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'mangeaient': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Imp' },
-      'mangé': { Number: 'Sing', Gender: 'Masc', Tense: 'Past' },
-      'mangée': { Number: 'Sing', Gender: 'Fem', Tense: 'Past' },
-      'mangés': { Number: 'Plur', Gender: 'Masc', Tense: 'Past' },
-      'mangées': { Number: 'Plur', Gender: 'Fem', Tense: 'Past' },
-      'vont': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'allons': { Number: 'Plur', Person: '1', Mood: 'Ind', Tense: 'Pres' },
-      'vais': { Number: 'Sing', Person: '1', Mood: 'Ind', Tense: 'Pres' },
-      'vas': { Number: 'Sing', Person: '2', Mood: 'Ind', Tense: 'Pres' },
-      'va': { Number: 'Sing', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'font': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'faisons': { Number: 'Plur', Person: '1', Mood: 'Ind', Tense: 'Pres' },
-      'fais': { Number: 'Sing', Person: '2', Mood: 'Ind', Tense: 'Pres' },
-      'faisait': { Number: 'Sing', Person: '3', Mood: 'Ind', Tense: 'Imp' },
-      'faisaient': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Imp' },
-      'disent': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'disons': { Number: 'Plur', Person: '1', Mood: 'Ind', Tense: 'Pres' },
-      'dis': { Number: 'Sing', Person: '2', Mood: 'Ind', Tense: 'Pres' },
-      'dit': { Number: 'Sing', Person: '3', Mood: 'Ind', Tense: 'Pres' },
-      'disait': { Number: 'Sing', Person: '3', Mood: 'Ind', Tense: 'Imp' },
-      'disaient': { Number: 'Plur', Person: '3', Mood: 'Ind', Tense: 'Imp' }
-    };
-    
-    return morphology[word.toLowerCase()] || {};
+  guessDependency(word, index) {
+    // Deviner la dépendance de manière simple
+    if (this.guessPOS(word) === 'DET') return 'det';
+    if (this.guessPOS(word) === 'ADP') return 'case';
+    if (this.guessPOS(word) === 'CCONJ') return 'cc';
+    return 'obj';
   }
 
-  getDependency(word, index) {
-    const dependencies = {
-      'les': 'det',
-      'le': 'det',
-      'la': 'det',
-      'une': 'det',
-      'des': 'det',
-      'de': 'case',
-      'à': 'case',
-      'et': 'cc',
-      'mais': 'cc',
-      'ou': 'cc',
-      'car': 'cc',
-      'donc': 'cc',
-      'ni': 'cc',
-      'que': 'mark',
-      'qui': 'nsubj',
-      'que': 'obj',
-      'où': 'advmod',
-      'dont': 'nmod',
-      'je': 'nsubj',
-      'tu': 'nsubj',
-      'il': 'nsubj',
-      'elle': 'nsubj',
-      'nous': 'nsubj',
-      'vous': 'nsubj',
-      'ils': 'nsubj',
-      'elles': 'nsubj'
-    };
-    
-    return dependencies[word.toLowerCase()] || 'root';
-  }
-
-  highlightErrors(element, errors) {
-    // Effacer les surbrillances précédents
+  showHighlights(element, errors) {
+    // Effacer les surbrillances précédentes
     this.clearHighlights(element);
     
     // Créer un conteneur pour les surbrillances
     const container = document.createElement('div');
     container.style.cssText = `
-      position: relative;
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
       pointer-events: none;
+      z-index: 1;
     `;
     
     // Ajouter les surbrillances avec couleur selon la sévérité
@@ -397,7 +244,7 @@ class WritingAssistantSpacyLG {
     sortedErrors.forEach((error, index) => {
       setTimeout(() => {
         this.createCloud(element, error, index);
-      }, index * 250); // Délai augmenté pour l'analyse lg
+      }, index * 300); // Délai augmenté pour éviter les conflits
     });
   }
 
@@ -408,7 +255,7 @@ class WritingAssistantSpacyLG {
     
     const topPosition = -140 - (index * 120); // Espacement augmenté pour lg
     cloud.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: ${topPosition}px;
       left: 50%;
       transform: translateX(-50%);
@@ -417,7 +264,7 @@ class WritingAssistantSpacyLG {
       padding: 14px 18px;
       border-radius: 22px;
       box-shadow: 0 10px 30px rgba(30, 64, 175, 0.4);
-      z-index: 10000;
+      z-index: 99999;
       min-width: 280px;
       max-width: 400px;
       font-size: 13px;
@@ -475,8 +322,12 @@ class WritingAssistantSpacyLG {
       </div>
     `;
 
-    element.parentNode.style.position = 'relative';
-    element.parentNode.appendChild(cloud);
+    document.body.appendChild(cloud);
+
+    // Positionnement par rapport à l'élément
+    const rect = element.getBoundingClientRect();
+    cloud.style.top = (rect.top - 140 - (index * 120)) + 'px';
+    cloud.style.left = (rect.left + rect.width / 2) + 'px';
 
     // Ajouter les événements
     setTimeout(() => {
@@ -484,36 +335,51 @@ class WritingAssistantSpacyLG {
       const applyBtn = document.getElementById(applyBtnId);
       const closeBtn = document.getElementById(closeBtnId);
       
+      console.log('🔍 Recherche des boutons:', { audioBtnId, applyBtnId, closeBtnId });
+      console.log('🔍 Boutons trouvés:', { audioBtn, applyBtn, closeBtn });
+      
       if (audioBtn) {
         audioBtn.addEventListener('click', (e) => {
+          console.log('🔊 Bouton audio cliqué - Lecture de l\'explication');
           e.stopPropagation();
           this.speakCorrection(error.explanation);
         });
+        console.log('✅ Bouton audio configuré');
+      } else {
+        console.warn('⚠️ Bouton audio non trouvé');
       }
       
       if (applyBtn) {
         applyBtn.addEventListener('click', (e) => {
+          console.log('✏️ Bouton appliquer cliqué - Application de la correction');
           e.stopPropagation();
           this.applyCorrection(element, error);
         });
+        console.log('✅ Bouton appliquer configuré');
+      } else {
+        console.warn('⚠️ Bouton appliquer non trouvé');
       }
       
       if (closeBtn) {
         closeBtn.addEventListener('click', (e) => {
+          console.log('❌ Bouton fermer cliqué - Fermeture du nuage');
           e.stopPropagation();
           cloud.style.animation = 'cloudFloatLG 0.4s ease-in reverse';
           setTimeout(() => cloud.remove(), 400);
         });
+        console.log('✅ Bouton fermer configuré');
+      } else {
+        console.warn('⚠️ Bouton fermer non trouvé');
       }
 
       // 🎵 Lancement automatique de l'audio
       console.log('🎵 Lancement automatique de l\'audio spaCy lg pour:', error.explanation);
       this.speakCorrection(error.explanation);
       
-      // 🖱️ Rendre le nuage déplaçable
+      // 🖱️ Rendre le nuage déplaçable avec SYSTÈME RADICALEMENT DIFFÉRENT
       this.makeCloudDraggable(cloud);
       
-    }, 100);
+    }, 200); // Augmenté pour laisser le temps au DOM de se construire
   }
 
   makeCloudDraggable(cloud) {
@@ -523,28 +389,29 @@ class WritingAssistantSpacyLG {
     const startDrag = (e) => {
       // Ne pas démarrer le drag si on clique sur les boutons
       if (e.target.closest('.cloud-audio-btn-lg, .cloud-close-btn-lg')) {
+        console.log('🖱️ Clic sur bouton - PAS de drag');
         return;
       }
       
-      // Empêcher TOUTE autre action
+      // BLOQUER TOUT SAUF LE DRAG
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
       
       isDragging = true;
-      startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-      startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+      startX = e.clientX;
+      startY = e.clientY;
       
       const rect = cloud.getBoundingClientRect();
       initialX = rect.left;
       initialY = rect.top;
       
-      cloud.style.zIndex = 10001;
+      cloud.style.zIndex = 100000;
       cloud.style.transition = 'none';
       cloud.style.cursor = 'grabbing';
       cloud.style.transform = 'scale(1.05)';
       
-      console.log('🖱️ Début du drag du nuage');
+      console.log('🖱️ DRAG COMMENCÉ - Position initiale:', { x: initialX, y: initialY });
     };
 
     const drag = (e) => {
@@ -553,8 +420,8 @@ class WritingAssistantSpacyLG {
       e.preventDefault();
       e.stopPropagation();
       
-      const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-      const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+      const currentX = e.clientX;
+      const currentY = e.clientY;
       
       const deltaX = currentX - startX;
       const deltaY = currentY - startY;
@@ -565,6 +432,8 @@ class WritingAssistantSpacyLG {
       cloud.style.left = newX + 'px';
       cloud.style.top = newY + 'px';
       cloud.style.transform = 'scale(1.05)';
+      
+      console.log('🖱️ DRAG EN COURS - Position:', { x: newX, y: newY });
     };
 
     const endDrag = () => {
@@ -575,25 +444,53 @@ class WritingAssistantSpacyLG {
       cloud.style.transform = 'scale(1)';
       cloud.style.transition = 'all 0.3s ease';
       
-      console.log('🖱️ Fin du drag du nuage');
+      console.log('🖱️ DRAG TERMINÉ');
     };
 
-    // Événements de souris - CAPTURER pour avoir la priorité
-    cloud.addEventListener('mousedown', startDrag, true);
-    document.addEventListener('mousemove', drag, true);
-    document.addEventListener('mouseup', endDrag, true);
+    // SYSTÈME DE DRAG TOTALEMENT ISOLÉ - MAIS AVEC EXCEPTIONS POUR LES BOUTONS
+    cloud.addEventListener('mousedown', startDrag, { capture: true, passive: false });
+    document.addEventListener('mousemove', drag, { capture: true, passive: false });
+    document.addEventListener('mouseup', endDrag, { capture: true, passive: false });
     
-    // Événements tactiles
-    cloud.addEventListener('touchstart', startDrag, true);
-    document.addEventListener('touchmove', drag, true);
-    document.addEventListener('touchend', endDrag, true);
-    
-    // UN SEUL écouteur de clic pour empêcher la fermeture
+    // BLOQUER SEULEMENT LES CLICS SUR LE CONTENU DU NUAGE (PAS SUR LES BOUTONS)
     cloud.addEventListener('click', (e) => {
+      // Ne pas bloquer si on clique sur les boutons
+      if (e.target.closest('.cloud-audio-btn-lg, .cloud-close-btn-lg')) {
+        console.log('🖱️ Clic autorisé sur bouton');
+        return; // Laisser l'événement se propager aux boutons
+      }
+      
+      // Bloquer seulement les clics sur le contenu du nuage
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-    }, true);
+      console.log('🖱️ Clic bloqué sur contenu du nuage');
+    }, { capture: true, passive: false });
+    
+    // Ajouter des logs pour les boutons
+    const audioBtn = cloud.querySelector('.cloud-audio-btn-lg');
+    const applyBtn = cloud.querySelector('.cloud-audio-btn-lg:not([id*="audio"])');
+    const closeBtn = cloud.querySelector('.cloud-close-btn-lg');
+    
+    if (audioBtn) {
+      audioBtn.addEventListener('click', (e) => {
+        console.log('🔊 Bouton audio cliqué');
+      });
+    }
+    
+    if (applyBtn) {
+      applyBtn.addEventListener('click', (e) => {
+        console.log('✏️ Bouton appliquer cliqué');
+      });
+    }
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        console.log('❌ Bouton fermer cliqué');
+      });
+    }
+    
+    console.log('🖱️ SYSTÈME DE DRAG FIXE INSTALLÉ avec boutons fonctionnels');
   }
 
   speakCorrection(text) {
@@ -655,10 +552,10 @@ class WritingAssistantSpacyLG {
     
     const baseIcon = icons[type] || '❌';
     
-    // Ajouter un indicateur de sévérité
-    if (severity === 'high') return '🔴' + baseIcon;
-    if (severity === 'medium') return '🟡' + baseIcon;
-    return '🟢' + baseIcon;
+    // Modifier l'icône selon la sévérité
+    if (severity === 'high') return '🔴 ' + baseIcon;
+    if (severity === 'medium') return '🟡 ' + baseIcon;
+    return '🟢 ' + baseIcon;
   }
 
   getSeverityColor(severity) {
@@ -681,24 +578,13 @@ class WritingAssistantSpacyLG {
     this.clouds = [];
   }
 
-  // Nouvelle fonction pour nettoyer tous les nuages manuellement
-  clearAllClouds() {
-    const clouds = document.querySelectorAll('.spacy-lg-cloud');
-    clouds.forEach(cloud => {
-      cloud.style.animation = 'cloudFloatLG 0.3s ease-in reverse';
-      setTimeout(() => cloud.remove(), 300);
-    });
-    this.clouds = [];
-    console.log(' Tous les nuages spaCy lg ont été fermés');
-  }
-
   clearHighlights(element) {
     const highlights = element.parentNode.querySelectorAll('[data-error-index]');
     highlights.forEach(highlight => highlight.remove());
   }
 
   showSuccess(element) {
-    console.log(' Aucune erreur détectée par spaCy lg');
+    console.log('✅ Aucune erreur détectée par spaCy lg');
   }
 
   showErrorDetails(error, highlightElement) {
@@ -711,42 +597,32 @@ class WritingAssistantSpacyLG {
       background: #1f2937;
       color: white;
       padding: 8px 12px;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 12px;
-      z-index: 10002;
+      z-index: 100001;
       max-width: 300px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     `;
-    
     tooltip.innerHTML = `
-      <div><strong>Type:</strong> ${error.type}</div>
-      <div><strong>Sévérité:</strong> ${error.severity}</div>
-      <div><strong>Confiance:</strong> ${Math.round((error.confidence || 0.5) * 100)}%</div>
-      <div><strong>Règle:</strong> ${error.rule || 'N/A'}</div>
-      <div><strong>Explication:</strong> ${error.explanation}</div>
+      <div style="font-weight: bold; margin-bottom: 4px;">${error.type}</div>
+      <div style="margin-bottom: 4px;">Règle: ${error.rule || 'Non spécifiée'}</div>
+      <div style="opacity: 0.8;">${error.explanation}</div>
     `;
     
     document.body.appendChild(tooltip);
     
-    // Positionner l'infobulle
     const rect = highlightElement.getBoundingClientRect();
     tooltip.style.left = rect.left + 'px';
     tooltip.style.top = (rect.bottom + 5) + 'px';
     
-    // Supprimer l'infobulle après 3 secondes
-    setTimeout(() => {
-      if (tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
-    }, 3000);
+    setTimeout(() => tooltip.remove(), 3000);
   }
 }
 
-// Initialisation de l'assistant spaCy lg
+// Initialisation
 window.addEventListener('DOMContentLoaded', () => {
   window.writingAssistant = new WritingAssistantSpacyLG();
   console.log('🧠 Assistant d\'écriture spaCy lg (Large) initialisé');
 });
 
-// Export pour compatibilité
 window.WritingAssistantSpacyLG = WritingAssistantSpacyLG;
