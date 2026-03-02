@@ -77,7 +77,14 @@ window.generateTableInput = function(chapterId, activityId, tableType) {
 // Fonction pour charger le contexte Markdown depuis GitHub Pages
 async function fetchMarkdownContext(topic) {
   try {
-    const response = await fetch(`/contexts/${topic}.md`);
+    // Essayer le chemin relatif d'abord
+    let response = await fetch(`/contexts/${topic}.md`);
+    
+    // Si ça échoue, essayer le chemin complet
+    if (!response.ok) {
+      response = await fetch(`https://kamel1976kamel-hub.github.io/Langue-Francaise/contexts/${topic}.md`);
+    }
+    
     if (!response.ok) throw new Error(`Fichier ${topic}.md non trouvé (status: ${response.status})`);
     
     const mdText = await response.text();
@@ -85,7 +92,7 @@ async function fetchMarkdownContext(topic) {
     return mdText;
   } catch (error) {
     console.error('❌ Impossible de charger le contexte Markdown:', error);
-    // Fallback contextuel si GitHub Pages n'est pas encore déployé
+    // Fallback contextuel silencieux
     const fallbackContexts = {
       techniques: "Tu es un expert en didactique du français. Aide l'étudiant à progresser dans la production écrite sans lui donner directement les réponses. Domaine : planification, structuration, connecteurs logiques, adaptation au destinataire, révision, analyse de consignes.",
       narratif: "Tu es un expert en littérature spécialisé dans le texte narratif. Aide l'étudiant à maîtriser la structure du récit, les personnages, les temps verbaux, le narrateur et l'intrigue. Guide-le dans la création d'histoires captivantes.",
@@ -95,9 +102,7 @@ async function fetchMarkdownContext(topic) {
       resume: "Tu es un expert en littérature spécialisé dans l'art du résumé. Aide l'étudiant à identifier les idées essentielles, éliminer les superflu, reformuler avec ses propres mots et respecter la fidélité au texte."
     };
     
-    const fallback = fallbackContexts[topic] || "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
-    console.log(`🔄 Utilisation du contexte fallback pour ${topic} (activité)`);
-    return fallback;
+    return fallbackContexts[topic] || "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
   }
 }
 
