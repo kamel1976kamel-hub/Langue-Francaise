@@ -4110,12 +4110,17 @@
           modulesDiv.classList.remove("hidden");
           if (arrow) arrow.style.transform = "rotate(90deg)";
         }
-        selectModule(initial);
+        // Vérification que selectModule existe avant de l'appeler
+        if (typeof selectModule === 'function') {
+          selectModule(initial);
+        }
       }
 
       window.addEventListener("hashchange", () => {
         const id = (location.hash || "").replace("#", "");
-        if (chapters[id]) selectModule(id);
+        if (chapters[id] && typeof selectModule === 'function') {
+          selectModule(id);
+        }
       });
 
       // Fonction pour générer un tableau à compléter
