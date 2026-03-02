@@ -738,6 +738,26 @@ class WritingAssistant {
         .cloud-audio-btn:hover {
           background: rgba(255, 255, 255, 0.3);
         }
+        .cloud-close-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          transition: background 0.2s;
+        }
+        .cloud-close-btn:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
       `;
       document.head.appendChild(style);
       console.log('✅ Animations CSS ajoutées au head');
@@ -748,10 +768,14 @@ class WritingAssistant {
     const cloudId = `cloud-${Date.now()}-${index}`;
     const audioBtnId = `audio-${cloudId}`;
     const applyBtnId = `apply-${cloudId}`;
+    const closeBtnId = `close-${cloudId}`;
     
     console.log('🎭 Icône pour l\'erreur:', icon);
     
     cloud.innerHTML = `
+      <button id="${closeBtnId}" class="cloud-close-btn" title="Fermer">
+        ✕
+      </button>
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
         <span style="font-size: 16px;">${icon}</span>
         <span class="cloud-error">"${error.word}"</span>
@@ -784,6 +808,7 @@ class WritingAssistant {
     setTimeout(() => {
       const audioBtn = document.getElementById(audioBtnId);
       const applyBtn = document.getElementById(applyBtnId);
+      const closeBtn = document.getElementById(closeBtnId);
       
       if (audioBtn) {
         audioBtn.addEventListener('click', (e) => {
@@ -802,19 +827,22 @@ class WritingAssistant {
         });
         console.log('✅ Événement appliquer ajouté');
       }
+      
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          console.log('❌ Bouton fermer cliqué');
+          cloud.style.animation = 'cloudFloat 0.3s ease-in reverse';
+          setTimeout(() => {
+            cloud.remove();
+            console.log('✅ Nuage fermé manuellement');
+          }, 300);
+        });
+        console.log('✅ Événement fermer ajouté');
+      }
     }, 100);
 
-    // Auto-suppression après 8 secondes
-    setTimeout(() => {
-      if (cloud.parentNode) {
-        console.log('⏰ Auto-suppression du nuage...');
-        cloud.style.animation = 'cloudFloat 0.3s ease-in reverse';
-        setTimeout(() => {
-          cloud.remove();
-          console.log('✅ Nuage supprimé du DOM');
-        }, 300);
-      }
-    }, 8000);
+    // PLUS D'AUTO-SUPPRESSION - Le nuage reste visible jusqu'à ce que l'étudiant le ferme
   }
 
   removeAllClouds() {
