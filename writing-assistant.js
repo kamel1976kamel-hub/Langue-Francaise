@@ -64,6 +64,93 @@ class WritingAssistant {
         'pair': 'père (nom) / perd (verbe perdre) / per (préposition)',
         'paire': 'père (nom) / perd (verbe perdre) / per (préposition)',
         'paire': 'père (nom) / perd (verbe perdre) / pair (adjectif)',
+        // Ajouts pour les erreurs courantes
+        'pere': 'père (nom - famille)',
+        'mere': 'mère (nom - famille)',
+        'frere': 'frère (nom - famille)',
+        'soeur': 'sœur (nom - famille)',
+        'aller': 'aller (verbe) / va (verbe aller au présent)',
+        'vas': 'va (verbe aller) / vas (incorrect)',
+        'vais': 'va (verbe aller) / vais (1ère personne)',
+        'vait': 'vais (verbe aller) / vait (verbe voir)',
+        'fais': 'fait (verbe faire) / fais (1ère personne)',
+        'fait': 'fais (verbe faire) / fait (nom / 3ème personne)',
+        'sais': 'sait (verbe savoir) / sais (1ère personne)',
+        'sait': 'sais (verbe savoir) / sait (3ème personne)',
+        'a': 'à (préposition) / a (verbe avoir)',
+        'as': 'a (verbe avoir) / as (2ème personne)',
+        'ont': 'on (pronom) / ont (verbe avoir)',
+        'son': 'sont (verbe être) / son (possessif)',
+        'sont': 'son (possessif) / sont (verbe être)',
+        'est': 'et (conjonction) / est (verbe être)',
+        'et': 'est (verbe être) / et (conjonction)',
+        'ces': 'ses (possessif) / ces (démonstratif)',
+        'ses': 'ces (démonstratif) / ses (possessif)',
+        'ce': 'se (pronom) / ce (démonstratif)',
+        'se': 'ce (démonstratif) / se (pronom)',
+        'ceux': 'se (pronom) / ceux (démonstratif)',
+        'celui': 'celui (démonstratif) / celu (inexistant)',
+        'celle': 'celle (démonstratif) / celle (correct)',
+        'celles': 'celles (démonstratif) / celles (correct)',
+        'leur': 'leurs (adjectif) / leur (pronom)',
+        'leurs': 'leur (pronom) / leurs (adjectif)',
+        'ou': 'où (lieu) / ou (conjonction)',
+        'où': 'ou (conjonction) / où (lieu)',
+        'dans': 'don (verbe) / dans (préposition)',
+        'don': 'dans (préposition) / don (nom)',
+        'sans': 'sang (nom) / sans (préposition)',
+        'sang': 'sans (préposition) / sang (nom)',
+        'temps': 'tans (pronom) / temps (nom)',
+        'tans': 'temps (nom) / tans (pronom)',
+        'tant': 'temps (nom) / tant (adverbe)',
+        'camp': 'quant (conjonction) / camp (nom)',
+        'quant': 'camp (nom) / quant (conjonction)',
+        'quand': 'quant (conjonction) / quand (conjonction)',
+        'comme': 'commes (inexistant) / comme (conjonction)',
+        'comment': 'comment (correct) / coment (incorrect)',
+        'coment': 'comment (correct) / coment (incorrect)',
+        'quel': 'quels (pluriel) / quel (singulier)',
+        'quels': 'quel (singulier) / quels (pluriel)',
+        'quelle': 'quelles (pluriel) / quelle (singulier)',
+        'quelles': 'quelle (singulier) / quelles (pluriel)',
+        'trop': 'tro (inexistant) / trop (adverbe)',
+        'tro': 'trop (adverbe) / tro (inexistant)',
+        'tres': 'très (adverbe) / tres (incorrect)',
+        'très': 'tres (incorrect) / très (adverbe)',
+        'tre': 'très (adverbe) / tre (inexistant)',
+        'assez': 'assez (correct) / asser (incorrect)',
+        'asser': 'assez (correct) / asser (incorrect)',
+        'plus': 'plu (inexistant) / plus (adverbe)',
+        'plu': 'plus (adverbe) / plu (inexistant)',
+        'moin': 'moins (adverbe) / moin (incorrect)',
+        'moins': 'moin (incorrect) / moins (adverbe)',
+        'peu': 'peux (verbe) / peu (adverbe)',
+        'peux': 'peu (adverbe) / peux (verbe)',
+        'peut': 'peu (adverbe) / peut (verbe)',
+        'pour': 'por (inexistant) / pour (préposition)',
+        'por': 'pour (préposition) / por (inexistant)',
+        'par': 'pars (verbe) / par (préposition)',
+        'pars': 'par (préposition) / pars (verbe)',
+        'avec': 'aveque (ancien) / avec (préposition)',
+        'aveque': 'avec (préposition) / aveque (ancien)',
+        'sur': 'sûr (adjectif) / sur (préposition)',
+        'sûr': 'sur (préposition) / sûr (adjectif)',
+        'sous': 'sou (nom) / sous (préposition)',
+        'sou': 'sous (préposition) / sou (nom)',
+        'entre': 'entre (préposition) / entre (correct)',
+        'contre': 'contre (correct) / contres (incorrect)',
+        'contres': 'contre (correct) / contres (incorrect)',
+        'depuis': 'dépuis (incorrect) / depuis (préposition)',
+        'dépuis': 'depuis (préposition) / dépuis (incorrect)',
+        'pendant': 'pendants (adjectif) / pendant (préposition)',
+        'pendants': 'pendant (préposition) / pendants (adjectif)',
+        'avant': 'avants (adjectif) / avant (préposition)',
+        'avants': 'avant (préposition) / avants (adjectif)',
+        'apres': 'après (préposition) / apres (incorrect)',
+        'après': 'apres (incorrect) / après (préposition)',
+        'vers': 'ver (nom) / vers (préposition)',
+        'ver': 'vers (préposition) / ver (nom)',
+        'vert': 'ver (nom) / vers (préposition) / vert (adjectif)',
       },
       // Fautes de grammaire
       grammaire: {
@@ -74,7 +161,17 @@ class WritingAssistant {
         'elles est': 'elles sont (verbe être) / elles est (inexistant)',
         'vous a': 'vous avez (verbe avoir) / vous a (inexistant)',
         'vous est': 'vous êtes (verbe être) / vous est (inexistant)',
-        // Conjugaisons
+        // Conjugaisons incorrectes
+        'qui aller': 'qui va (verbe aller au présent) / qui aller (infinitif incorrect)',
+        'je aller': 'je vais (verbe aller au présent) / je aller (infinitif incorrect)',
+        'tu aller': 'tu vas (verbe aller au présent) / tu aller (infinitif incorrect)',
+        'il aller': 'il va (verbe aller au présent) / il aller (infinitif incorrect)',
+        'elle aller': 'elle va (verbe aller au présent) / elle aller (infinitif incorrect)',
+        'nous aller': 'nous allons (verbe aller au présent) / nous aller (infinitif incorrect)',
+        'vous aller': 'vous allez (verbe aller au présent) / vous aller (infinitif incorrect)',
+        'ils aller': 'ils vont (verbe aller au présent) / ils aller (infinitif incorrect)',
+        'elles aller': 'elles vont (verbe aller au présent) / elles aller (infinitif incorrect)',
+        // Conjugaisons correctes
         'je suis': 'je suis (correct) / je suis (verbe être)',
         'tu es': 'tu es (correct) / tu es (verbe être)',
         'il es': 'il est (correct) / il es (verbe être)',
@@ -83,6 +180,15 @@ class WritingAssistant {
         'vous êtes': 'vous êtes (correct) / vous êtes (verbe être)',
         'ils sont': 'ils sont (correct) / ils sont (verbe être)',
         'elles sont': 'elles sont (correct) / elles sont (verbe être)',
+        // Verbe avoir
+        'je ai': 'j\'ai (correct) / je ai (incorrect)',
+        'tu as': 'tu as (correct) / tu as (verbe avoir)',
+        'il as': 'il a (correct) / il as (incorrect)',
+        'elle as': 'elle a (correct) / elle as (incorrect)',
+        'nous avons': 'nous avons (correct) / nous avons (verbe avoir)',
+        'vous avez': 'vous avez (correct) / vous avez (verbe avoir)',
+        'ils ont': 'ils ont (correct) / ils ont (verbe avoir)',
+        'elles ont': 'elles ont (correct) / elles ont (verbe avoir)',
       },
       // Choix de mots inappropriés
       vocabulaire: {
@@ -267,7 +373,9 @@ class WritingAssistant {
 
   checkText(element) {
     const text = element.value;
-    if (!text || text.length < 3) return;
+    if (!text || text.length < 2) return;
+
+    console.log('🔍 Assistant analyse:', text); // Debug
 
     // Créer une version avec les erreurs surlignées
     const highlightedText = this.highlightErrors(text);
@@ -276,16 +384,25 @@ class WritingAssistant {
     if (element.closest('.activity-content')) {
       this.showSuggestions(element, highlightedText);
     }
+    
+    // Si on est dans un chat, afficher aussi les suggestions
+    if (element.closest('.smart-textarea-container') || element.id === 'chatInput') {
+      this.showSuggestions(element, highlightedText);
+    }
   }
 
   highlightErrors(text) {
     let highlightedText = text;
     const errors = [];
 
-    // Vérifier les fautes d'orthographe
+    console.log('🔍 Recherche d\'erreurs dans:', text); // Debug
+
+    // Vérifier les fautes d'orthographe (plus sensible)
     for (const [erreur, correction] of Object.entries(this.corrections.orthographe)) {
       const regex = new RegExp(`\\b${erreur}\\b`, 'gi');
-      if (regex.test(text)) {
+      const matches = text.match(regex);
+      if (matches) {
+        console.log(`❌ Erreur orthographe trouvée: ${erreur} → ${correction}`); // Debug
         errors.push({
           type: 'orthographe',
           word: erreur,
@@ -298,7 +415,9 @@ class WritingAssistant {
     // Vérifier les fautes de grammaire
     for (const [erreur, correction] of Object.entries(this.corrections.grammaire)) {
       const regex = new RegExp(`\\b${erreur}\\b`, 'gi');
-      if (regex.test(text)) {
+      const matches = text.match(regex);
+      if (matches) {
+        console.log(`❌ Erreur grammaire trouvée: ${erreur} → ${correction}`); // Debug
         errors.push({
           type: 'grammaire',
           word: erreur,
@@ -311,7 +430,9 @@ class WritingAssistant {
     // Vérifier le vocabulaire
     for (const [mot, alternatives] of Object.entries(this.corrections.vocabulaire)) {
       const regex = new RegExp(`\\b${mot}\\b`, 'gi');
-      if (regex.test(text)) {
+      const matches = text.match(regex);
+      if (matches) {
+        console.log(`💡 Amélioration vocabulaire trouvée: ${mot} → ${alternatives}`); // Debug
         errors.push({
           type: 'vocabulaire',
           word: mot,
@@ -321,6 +442,7 @@ class WritingAssistant {
       }
     }
 
+    console.log(`📊 Total erreurs trouvées: ${errors.length}`); // Debug
     return errors;
   }
 
