@@ -584,7 +584,8 @@ class WritingAssistant {
     const cloud = document.createElement('div');
     cloud.className = 'writing-cloud';
     
-    const topPosition = -60 - (index * 80);
+    // Augmenter l'espacement vertical pour éviter la superposition
+    const topPosition = -80 - (index * 100); // Augmenté de -60/-80 à -80/-100
     cloud.style.cssText = `
       position: absolute;
       top: ${topPosition}px;

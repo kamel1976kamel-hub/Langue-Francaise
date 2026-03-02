@@ -30,6 +30,30 @@ window.grammalecte = {
         ruleId: "c_et_c_est"
       },
       {
+        pattern: /\best au lei de\b/gi,
+        replacement: "est au lieu de",
+        message: "Erreur de vocabulaire : \"est au lei de\" devrait être \"est au lieu de\".",
+        ruleId: "est_au_lei_de"
+      },
+      {
+        pattern: /\bmieu de mias\b/gi,
+        replacement: "mieux que",
+        message: "Erreur de vocabulaire : \"mieu de mias\" devrait être \"mieux que\".",
+        ruleId: "mieu_de_mias"
+      },
+      {
+        pattern: /\bsort au lieu de\b/gi,
+        replacement: "sort",
+        message: "Erreur de vocabulaire : \"sort au lieu de\" est redondant. Utilisez simplement \"sort\".",
+        ruleId: "sort_au_lieu_de"
+      },
+      {
+        pattern: /\bsors au lieu de\b/gi,
+        replacement: "sors",
+        message: "Erreur de vocabulaire : \"sors au lieu de\" est redondant. Utilisez simplement \"sors\".",
+        ruleId: "sors_au_lieu_de"
+      },
+      {
         pattern: /\bqui aller\b/gi,
         replacement: "qui va",
         message: "Erreur de conjugaison : \"qui aller\" devrait être \"qui va\" (verbe aller au présent).",
@@ -144,8 +168,8 @@ window.grammalecte = {
       {
         pattern: /\bmaison\b/gi,
         replacement: "maison",
-        message: "Erreur orthographique : \"maison\" est correct.",
-        ruleId: "orthographe_maison"
+        message: "Le mot \"maison\" est correctement orthographié.",
+        ruleId: "orthographe_maison_correcte"
       },
       {
         pattern: /\bfrere\b/gi,
