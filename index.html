@@ -7699,40 +7699,29 @@
     <script src="writing-assistant-grammalecte.js"></script>
     
     <!-- Bibliothèque Grammalecte v2.3.0 (stable) pour correction française avancée -->
+    <script src="grammalecte-fallback.js"></script>
+    
+    <!-- Script de détection et initialisation de Grammalecte -->
     <script>
-      // Approche alternative pour charger Grammalecte
+      // Approche avec fallback local
       (function() {
         console.log('🔍 Début du chargement de Grammalecte...');
         
-        // Créer un script pour charger Grammalecte
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/grammalecte@2.3.0/dist/grammalecte.min.js';
-        script.onload = function() {
-          console.log('✅ Script Grammalecte chargé');
-          
-          // Attendre un peu pour l'initialisation
-          setTimeout(() => {
-            if (typeof grammalecte !== 'undefined') {
-              console.log('✅ Grammalecte détecté !');
-              console.log('🇫🇷 Version:', grammalecte.oInfo ? grammalecte.oInfo.sVersion : 'inconnue');
-              
-              // Initialiser l'assistant
-              if (window.writingAssistant) {
-                console.log('🔄 Initialisation de l\'assistant avec Grammalecte...');
-                window.writingAssistant.initGrammalecte();
-              }
-            } else {
-              console.warn('⚠️ Grammalecte non détecté après chargement du script');
+        // Attendre un peu pour l'initialisation
+        setTimeout(() => {
+          if (typeof grammalecte !== 'undefined') {
+            console.log('✅ Grammalecte détecté !');
+            console.log('🇫🇷 Version:', grammalecte.oInfo ? grammalecte.oInfo.sVersion : 'inconnue');
+            
+            // Initialiser l'assistant
+            if (window.writingAssistant) {
+              console.log('🔄 Initialisation de l\'assistant avec Grammalecte...');
+              window.writingAssistant.initGrammalecte();
             }
-          }, 1000);
-        };
-        
-        script.onerror = function() {
-          console.error('❌ Erreur de chargement du script Grammalecte');
-        };
-        
-        // Ajouter le script à la page
-        document.head.appendChild(script);
+          } else {
+            console.warn('⚠️ Grammalecte non détecté, utilisation du fallback uniquement');
+          }
+        }, 1000);
       })();
     </script>
   </body>
