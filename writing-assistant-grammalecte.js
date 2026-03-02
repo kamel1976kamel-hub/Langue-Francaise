@@ -678,6 +678,11 @@ class WritingAssistant {
           setTimeout(() => cloud.remove(), 300);
         });
       }
+
+      // 🎵 LANCER L'AUDIO AUTOMATIQUEMENT
+      console.log('🎵 Lancement automatique de l\'audio pour:', error.explanation);
+      this.speakCorrection(error.explanation);
+      
     }, 100);
   }
 

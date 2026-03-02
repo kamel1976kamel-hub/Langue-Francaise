@@ -7699,6 +7699,25 @@
     <script src="writing-assistant-grammalecte.js"></script>
     
     <!-- Bibliothèque Grammalecte v2.3.0 (stable) pour correction française avancée -->
+    <script>
+      // Attendre que Grammalecte soit chargé
+      window.addEventListener('DOMContentLoaded', function() {
+        console.log('🔍 Vérification du chargement de Grammalecte...');
+        
+        // Vérifier si Grammalecte est disponible
+        setTimeout(() => {
+          if (typeof grammalecte !== 'undefined') {
+            console.log('✅ Grammalecte détecté, version:', grammalecte.oInfo ? grammalecte.oInfo.sVersion : 'inconnue');
+            // Réinitialiser l'assistant si nécessaire
+            if (window.writingAssistant) {
+              window.writingAssistant.initGrammalecte();
+            }
+          } else {
+            console.warn('⚠️ Grammalecte non détecté après 2 secondes');
+          }
+        }, 2000);
+      });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/grammalecte@2.3.0/dist/grammalecte.min.js"></script>
   </body>
 </html>
