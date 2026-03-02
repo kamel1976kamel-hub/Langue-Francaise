@@ -1843,7 +1843,7 @@
                     class="flex-1 px-4 py-3 rounded-lg text-sm border resize-none min-h-[44px] max-h-[120px]"
                     style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
                     onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendAIChatMessage(); }"
-                    oninput="window.writingAssistant && window.writingAssistant.checkText(this); this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px';"
+                    oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px';"
                     rows="1"
                   ></textarea>
                   <button 

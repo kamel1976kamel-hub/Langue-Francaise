@@ -376,9 +376,16 @@ class WritingAssistantSpacyLG {
   }
 
   showSuggestions(element, errors) {
-    // NE PAS effacer les nuages précédents automatiquement
-    // L'utilisateur doit les fermer manuellement avec le bouton X
-    // this.clearClouds(element);
+    // Éviter les doublons : vérifier si des nuages existent déjà pour cet élément
+    const existingClouds = document.querySelectorAll('.spacy-lg-cloud');
+    const hasCloudsForThisElement = Array.from(existingClouds).some(cloud => 
+      cloud.dataset.elementId === element.id
+    );
+    
+    if (hasCloudsForThisElement) {
+      console.log('📋 Nuages déjà présents pour cet élément, pas de nouvelle création');
+      return;
+    }
     
     // Trier les erreurs par sévérité
     const sortedErrors = errors.sort((a, b) => {
@@ -570,9 +577,18 @@ class WritingAssistantSpacyLG {
     document.addEventListener('touchmove', drag);
     document.addEventListener('touchend', endDrag);
     
-    // Empêcher la fermeture automatique au clic
+    // EMPÊCHER TOUTE FERMETURE AUTOMATIQUE
     cloud.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
+    });
+    
+    // Empêcher la fermeture au clic sur le contenu
+    cloud.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
     });
   }
 
