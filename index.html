@@ -7694,7 +7694,7 @@
     <script src="spacy-lg-interface.js"></script>
     <script src="spacy-custom-rules.js"></script>
     <script src="spacy-rule-examples.js"></script>
-    <script src="writing-assistant-spacy-lg.js"></script>
+    <script src="writing-assistant-spacy-lg-fixed.js"></script>
     
     <!-- Script de détection et initialisation de spaCy lg -->
     <script>
@@ -7727,19 +7727,42 @@
         }, 1500);
       })();
       
-      // Script pour l'auto-adaptation du textarea
+      // Script pour l'auto-adaptation du textarea - VERSION RADICALEMENT CORRIGÉE
       document.addEventListener('DOMContentLoaded', function() {
         const chatInput = document.getElementById('chatInput');
         if (chatInput) {
-          // Forcer la largeur maximale au chargement
+          console.log('📝 Installation du système de textarea RADICALEMENT CORRIGÉ');
+          
+          // Forcer la largeur maximale AU CHARGEMENT
           chatInput.style.width = '100%';
           chatInput.style.flex = '1';
+          chatInput.style.minWidth = '0';
+          chatInput.style.maxWidth = '100%';
+          
+          // Système de forçage AGRESSIF
+          const forceWidth = () => {
+            chatInput.style.width = '100%';
+            chatInput.style.flex = '1';
+            chatInput.style.minWidth = '0';
+            chatInput.style.maxWidth = '100%';
+            
+            // Forcer le parent aussi
+            const parent = chatInput.parentElement;
+            if (parent) {
+              parent.style.display = 'flex';
+              parent.style.width = '100%';
+              parent.style.flex = '1';
+            }
+            
+            console.log('🔧 Largeur forcée:', chatInput.offsetWidth + 'px');
+          };
+          
+          // Forcer la largeur TOUTES les 100ms
+          setInterval(forceWidth, 100);
           
           // Adapter la hauteur automatiquement
           chatInput.addEventListener('input', function() {
-            // Forcer la largeur à chaque input
-            this.style.width = '100%';
-            this.style.flex = '1';
+            forceWidth(); // Forcer la largeur à chaque input
             
             // Adapter la hauteur
             this.style.height = 'auto';
@@ -7756,8 +7779,7 @@
           
           // Observer les changements dans le DOM pour maintenir la largeur
           const observer = new MutationObserver(function() {
-            chatInput.style.width = '100%';
-            chatInput.style.flex = '1';
+            forceWidth();
           });
           
           observer.observe(chatInput.parentElement, {
@@ -7767,16 +7789,29 @@
             attributeFilter: ['style', 'class']
           });
           
-          // Empêcher la fermeture des nuages en cliquant ailleurs
-          document.addEventListener('click', function(e) {
-            const clouds = document.querySelectorAll('.spacy-lg-cloud');
-            clouds.forEach(cloud => {
-              if (!cloud.contains(e.target)) {
-                // Ne fermer que si le clic n'est pas sur le nuage
-                // Les nuages ne se ferment plus automatiquement
-              }
-            });
+          // Observer le document entier
+          const documentObserver = new MutationObserver(function() {
+            forceWidth();
           });
+          
+          documentObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true
+          });
+          
+          // Forcer la largeur quand la fenêtre change
+          window.addEventListener('resize', forceWidth);
+          window.addEventListener('scroll', forceWidth);
+          
+          // Forcer la largeur au focus
+          chatInput.addEventListener('focus', forceWidth);
+          chatInput.addEventListener('blur', forceWidth);
+          
+          // Forcer initial
+          forceWidth();
+          
+          console.log('✅ Système de textarea RADICALEMENT CORRIGÉ installé');
         }
       });
     </script>
