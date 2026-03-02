@@ -4075,6 +4075,17 @@
         const chapter = chapters[chapterId];
         if (!chapter) return;
 
+        // Vérifier que les éléments DOM existent
+        const contentMeta = document.getElementById("contentMeta");
+        const contentTitle = document.getElementById("contentTitle");
+        const contentBody = document.getElementById("contentBody");
+        
+        if (!contentMeta || !contentTitle || !contentBody) {
+          console.warn('Éléments de contenu non disponibles, retry dans 100ms...');
+          setTimeout(() => selectModule(chapterId), 100);
+          return;
+        }
+
         // Mettre à jour le contenu théorique (colonne droite)
         contentMeta.textContent = chapter.meta;
         contentTitle.textContent = chapter.title;
