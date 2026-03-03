@@ -21,6 +21,46 @@ class SpacyCustomRules {
       action: this.checkSubjectVerbAgreement.bind(this)
     });
 
+    // Règle 1.5: ERREUR DE GENRE - le/la devant nom
+    this.addRule({
+      name: 'erreur_genre_determinant',
+      description: 'Détecte les erreurs de genre avec les déterminants le/la',
+      severity: 'high',
+      confidence: 0.90,
+      pattern: this.createGenrePattern(),
+      action: this.checkGenreError.bind(this)
+    });
+
+    // Règle 1.6: CONJUGAISON - qui a/qui avez
+    this.addRule({
+      name: 'conjugaison_qui',
+      description: 'Détecte les erreurs de conjugaison avec "qui"',
+      severity: 'high',
+      confidence: 0.95,
+      pattern: this.createQuiPattern(),
+      action: this.checkQuiConjugaison.bind(this)
+    });
+
+    // Règle 1.7: DÉTECTION SIMPLE - le fille / la garçon
+    this.addRule({
+      name: 'genre_simple',
+      description: 'Détecte les erreurs de genre évidentes (le fille, la garçon)',
+      severity: 'high',
+      confidence: 0.98,
+      pattern: null, // Utilise regex directe
+      action: this.checkSimpleGenreErrors.bind(this)
+    });
+
+    // Règle 1.8: DÉTECTION SIMPLE - qui a / qui avez
+    this.addRule({
+      name: 'conjugaison_simple',
+      description: 'Détecte les erreurs de conjugaison évidentes (qui a au lieu de qui ont)',
+      severity: 'high',
+      confidence: 0.98,
+      pattern: null, // Utilise regex directe
+      action: this.checkSimpleConjugaisonErrors.bind(this)
+    });
+
     // Règle 2: Participe passé avec avoir + COD avant
     this.addRule({
       name: 'accord_participe_passe_cod',
@@ -48,7 +88,7 @@ class SpacyCustomRules {
       severity: 'medium',
       confidence: 0.80,
       pattern: this.createPleonasmePattern(),
-      action: this.checkPleonasmes.bind(this)
+      action: this.checkPleonasme.bind(this)
     });
 
     // Règle 5: Conjugaisons être/avoir incorrectes
@@ -137,6 +177,34 @@ class SpacyCustomRules {
     ];
   }
 
+  createGenrePattern() {
+    return [
+      {
+        'RIGHT_ID': 'determinant',
+        'RIGHT_ATTRS': {'LEMMA': 'le', 'POS': 'DET'}
+      },
+      {
+        'LEFT_ID': 'determinant',
+        'REL_OP': '>',
+        'RIGHT_ATTRS': {'POS': 'NOUN', 'MORPH': {'Gender': 'Fem'}}
+      }
+    ];
+  }
+
+  createQuiPattern() {
+    return [
+      {
+        'RIGHT_ID': 'pronoun',
+        'RIGHT_ATTRS': {'LEMMA': 'qui', 'POS': 'PRON'}
+      },
+      {
+        'LEFT_ID': 'pronoun',
+        'REL_OP': '>',
+        'RIGHT_ATTRS': {'POS': 'VERB', 'MORPH': {'Person': '2'}}
+      }
+    ];
+  }
+
   createPleonasmePattern() {
     return [
       {
@@ -203,6 +271,64 @@ class SpacyCustomRules {
   }
 
   // ACTIONS DES RÈGLES
+  checkGenreError(doc, matches) {
+    const errors = [];
+    
+    matches.forEach(match => {
+      const determinant = doc[match[1]];
+      const noun = doc[match[2]];
+      
+      if (determinant && noun) {
+        // "le" + nom féminin = erreur
+        if (determinant.lemma === 'le' && noun.morph && noun.morph.Gender === 'Fem') {
+          errors.push({
+            type: 'genre',
+            word: determinant.text + ' ' + noun.text,
+            correction: 'la ' + noun.text,
+            explanation: `Erreur de genre : "${determinant.text} ${noun.text}" doit être "la ${noun.text}" car "${noun.text}" est féminin.`,
+            offset: determinant.idx,
+            length: determinant.text.length + noun.text.length + 1,
+            severity: 'high',
+            confidence: 0.90,
+            rule: 'erreur_genre_determinant'
+          });
+        }
+      }
+    });
+    
+    return errors;
+  }
+
+  checkQuiConjugaison(doc, matches) {
+    const errors = [];
+    
+    matches.forEach(match => {
+      const pronoun = doc[match[1]];
+      const verb = doc[match[2]];
+      
+      if (pronoun && verb) {
+        // "qui" + verbe à la 2ème personne = erreur (devrait être 3ème personne)
+        if (pronoun.lemma === 'qui' && verb.morph && verb.morph.Person === '2') {
+          const correctForm = this.getCorrectVerbForm(verb.lemma, '3', verb.morph.Tense);
+          
+          errors.push({
+            type: 'conjugaison',
+            word: verb.text,
+            correction: correctForm,
+            explanation: `Erreur de conjugaison : après "qui", le verbe doit être à la 3ème personne du singulier, pas à la 2ème personne.`,
+            offset: verb.idx,
+            length: verb.text.length,
+            severity: 'high',
+            confidence: 0.95,
+            rule: 'conjugaison_qui'
+          });
+        }
+      }
+    });
+    
+    return errors;
+  }
+
   checkSubjectVerbAgreement(doc, matches) {
     const errors = [];
     
@@ -556,6 +682,94 @@ class SpacyCustomRules {
     return null;
   }
 
+  // NOUVELLES FONCTIONS DE DÉTECTION SIMPLE
+  checkSimpleGenreErrors(text) {
+    const errors = [];
+    
+    // Erreurs de genre évidentes
+    const genreErrors = [
+      { pattern: /\ble\s+fille\b/g, correction: 'la fille', explanation: '"fille" est féminin, donc on dit "la fille"' },
+      { pattern: /\ble\s+femme\b/g, correction: 'la femme', explanation: '"femme" est féminin, donc on dit "la femme"' },
+      { pattern: /\ble\s+soeur\b/g, correction: 'la soeur', explanation: '"soeur" est féminin, donc on dit "la soeur"' },
+      { pattern: /\ble\s+mère\b/g, correction: 'la mère', explanation: '"mère" est féminin, donc on dit "la mère"' },
+      { pattern: /\bla\s+garçon\b/g, correction: 'le garçon', explanation: '"garçon" est masculin, donc on dit "le garçon"' },
+      { pattern: /\bla\s+père\b/g, correction: 'le père', explanation: '"père" est masculin, donc on dit "le père"' },
+      { pattern: /\bla\s+frère\b/g, correction: 'le frère', explanation: '"frère" est masculin, donc on dit "le frère"' }
+    ];
+    
+    genreErrors.forEach(error => {
+      const matches = text.match(error.pattern);
+      if (matches) {
+        matches.forEach(match => {
+          const index = text.indexOf(match);
+          errors.push({
+            type: 'genre',
+            word: match,
+            correction: error.correction,
+            explanation: error.explanation,
+            offset: index,
+            length: match.length,
+            severity: 'high',
+            confidence: 0.98,
+            rule: 'genre_simple'
+          });
+        });
+      }
+    });
+    
+    return errors;
+  }
+
+  checkSimpleConjugaisonErrors(text) {
+    const errors = [];
+    
+    // Erreurs de conjugaison évidentes
+    const conjugaisonErrors = [
+      { pattern: /\bqui\s+(a|as|ont|avons|avez)\b/gi, check: (match) => {
+        const verb = match.toLowerCase();
+        if (verb === 'qui a' || verb === 'qui as') {
+          return { correction: 'qui ont', explanation: 'Après "qui" pluriel, on utilise "ont" et non "a"' };
+        }
+        return null;
+      }},
+      { pattern: /\bles\s+(est|sont)\s+(fille|femme|soeur|mère)\b/gi, check: (match) => {
+        const words = match.split(' ');
+        if (words[1] === 'est') {
+          return { correction: `les sont ${words[2]}`, explanation: 'Au pluriel, on dit "sont" et non "est"' };
+        }
+        return null;
+      }},
+      { pattern: /\bc'est\s+(les|des|mes|tes|ses)\b/gi, check: (match) => {
+        return { correction: match.replace("c'est", "ce sont"), explanation: 'Avec un pluriel, on dit "ce sont" et non "c\'est"' };
+      }}
+    ];
+    
+    conjugaisonErrors.forEach(error => {
+      const matches = text.match(error.pattern);
+      if (matches) {
+        matches.forEach(match => {
+          const correction = error.check(match);
+          if (correction) {
+            const index = text.indexOf(match);
+            errors.push({
+              type: 'conjugaison',
+              word: match,
+              correction: correction.correction,
+              explanation: correction.explanation,
+              offset: index,
+              length: match.length,
+              severity: 'high',
+              confidence: 0.98,
+              rule: 'conjugaison_simple'
+            });
+          }
+        });
+      }
+    });
+    
+    return errors;
+  }
+
   // Appliquer toutes les règles personnalisées
   applyRules(doc) {
     const allErrors = [];
@@ -566,22 +780,23 @@ class SpacyCustomRules {
       try {
         console.log(`📝 Vérification de la règle: ${rule.name}`);
         
-        const matches = this.findPatternMatches(doc, rule.pattern);
-        
-        if (matches.length > 0) {
-          console.log(`🎯 ${matches.length} correspondances trouvées pour ${rule.name}`);
-          
-          const ruleErrors = rule.action(doc, matches);
-          
-          ruleErrors.forEach(error => {
-            error.rule = rule.name;
-            error.ruleDescription = rule.description;
-            error.severity = rule.severity;
-            error.confidence = rule.confidence;
-          });
-          
+        // Pour les règles simples (pattern null), utiliser le texte brut
+        if (rule.pattern === null) {
+          const text = doc.map ? doc.map(token => token.text).join(' ') : doc.toString();
+          const ruleErrors = rule.action(text);
           allErrors.push(...ruleErrors);
+        } else {
+          // Pour les règles spaCy, utiliser le pattern matcher
+          const matches = this.findPatternMatches(doc, rule.pattern);
+          
+          if (matches.length > 0) {
+            console.log(`🎯 ${matches.length} correspondances trouvées pour ${rule.name}`);
+            
+            const ruleErrors = rule.action(doc, matches);
+            allErrors.push(...ruleErrors);
+          }
         }
+        
       } catch (error) {
         console.error(`❌ Erreur dans la règle ${rule.name}:`, error);
       }
