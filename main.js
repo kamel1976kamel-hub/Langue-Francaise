@@ -122,8 +122,9 @@ function initializePerformanceSystems() {
     }
 
     if (APP_CONFIG.performance.enableWorkers && window.SpacyWorkerPool) {
-        appState.performance.workerPool = new window.SpacyWorkerPool(2); // 2 workers
-        console.log('👥 Pool de workers initialisé');
+        // Temporairement désactivé pour éviter les erreurs de worker
+        // appState.performance.workerPool = new window.SpacyWorkerPool(2); // 2 workers
+        console.log('👥 Pool de workers désactivé temporairement (erreur Document non défini)');
     }
 
     if (APP_CONFIG.performance.enableMemoryManagement && window.MemoryManager) {

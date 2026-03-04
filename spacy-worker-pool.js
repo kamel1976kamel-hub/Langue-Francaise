@@ -61,15 +61,15 @@ class SpacyWorkerPool {
             }
 
             function escapeHtml(text) {
-                const div = document.createElement ? document.createElement('div') : {};
-                if (div.textContent !== undefined) {
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
-                return text.replace(/[&<>"']/g, m => ({
-                    '&': '&amp;', '<': '&lt;', '>': '&gt;',
-                    '"': '&quot;', "'": '&#039;'
-                })[m]);
+                // Version simplifiée pour le worker (pas de DOM)
+                const div = {
+                    textContent: text,
+                    innerHTML: text.replace(/[&<>"']/g, m => ({
+                        '&': '&amp;', '<': '&lt;', '>': '&gt;',
+                        '"': '&quot;', "'": '&#039;'
+                    })[m])
+                };
+                return div.innerHTML;
             }
 
             // Charger les règles
@@ -117,7 +117,7 @@ class SpacyWorkerPool {
 
                 const errors = [];
                 const tokens = tokenizeText(text);
-                const doc = { tokens, text };
+                const doc = createDocWithMatch(tokens, text);
 
                 // Appliquer chaque règle
                 for (const rule of rules) {
@@ -194,11 +194,13 @@ class SpacyWorkerPool {
             }
 
             // Simuler doc.match pour les patterns
-            if (!Document.prototype.match) {
-                Document.prototype.match = function(pattern) {
+            function createDocWithMatch(tokens, text) {
+                const doc = { tokens, text };
+                doc.match = function(pattern) {
                     // Simulation basique de matching
                     return [];
                 };
+                return doc;
             }
         `;
 
