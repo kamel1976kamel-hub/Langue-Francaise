@@ -1,81 +1,304 @@
-// Point d'entrée principal de l'application
-// Charge et initialise tous les modules
+/**
+ * =================================================================
+ * POINT D'ENTRÉE PRINCIPAL DE L'APPLICATION
+ * Version optimisée et nettoyée
+ * =================================================================
+ */
 
-// Fonction pour mettre à jour le statut de l'IA
+'use strict';
+
+// Configuration de l'application
+const APP_CONFIG = {
+    name: 'Langue Française',
+    version: '2.0',
+    debug: location.hostname === 'localhost' || location.protocol === 'file:',
+    modules: {
+        required: [
+            'runFourModelPipeline',
+            'initializeUIElements',
+            'initializeChatSystem',
+            'initializeAudioSystem',
+            'initializeActivities'
+        ],
+        optional: [
+            'initializeSpacyRules',
+            'loadCustomRules'
+        ]
+    },
+    api: {
+        timeout: 30000,
+        retryAttempts: 3,
+        retryDelay: 1000
+    }
+};
+
+// État de l'application
+const appState = {
+    modulesReady: false,
+    iaReady: false,
+    currentStatus: 'initialization',
+    errors: [],
+    startTime: Date.now()
+};
+
+// =================================================================
+// GESTION DU STATUT DE L'IA
+// =================================================================
+
+/**
+ * Met à jour le statut de l'IA dans l'interface
+ * @param {string} statusText - Texte du statut
+ * @param {string} bgColorClass - Classe CSS pour la couleur
+ * @param {number} progressPercent - Pourcentage de progression
+ */
 function setIaStatus(statusText, bgColorClass, progressPercent) {
-  const statusElement = document.getElementById('ia-status');
-  const progressBar = document.getElementById('ia-progress');
-  
-  if (statusElement) {
-    statusElement.textContent = statusText;
-  }
-  
-  if (progressBar) {
-    progressBar.style.width = progressPercent + '%';
-    progressBar.className = 'h-1 rounded-full ' + bgColorClass;
-  }
+    const statusElement = document.getElementById('ia-status');
+    const progressBar = document.getElementById('ia-progress');
+    
+    try {
+        if (statusElement) {
+            statusElement.textContent = statusText;
+            statusElement.className = statusElement.className.replace(/bg-\w+-500/g, bgColorClass);
+        }
+        
+        if (progressBar) {
+            progressBar.style.width = `${Math.max(0, Math.min(100, progressPercent))}%`;
+            progressBar.className = `h-1 rounded-full transition-all duration-300 ${bgColorClass}`;
+        }
+        
+        // Logging en mode debug
+        if (APP_CONFIG.debug) {
+            console.log(`🤖 IA Status: ${statusText} (${progressPercent}%)`);
+        }
+    } catch (error) {
+        console.error('Erreur lors de la mise à jour du statut IA:', error);
+    }
 }
 
-// Fonction pour vérifier si tous les modules sont prêts
+/**
+ * Vérifie si tous les modules requis sont prêts
+ * @returns {boolean} True si tous les modules sont prêts
+ */
 function areAllModulesReady() {
-  return typeof window.runFourModelPipeline === 'function' &&
-         typeof window.initializeUIElements === 'function' &&
-         typeof window.initializeChatSystem === 'function' &&
-         typeof window.initializeAudioSystem === 'function' &&
-         typeof window.initializeActivities === 'function';
+    return APP_CONFIG.modules.required.every(moduleName => 
+        typeof window[moduleName] === 'function'
+    );
 }
 
-// Fonction de débogage pour vérifier l'état de la pipeline
-window.debugPipelineStatus = function() {
-  console.log('=== ÉTAT DE LA PIPELINE IA ===');
-  
-  // Vérification des modules
-  const modulesReady = areAllModulesReady();
-  console.log('Modules prêts:', modulesReady);
-  
-  // Vérification spécifique de la pipeline
-  const pipelineExists = typeof window.runFourModelPipeline === 'function';
-  console.log('Pipeline disponible:', pipelineExists);
-  
-  // Vérification du token GitHub
-  const githubToken = localStorage.getItem('github_token') || sessionStorage.getItem('github_token');
-  console.log('Token GitHub présent:', !!githubToken);
-  console.log('Token GitHub valide:', githubToken ? githubToken.substring(0, 10) + '...' : 'Aucun');
-  
-  // Vérification de l'environnement
-  console.log('Environnement:', location.hostname);
-  console.log('Protocole:', location.protocol);
-  console.log('Mode fallback activé:', location.hostname === 'localhost' || location.protocol === 'file:');
-  
-  // Test de connexion API
-  if (githubToken && pipelineExists) {
-    console.log('Test de connexion API GitHub Models...');
-    fetch('https://api.github.com/models', {
-      headers: {
-        'Authorization': `Bearer ${githubToken}`,
-        'User-Agent': 'CoursFrancais/1.0'
-      }
-    })
-    .then(response => {
-      console.log('Statut connexion API:', response.status);
-      if (response.ok) {
-        console.log('✅ Connexion API GitHub Models réussie');
-      } else {
-        console.log('❌ Erreur connexion API:', response.statusText);
-      }
-    })
-    .catch(err => {
-      console.error('❌ Erreur de connexion API:', err);
+/**
+ * Vérifie si les modules optionnels sont disponibles
+ * @returns {object} Statut des modules optionnels
+ */
+function getOptionalModulesStatus() {
+    const status = {};
+    APP_CONFIG.modules.optional.forEach(moduleName => {
+        status[moduleName] = typeof window[moduleName] === 'function';
     });
-  }
-  
-  console.log('==============================');
-  return {
-    modulesReady,
-    pipelineExists,
-    hasToken: !!githubToken,
-    isLocalMode: location.hostname === 'localhost' || location.protocol === 'file:'
-  };
+    return status;
+}
+
+// =================================================================
+// GESTION DES ERREURS ET LOGGING
+// =================================================================
+
+/**
+ * Ajoute une erreur à l'état de l'application
+ * @param {string} error - Message d'erreur
+ * @param {string} context - Contexte de l'erreur
+ */
+function addError(error, context = 'general') {
+    const errorObj = {
+        message: error,
+        context,
+        timestamp: new Date().toISOString(),
+        stack: new Error().stack
+    };
+    
+    appState.errors.push(errorObj);
+    
+    if (APP_CONFIG.debug) {
+        console.error(`❌ Error [${context}]:`, error);
+    }
+    
+    // Limiter le nombre d'erreurs en mémoire
+    if (appState.errors.length > 50) {
+        appState.errors = appState.errors.slice(-25);
+    }
+}
+
+/**
+ * Récupère les erreurs récentes
+ * @param {string} context - Contexte filtré (optionnel)
+ * @returns {Array} Liste des erreurs
+ */
+function getRecentErrors(context = null) {
+    if (context) {
+        return appState.errors.filter(error => error.context === context);
+    }
+    return appState.errors;
+}
+
+// =================================================================
+// GESTION DE L'IA ET PIPELINE
+// =================================================================
+
+/**
+ * Pipeline à 4 modèles avec fallback
+ * @param {string} studentAnswer - Réponse de l'étudiant
+ * @param {string} activityContext - Contexte de l'activité
+ * @param {string} activityType - Type d'activité
+ * @returns {Promise<string>} Réponse de l'IA
+ */
+async function runFourModelPipelineWithFallback(studentAnswer, activityContext, activityType = 'general') {
+    try {
+        setIaStatus("IA : analyse en cours...", "bg-blue-500", 25);
+        
+        // Utiliser le pipeline principal si disponible
+        if (typeof window.runFourModelPipeline === 'function') {
+            setIaStatus("IA : traitement intelligent...", "bg-purple-500", 50);
+            const result = await window.runFourModelPipeline(studentAnswer, activityContext, activityType);
+            setIaStatus("IA : analyse terminée", "bg-emerald-500", 100);
+            return result;
+        }
+        
+        // Fallback simplifié
+        setIaStatus("IA : mode simplifié", "bg-amber-500", 75);
+        return await runFourModelPipelineFallback(studentAnswer, activityContext, activityType);
+        
+    } catch (error) {
+        addError(`Pipeline error: ${error.message}`, 'pipeline');
+        setIaStatus("IA : erreur de traitement", "bg-rose-500", 0);
+        throw error;
+    }
+}
+
+/**
+ * Pipeline fallback pour tests locaux
+ * @param {string} studentAnswer - Réponse de l'étudiant
+ * @param {string} activityContext - Contexte de l'activité
+ * @param {string} activityType - Type d'activité
+ * @returns {string} Réponse simulée
+ */
+async function runFourModelPipelineFallback(studentAnswer, activityContext, activityType = 'general') {
+    // Simuler un délai de traitement
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const responses = {
+        evaluation: "Évaluation: La réponse montre une compréhension correcte du sujet. Pour l'améliorer, concentrez-vous sur la structure et la richesse du vocabulaire.",
+        references: `Références: Consultez la leçon sur les textes ${activityType} et le chapitre sur les connecteurs logiques.`,
+        tutoring: `Excellent travail ! Votre réponse contient des idées pertinentes. Suggestions d'amélioration :\n\n1. Structurez votre réponse avec une introduction claire\n2. Développez vos arguments avec des exemples précis\n3. Utilisez des connecteurs logiques pour lier vos idées\n4. Concluez en synthétisant vos points principaux`,
+        quality: "Qualité: La réponse est cohérente et bien formulée. Continuez dans cette voie !"
+    };
+    
+    return Object.values(responses).join('\n\n');
+}
+
+/**
+ * Initialise l'IA principale
+ * @returns {Promise<void>}
+ */
+async function initIA() {
+    try {
+        setIaStatus("IA : initialisation...", "bg-amber-500", 10);
+        
+        // Simuler l'initialisation
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setIaStatus("IA : vérification des modules...", "bg-blue-500", 50);
+        
+        // Vérifier les modules
+        const modulesReady = areAllModulesReady();
+        if (!modulesReady) {
+            throw new Error('Certains modules requis ne sont pas disponibles');
+        }
+        
+        setIaStatus("IA : configuration...", "bg-purple-500", 75);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        setIaStatus("IA : prête", "bg-emerald-500", 100);
+        appState.iaReady = true;
+        
+        console.log('✅ IA initialisée avec succès');
+        
+    } catch (error) {
+        addError(`IA initialization failed: ${error.message}`, 'ia');
+        setIaStatus("IA : erreur d'initialisation", "bg-rose-500", 0);
+        throw error;
+    }
+}
+
+// =================================================================
+// FONCTIONS GLOBALES DE COMPATIBILITÉ
+// =================================================================
+
+/**
+ * Fonction globale pour demander à l'IA (compatibilité)
+ * @param {string} prompt - Prompt pour l'IA
+ * @param {string} contexte - Contexte de la demande
+ * @returns {Promise<string>} Réponse de l'IA
+ */
+window.demanderIA = async function(prompt, contexte) {
+    try {
+        if (!appState.iaReady) {
+            return "L'IA est en cours d'initialisation. Veuillez patienter...";
+        }
+        
+        return await runFourModelPipelineWithFallback(prompt, contexte);
+    } catch (error) {
+        addError(`IA request failed: ${error.message}`, 'ia_request');
+        return "Une erreur est survenue lors du traitement de votre demande. Veuillez réessayer.";
+    }
+};
+
+/**
+ * Fonction de débogage pour vérifier l'état de la pipeline
+ */
+window.debugPipelineStatus = function() {
+    console.log('=== ÉTAT DE L\'APPLICATION ===');
+    console.log('Nom:', APP_CONFIG.name);
+    console.log('Version:', APP_CONFIG.version);
+    console.log('Mode debug:', APP_CONFIG.debug);
+    console.log('Modules prêts:', areAllModulesReady());
+    console.log('IA prête:', appState.iaReady);
+    console.log('Statut actuel:', appState.currentStatus);
+    console.log('Temps de démarrage:', new Date(appState.startTime).toISOString());
+    console.log('Erreurs:', appState.errors.length);
+    
+    // Modules optionnels
+    const optionalStatus = getOptionalModulesStatus();
+    console.log('Modules optionnels:', optionalStatus);
+    
+    // Token GitHub
+    const githubToken = localStorage.getItem('github_token') || sessionStorage.getItem('github_token');
+    console.log('Token GitHub:', !!githubToken ? 'Présent' : 'Absent');
+    
+    // Environnement
+    console.log('Environnement:', {
+        hostname: location.hostname,
+        protocol: location.protocol,
+        port: location.port
+    });
+    
+    return {
+        modulesReady: areAllModulesReady(),
+        iaReady: appState.iaReady,
+        errors: appState.errors.length,
+        optionalModules: optionalStatus
+    };
+};
+
+/**
+ * Fonction pour réinitialiser l'état de l'application
+ */
+window.resetAppState = function() {
+    appState.modulesReady = false;
+    appState.iaReady = false;
+    appState.currentStatus = 'reset';
+    appState.errors = [];
+    appState.startTime = Date.now();
+    
+    setIaStatus("Application : réinitialisation...", "bg-amber-500", 0);
+    console.log('État de l\'application réinitialisé');
 };
 
 // Fonction pour tester la pipeline avec un message simple

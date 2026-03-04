@@ -4020,32 +4020,276 @@
         openActivityWindow(chapterId, activityId);
       });
 
-      // ============ SYSTÈME D'AUTHENTIFICATION ============
+      // ============ SYSTÈME D'AUTHENTIFICATION OPTIMISÉ ============
+      
+      // Configuration du système d'authentification
+      const AUTH_CONFIG = {
+        SESSION_KEY: 'currentUser',
+        SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24 heures
+        MAX_ATTEMPTS: 3,
+        LOCKOUT_DURATION: 15 * 60 * 1000 // 15 minutes
+      };
+
+      // Base de données utilisateurs (optimisée)
       const users = [
-        { username: "kamel.chellouai", password: "Kamel@2024!", role: "teacher", displayName: "KAMEL CHELLOUAI" },
-        { username: "amira.hamdaoui", password: "Amira2024!", role: "student", displayName: "AMIRA CHAHD HAMDAOUI" },
-        { username: "wissal.hamza", password: "Wissal2024!", role: "student", displayName: "WISSAL HAMZA" },
-        { username: "isra.herzallah", password: "Isra2024!", role: "student", displayName: "ISRA HERZALLAH" },
-        { username: "rym.kabouche", password: "Rym2024!", role: "student", displayName: "RYM KABOUCHE" },
-        { username: "loubna.laib", password: "Loubna2024!", role: "student", displayName: "LOUBNA HIBATERRAHMANE LAIB" },
-        { username: "hibat.maghi", password: "Hibat2024!", role: "student", displayName: "HIBAT ERRAHMANE MAGHNI" },
-        { username: "chourouk.metlou", password: "Chourouk2024!", role: "student", displayName: "CHOUROUK METLOUG" },
-        { username: "alaie.ouamane", password: "Alaie2024!", role: "student", displayName: "ALAIE OUAMANE" },
-        { username: "chahd.rehouma", password: "Chahd2024!", role: "student", displayName: "CHAHD REHOUMA" },
-        { username: "salsabil.saadi", password: "Salsabil2024!", role: "student", displayName: "SALSABIL SAADI" },
-        { username: "fatma.sassoui", password: "Fatma2024!", role: "student", displayName: "FATMA ZOHRA AROUA SASSOUI" },
-        { username: "djamila.seid", password: "Djamila2024!", role: "student", displayName: "DJAMILA SEID" },
-        { username: "ayat.serraoui", password: "Ayat2024!", role: "student", displayName: "AYAT ERRAHMANE SERRAOUI" },
-        { username: "chaima.taghzout", password: "Chaima2024!", role: "student", displayName: "CHAIMA TAGHZOUT" },
-        { username: "serine.touami", password: "Serine2024!", role: "student", displayName: "SERINE LEILA TOUAMI" },
-        { username: "sara.zegar", password: "Sara2024!", role: "student", displayName: "SARA ZEGAR" },
-        { username: "safaa.zerrouak", password: "Safaa2024!", role: "student", displayName: "SAFAA NOUR ELYAKINE ZERROUAK" },
-        { username: "fatima.ziouchi", password: "Fatima2024!", role: "student", displayName: "FATIMA ZIOUCHI" },
+        { id: 'teacher_001', username: "kamel.chellouai", password: "Kamel@2024!", role: "teacher", displayName: "KAMEL CHELLOUAI", actif: true },
+        { id: 'student_001', username: "amira.hamdaoui", password: "Amira2024!", role: "student", displayName: "AMIRA CHAHD HAMDAOUI", actif: true },
+        { id: 'student_002', username: "wissal.hamza", password: "Wissal2024!", role: "student", displayName: "WISSAL HAMZA", actif: true },
+        { id: 'student_003', username: "isra.herzallah", password: "Isra2024!", role: "student", displayName: "ISRA HERZALLAH", actif: true },
+        { id: 'student_004', username: "rym.kabouche", password: "Rym2024!", role: "student", displayName: "RYM KABOUCHE", actif: true },
+        { id: 'student_005', username: "loubna.laib", password: "Loubna2024!", role: "student", displayName: "LOUBNA HIBATERRAHMANE LAIB", actif: true },
+        { id: 'student_006', username: "hibat.maghi", password: "Hibat2024!", role: "student", displayName: "HIBAT ERRAHMANE MAGHNI", actif: true },
+        { id: 'student_007', username: "chourouk.metlou", password: "Chourouk2024!", role: "student", displayName: "CHOUROUK METLOUG", actif: true },
+        { id: 'student_008', username: "alaie.ouamane", password: "Alaie2024!", role: "student", displayName: "ALAIE OUAMANE", actif: true },
+        { id: 'student_009', username: "chahd.rehouma", password: "Chahd2024!", role: "student", displayName: "CHAHD REHOUMA", actif: true },
+        { id: 'student_010', username: "salsabil.saadi", password: "Salsabil2024!", role: "student", displayName: "SALSABIL SAADI", actif: true },
+        { id: 'student_011', username: "fatma.sassoui", password: "Fatma2024!", role: "student", displayName: "FATMA ZOHRA AROUA SASSOUI", actif: true },
+        { id: 'student_012', username: "djamila.seid", password: "Djamila2024!", role: "student", displayName: "DJAMILA SEID", actif: true },
+        { id: 'student_013', username: "ayat.serraoui", password: "Ayat2024!", role: "student", displayName: "AYAT ERRAHMANE SERRAOUI", actif: true },
+        { id: 'student_014', username: "chaima.taghzout", password: "Chaima2024!", role: "student", displayName: "CHAIMA TAGHZOUT", actif: true },
+        { id: 'student_015', username: "serine.touami", password: "Serine2024!", role: "student", displayName: "SERINE LEILA TOUAMI", actif: true },
+        { id: 'student_016', username: "sara.zegar", password: "Sara2024!", role: "student", displayName: "SARA ZEGAR", actif: true },
+        { id: 'student_017', username: "safaa.zerrouak", password: "Safaa2024!", role: "student", displayName: "SAFAA NOUR ELYAKINE ZERROUAK", actif: true },
+        { id: 'student_018', username: "fatima.ziouchi", password: "Fatima2024!", role: "student", displayName: "FATIMA ZIOUCHI", actif: true }
       ];
 
-      // Note: authModal, loginForm, loginError sont déclarés au début du script
-      
+      // État de l'authentification
       let currentUser = null;
+      let loginAttempts = {};
+      let lockedAccounts = new Set();
+
+      // Classe de gestion d'authentification
+      class AuthManager {
+        constructor() {
+          this.config = AUTH_CONFIG;
+          this.users = users;
+          this.currentUser = null;
+          this.init();
+        }
+
+        init() {
+          this.restoreSession();
+          this.setupEventListeners();
+          console.log('🔐 Système d\'authentification initialisé');
+        }
+
+        setupEventListeners() {
+          const loginForm = document.getElementById('loginForm');
+          if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+          }
+        }
+
+        handleLogin(event) {
+          event.preventDefault();
+          const formData = new FormData(event.target);
+          const username = formData.get('username')?.trim();
+          const password = formData.get('password')?.trim();
+
+          if (!username || !password) {
+            this.showLoginError('Veuillez remplir tous les champs');
+            return;
+          }
+
+          const result = this.authenticate(username, password);
+          if (result.success) {
+            this.createSession(result.user);
+            this.redirectToApp();
+          } else {
+            this.handleLoginFailure(username, result);
+          }
+        }
+
+        authenticate(username, password) {
+          // Vérifier si le compte est verrouillé
+          if (this.isAccountLocked(username)) {
+            return {
+              success: false,
+              code: 'ACCOUNT_LOCKED',
+              message: 'Compte temporairement verrouillé. Veuillez réessayer plus tard.'
+            };
+          }
+
+          // Rechercher l'utilisateur
+          const user = this.users.find(u => u.username === username && u.actif);
+          
+          if (!user) {
+            return {
+              success: false,
+              code: 'USER_NOT_FOUND',
+              message: 'Nom d\'utilisateur ou mot de passe incorrect'
+            };
+          }
+
+          // Vérifier le mot de passe
+          if (user.password !== password) {
+            return {
+              success: false,
+              code: 'INVALID_PASSWORD',
+              message: 'Nom d\'utilisateur ou mot de passe incorrect'
+            };
+          }
+
+          return {
+            success: true,
+            user: {
+              id: user.id,
+              username: user.username,
+              displayName: user.displayName,
+              role: user.role
+            }
+          };
+        }
+
+        handleLoginFailure(username, result) {
+          this.incrementLoginAttempts(username);
+          this.showLoginError(result.message);
+
+          if (loginAttempts[username] >= this.config.MAX_ATTEMPTS) {
+            this.lockAccount(username);
+            this.showLoginError('Compte verrouillé après trop de tentatives. Réessayez dans 15 minutes.');
+          }
+        }
+
+        incrementLoginAttempts(username) {
+          loginAttempts[username] = (loginAttempts[username] || 0) + 1;
+        }
+
+        isAccountLocked(username) {
+          return lockedAccounts.has(username);
+        }
+
+        lockAccount(username) {
+          lockedAccounts.add(username);
+          setTimeout(() => {
+            lockedAccounts.delete(username);
+            delete loginAttempts[username];
+          }, this.config.LOCKOUT_DURATION);
+        }
+
+        createSession(user) {
+          const session = {
+            user,
+            loginTime: Date.now(),
+            lastActivity: Date.now()
+          };
+
+          localStorage.setItem(this.config.SESSION_KEY, JSON.stringify(session));
+          this.currentUser = user;
+        }
+
+        restoreSession() {
+          try {
+            const sessionData = localStorage.getItem(this.config.SESSION_KEY);
+            if (sessionData) {
+              const session = JSON.parse(sessionData);
+              
+              // Vérifier l'expiration de la session
+              if (Date.now() - session.loginTime > this.config.SESSION_TIMEOUT) {
+                this.destroySession();
+                return;
+              }
+
+              this.currentUser = session.user;
+              this.updateUIForUser();
+            }
+          } catch (error) {
+            console.error('Erreur lors de la restauration de session:', error);
+            this.destroySession();
+          }
+        }
+
+        destroySession() {
+          localStorage.removeItem(this.config.SESSION_KEY);
+          this.currentUser = null;
+        }
+
+        updateUIForUser() {
+          const authModal = document.getElementById('authModal');
+          const mainApp = document.getElementById('mainApp');
+
+          if (this.currentUser && authModal && mainApp) {
+            authModal.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            this.updateUserInterface();
+          }
+        }
+
+        updateUserInterface() {
+          // Mettre à jour les éléments UI avec les informations utilisateur
+          const userElements = document.querySelectorAll('[data-user-info]');
+          userElements.forEach(element => {
+            const info = element.getAttribute('data-user-info');
+            if (this.currentUser[info]) {
+              element.textContent = this.currentUser[info];
+            }
+          });
+        }
+
+        redirectToApp() {
+          this.updateUIForUser();
+          // Masquer les erreurs de connexion
+          this.hideLoginError();
+        }
+
+        showLoginError(message) {
+          const loginError = document.getElementById('loginError');
+          if (loginError) {
+            loginError.textContent = message;
+            loginError.classList.remove('hidden');
+          }
+        }
+
+        hideLoginError() {
+          const loginError = document.getElementById('loginError');
+          if (loginError) {
+            loginError.classList.add('hidden');
+          }
+        }
+
+        logout() {
+          this.destroySession();
+          location.reload(); // Recharger la page pour afficher l'écran de connexion
+        }
+
+        getCurrentUser() {
+          return this.currentUser;
+        }
+
+        isAuthenticated() {
+          return this.currentUser !== null;
+        }
+
+        hasRole(role) {
+          return this.currentUser && this.currentUser.role === role;
+        }
+      }
+
+      // Initialiser le gestionnaire d'authentification
+      const authManager = new AuthManager();
+
+      // Fonctions de compatibilité avec l'ancien code
+      function login(username, password) {
+        const result = authManager.authenticate(username, password);
+        if (result.success) {
+          authManager.createSession(result.user);
+          authManager.redirectToApp();
+        }
+        return result;
+      }
+
+      function logout() {
+        authManager.logout();
+      }
+
+      function showLoginError(message) {
+        authManager.showLoginError(message);
+      }
+
+      // Rendre l'authentification accessible globalement
+      window.authManager = authManager;
+      window.login = login;
+      window.logout = logout;
 
       function showLoginError(message) {
         loginError.textContent = message;
