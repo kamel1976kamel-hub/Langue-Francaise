@@ -35,12 +35,6 @@ function loadAllRules() {
         console.log(`✅ ${window.vocabulaireRules.length} règles de vocabulaire chargées`);
     }
     
-    // Règles complètes (fallback)
-    if (typeof window !== 'undefined' && window.spacyRulesComplete) {
-        allRules.push(...window.spacyRulesComplete);
-        console.log(`✅ ${window.spacyRulesComplete.length} règles complètes chargées (fallback)`);
-    }
-    
     console.log(`🎯 Total : ${allRules.length} règles spaCy chargées et prêtes`);
     
     return allRules;
