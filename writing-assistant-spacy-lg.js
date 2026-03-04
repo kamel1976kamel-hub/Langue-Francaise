@@ -83,19 +83,32 @@ class WritingAssistantSpacyLG {
     }
 
     try {
-      console.log('🧠 Analyse avec spaCy lg (Large):', text);
+      console.log('🧠 Analyse du texte:', text);
+      
+      let errors = [];
       
       // Utiliser spaCy lg si disponible
-      const errors = await this.spacyInterface.analyzeText(text);
+      if (this.spacyEnabled) {
+        const spacyErrors = await this.spacyInterface.analyzeText(text);
+        errors.push(...spacyErrors);
+      }
       
-      // Appliquer les règles personnalisées si disponibles
+      // Appliquer les règles unifiées (nouveau système)
+      if (typeof window.applyAllRules === 'function') {
+        const mockDoc = this.createMockSpacyDoc(text);
+        const ruleErrors = window.applyAllRules(mockDoc, { maxErrors: 20 });
+        errors.push(...ruleErrors);
+        console.log(`📚 Règles SPAcy: ${ruleErrors.length} erreur(s) trouvée(s)`);
+      }
+      
+      // Appliquer les anciennes règles personnalisées si disponibles (compatibilité)
       if (this.customRules) {
         const customErrors = this.applyCustomRules(text);
         errors.push(...customErrors);
       }
       
       if (errors.length > 0) {
-        console.log(`🧠 spaCy lg (Large) a trouvé ${errors.length} erreur(s) avec confiance moyenne ${errors.reduce((sum, e) => sum + (e.confidence || 0.5), 0) / errors.length}`);
+        console.log(`🧠 Total: ${errors.length} erreur(s) trouvée(s)`);
         this.showHighlights(element, errors);
         this.showSuggestions(element, errors);
       } else {
@@ -104,7 +117,7 @@ class WritingAssistantSpacyLG {
         this.showSuccess(element);
       }
     } catch (error) {
-      console.error('❌ Erreur lors de l\'analyse spaCy lg:', error);
+      console.error('❌ Erreur lors de l\'analyse:', error);
     }
   }
 
@@ -123,18 +136,38 @@ class WritingAssistantSpacyLG {
 
   createMockSpacyDoc(text) {
     // Créer une simulation de document spaCy pour les règles
-    const tokens = text.split(/\s+/).map((word, index) => ({
-      text: word,
-      lemma: word.toLowerCase(),
-      pos: this.guessPOS(word),
-      idx: text.indexOf(word, index > 0 ? text.slice(0, text.indexOf(word)).split(/\s+/).join(' ').length + 1 : 0),
-      i: index,
-      morph: this.guessMorphology(word),
-      dep: this.guessDependency(word, index),
-      head: null
-    }));
+    const tokens = text.split(/\s+/).map((word, index) => {
+      // Calculer la position correcte dans le texte
+      let position = 0;
+      if (index > 0) {
+        const previousWords = text.split(/\s+/).slice(0, index);
+        const previousText = previousWords.join(' ');
+        position = text.indexOf(word, previousText.length + 1);
+      }
+      
+      return {
+        text: word,
+        lemma: word.toLowerCase(),
+        pos: this.guessPOS(word),
+        idx: position,
+        length: word.length,
+        index: index,
+        morph: this.guessMorphology(word),
+        dep: this.guessDependency(word, index),
+        head: null
+      };
+    });
     
-    return tokens;
+    // Retourner un objet document complet (pas juste les tokens)
+    return {
+      text: text,
+      tokens: tokens,
+      // Ajouter des méthodes utiles pour compatibilité
+      match: function(pattern) {
+        // Simulation basique de matching
+        return [];
+      }
+    };
   }
 
   guessPOS(word) {

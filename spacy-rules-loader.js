@@ -14,7 +14,8 @@ const RULES_LOADER_CONFIG = {
         { name: 'style', global: 'styleRules', priority: 1 },
         { name: 'conjugaison', global: 'conjugaisonRules', priority: 2 },
         { name: 'orthographe', global: 'orthographeRules', priority: 3 },
-        { name: 'vocabulaire', global: 'vocabulaireRules', priority: 4 }
+        { name: 'vocabulaire', global: 'vocabulaireRules', priority: 4 },
+        { name: 'specific', global: 'specificRules', priority: 0 } // Priorité maximale
     ],
     debug: true,
     enableStats: true
@@ -72,7 +73,7 @@ function getLoaderErrors() {
 /**
  * Charge toutes les règles disponibles
  * @param {Object} options - Options de chargement
- * @returns {Array} Liste des règles chargées
+ * @returns {Array} Liste complète des règles
  */
 function loadAllRules(options = {}) {
     const defaults = {
@@ -82,70 +83,81 @@ function loadAllRules(options = {}) {
     };
     
     const config = { ...defaults, ...options };
-    const startTime = Date.now();
     
     try {
         const allRules = [];
-        const stats = {
-            loaded: 0,
-            failed: 0,
-            byCategory: {}
-        };
         
-        // Charger chaque catégorie
-        for (const category of RULES_LOADER_CONFIG.categories) {
-            try {
-                const categoryRules = loadRulesByCategory(category, config);
-                
-                if (categoryRules.length > 0) {
-                    allRules.push(...categoryRules);
-                    stats.loaded += categoryRules.length;
-                    stats.byCategory[category.name] = categoryRules.length;
-                    
-                    if (RULES_LOADER_CONFIG.debug) {
-                        console.log(`✅ ${categoryRules.length} règles de ${category.name} chargées`);
-                    }
-                } else {
-                    stats.failed++;
-                    addLoaderError(`Aucune règle trouvée pour la catégorie ${category.name}`, category.name);
+        // Charger les règles opérationnelles en priorité
+        if (window.operationalSpacyRules && Array.isArray(window.operationalSpacyRules)) {
+            console.log(`🚀 Chargement de ${window.operationalSpacyRules.length} règles opérationnelles`);
+            allRules.push(...window.operationalSpacyRules);
+        }
+        
+        // Charger les règles converties si disponibles
+        if (window.convertedSpacyRules && Array.isArray(window.convertedSpacyRules)) {
+            console.log(`🔄 Chargement de ${window.convertedSpacyRules.length} règles converties`);
+            allRules.push(...window.convertedSpacyRules);
+        }
+        
+        // Charger les règles spécifiques
+        if (window.specificRules && Array.isArray(window.specificRules)) {
+            console.log(`🎯 Chargement de ${window.specificRules.length} règles spécifiques`);
+            allRules.push(...window.specificRules);
+        }
+        
+        // Charger les règles originales si aucune conversion
+        if (allRules.length === 0) {
+            RULES_LOADER_CONFIG.categories.forEach(category => {
+                const rules = window[category.global];
+                if (rules && Array.isArray(rules)) {
+                    console.log(`📚 Chargement de ${rules.length} règles ${category.name}`);
+                    allRules.push(...rules);
                 }
-            } catch (error) {
-                stats.failed++;
-                addLoaderError(`Erreur lors du chargement de ${category.name}: ${error.message}`, category.name);
-            }
+            });
         }
         
-        // Trier par priorité si demandé
+        // Filtrer les règles désactivées
+        let filteredRules = allRules;
+        if (!config.includeDisabled) {
+            filteredRules = allRules.filter(rule => rule.enabled !== false);
+        }
+        
+        // Valider les règles
+        if (config.validateRules) {
+            filteredRules = filteredRules.filter(rule => {
+                const isValid = rule && 
+                    typeof rule.name === 'string' && 
+                    typeof rule.action === 'function' &&
+                    typeof rule.category === 'string';
+                
+                if (!isValid) {
+                    console.warn(`⚠️ Règle invalide ignorée:`, rule.name || 'sans nom');
+                }
+                
+                return isValid;
+            });
+        }
+        
+        // Trier par priorité
         if (config.sortByPriority) {
-            allRules.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+            filteredRules.sort((a, b) => (a.priority || 5) - (b.priority || 5));
         }
         
-        // Mettre à jour l'état
+        // Mettre en cache
         loaderState.loadedRules.clear();
-        allRules.forEach(rule => {
-            loaderState.loadedRules.set(rule.name || rule.id, rule);
+        filteredRules.forEach(rule => {
+            loaderState.loadedRules.set(rule.name, rule);
         });
-        loaderState.totalRules = allRules.length;
-        loaderState.lastLoadTime = new Date().toISOString();
+        loaderState.totalRules = filteredRules.length;
+        loaderState.lastLoadTime = Date.now();
         
-        const loadTime = Date.now() - startTime;
+        console.log(`✅ ${filteredRules.length} règles chargées au total`);
         
-        if (RULES_LOADER_CONFIG.debug || RULES_LOADER_CONFIG.enableStats) {
-            console.log(`🎯 Chargement terminé en ${loadTime}ms :`);
-            console.log(`   📊 Total : ${allRules.length} règles`);
-            console.log(`   ✅ Succès : ${stats.loaded} règles`);
-            console.log(`   ❌ Échecs : ${stats.failed} catégories`);
-            
-            if (RULES_LOADER_CONFIG.enableStats) {
-                console.log(`   📋 Par catégorie :`, stats.byCategory);
-            }
-        }
-        
-        return allRules;
+        return filteredRules;
         
     } catch (error) {
-        addLoaderError(`Erreur générale lors du chargement: ${error.message}`, 'loadAllRules');
-        throw error;
+        addLoaderError(`Erreur lors du chargement des règles: ${error.message}`, 'loading');
+        return [];
     }
 }
 
@@ -341,8 +353,8 @@ function applyRule(rule, doc) {
             const matches = doc.match(rule.pattern);
             errors = rule.action(doc, matches);
         } else {
-            // Règle avec texte direct
-            errors = rule.action(doc.text || doc);
+            // Règle avec texte direct - passer le document complet
+            errors = rule.action(doc);
         }
         
         // Normaliser le résultat
@@ -350,13 +362,22 @@ function applyRule(rule, doc) {
             return [];
         }
         
+        // Filtrer les erreurs invalides
+        const validErrors = errors.filter(error => 
+            error && 
+            typeof error.word === 'string' && 
+            typeof error.correction === 'string' && 
+            typeof error.explanation === 'string'
+        );
+        
         // Ajouter des métadonnées aux erreurs
-        return errors.map(error => ({
+        return validErrors.map(error => ({
             ...error,
-            ruleName: rule.name || rule.id,
-            ruleCategory: rule.category,
-            ruleDescription: rule.description,
-            timestamp: Date.now()
+            ruleName: rule.name || rule.id || 'unknown',
+            ruleCategory: rule.category || 'unknown',
+            ruleDescription: rule.description || '',
+            timestamp: Date.now(),
+            confidence: error.confidence || 0.8
         }));
         
     } catch (error) {
