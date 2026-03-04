@@ -336,7 +336,7 @@ async function runFourModelPipelineWithFallback(studentAnswer, activityContext, 
     try {
         setIaStatus("IA : analyse en cours...", "bg-blue-500", 25);
         
-        // Utiliser le pipeline principal si disponible
+        // Utiliser uniquement le pipeline temps réel avec vrais modèles
         if (typeof window.runFourModelPipeline === 'function') {
             setIaStatus("IA : traitement intelligent...", "bg-purple-500", 50);
             const result = await window.runFourModelPipeline(studentAnswer, activityContext, activityType);
@@ -344,14 +344,24 @@ async function runFourModelPipelineWithFallback(studentAnswer, activityContext, 
             return result;
         }
         
-        // Fallback simplifié
-        setIaStatus("IA : mode simplifié", "bg-amber-500", 75);
-        return await runFourModelPipelineFallback(studentAnswer, activityContext, activityType);
+        // Si le pipeline n'est pas disponible, erreur explicite
+        throw new Error('Pipeline IA temps réel non disponible. Veuillez configurer votre clé API OpenAI.');
         
     } catch (error) {
         addError(`Pipeline error: ${error.message}`, 'pipeline');
-        setIaStatus("IA : erreur de traitement", "bg-rose-500", 0);
-        throw error;
+        setIaStatus("IA : configuration requise", "bg-rose-500", 0);
+        
+        // Message d'erreur explicite pour guider l'utilisateur
+        const errorMessage = `⚠️ Pipeline IA non configuré
+        
+Pour activer l'IA temps réel :
+1. Obtenez une clé API sur https://platform.openai.com/api-keys
+2. Configurez-la avec : configureAPIKey("votre-clé-api")
+3. Ou utilisez l'interface graphique qui apparaît automatiquement
+
+Erreur technique : ${error.message}`;
+        
+        return errorMessage;
     }
 }
 
@@ -598,24 +608,6 @@ window.testPipeline = async function() {
     
     return true;
   } catch (error) {
-    console.error('❌ Test échoué:', error);
-    return false;
-  }
-};
-
-// Configuration des modèles pour l'architecture à 4 modèles via GitHub Models API
-const modelConfiguration = {
-  logicEvaluator: 'deepseek/deepseek-r1', // Évaluateur Logique
-  pedagogueTutor: 'openai/gpt-4', // Tuteur Pédagogue
-  documentary: 'meta/llama-4-scout-17b-16e', // Documentaliste
-  qualityController: 'microsoft/phi-4-mini-reasoning' // Contrôleur de Qualité
-};
-
-// Variables pour les clients API
-let logicEvaluatorClient = null;
-let pedagogueTutorClient = null;
-let documentaryClient = null;
-let qualityControllerClient = null;
 
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
@@ -807,191 +799,67 @@ function showPerformanceStats() {
         console.log('  🌊 Pipeline: prêt');
     }
     
-    if (appState.performance.indicators) {
-        console.log('  📊 Indicateurs:', appState.performance.indicators.getActiveCount(), 'actifs');
-    }
 }
 
 // Fonction pour initialiser le pipeline à 4 modèles via GitHub Models API
 async function initializeFourModelPipeline() {
-  console.log('Initialisation du pipeline à 4 modèles via GitHub Models API...');
-  
-  // Pour l'API GitHub Models, nous n'avons pas besoin d'initialiser les modèles localement
-  // Le chargement se fait via les requêtes HTTP vers les serveurs GitHub
-  setIaStatus("IA : pipeline à 4 modèles prêt (cloud)", "bg-emerald-500", 100);
-  console.log("Pipeline à 4 modèles via GitHub Models API prêt!");
-}
 
-// Fonction pour envoyer une requête à un modèle via l'API GitHub Models
-async function callGitHubModel(model, messages, temperature = 0.7) {
-  console.log(`🔄 Appel au modèle: ${model}`);
-  console.log(`📝 Messages: ${messages.length} message(s)`);
-  
-  try {
-    // Créer un AbortController pour le timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
-    
-    // Utilisation de l'endpoint correct pour GitHub Models
-    const response = await fetch(`https://api.github.com/models/${model}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('github_token') || sessionStorage.getItem('github_token') || 'YOUR_GITHUB_TOKEN_HERE'}`, // Token stocké dans le navigateur
-        'User-Agent': 'CoursFrancais/1.0'
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        temperature: temperature,
-        max_tokens: 1000
-      }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-    console.log(`📡 Réponse API: ${response.status} ${response.statusText}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Erreur API détaillée:`, errorText);
-      throw new Error(`Erreur API: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log(`✅ Réponse reçue de ${model}:`, data.choices?.[0]?.message?.content?.substring(0, 100) + '...');
-    return data.choices[0].message.content;
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      console.error(`❌ Timeout pour le modèle ${model}:`, err);
-      return "Le service IA met trop de temps à répondre. Veuillez réessayer.";
-    }
-    console.error(`❌ Erreur lors de l'appel au modèle ${model}:`, err);
-    return "Erreur de connexion au service IA. Veuillez vérifier votre connexion Internet.";
-  }
-}
-
-// Fonction pour exécuter le pipeline à 4 modèles via GitHub Models API
+// Fonction principale du pipeline - utilise les modèles spécifiques demandés
 window.runFourModelPipeline = async function(studentAnswer, activityContext, activityType = 'general') {
-  // Mode démo pour GitHub Pages (CORS bloqué)
-  if (location.hostname.includes('github.io')) {
-    return await runFourModelPipelineDemo(studentAnswer, activityContext, activityType);
-  }
-  
-  // Mode local avec API GitHub Models
-  try {
-    // Étape 1: Évaluateur Logique - Analyse la réponse à froid
-    const logicEvaluationPrompt = `Analyse cette réponse d'étudiant à froid. Identifie les erreurs de raisonnement, les lacunes et les points justes. Réponds de manière technique et précise.\n\nRéponse de l'étudiant : ${studentAnswer}\n\nContexte de l'activité : ${activityContext}`;
+    // Vérifier si le pipeline avec modèles spécifiques est disponible
+    if (typeof window.runSpecificPipelineModels === 'function') {
+        return await window.runSpecificPipelineModels(studentAnswer, activityContext, activityType);
+    }
     
-    const logicResult = await callGitHubModel(modelConfiguration.logicEvaluator, [
-      { role: "system", content: "Tu es un évaluateur logique rigoureux. Analyse les réponses des étudiants de manière technique et objective. Liste les erreurs de raisonnement, les points justes, et les lacunes." },
-      { role: "user", content: logicEvaluationPrompt }
-    ]);
-    
-    // Étape 2: Documentaliste - Recherche dans les supports de cours
-    const documentaryPrompt = `À partir de cette analyse technique, identifie quels concepts du cours sont concernés. Cite les sections spécifiques du programme ou du manuel qui pourraient aider l'étudiant.\n\nAnalyse technique : ${logicResult}\n\nType d'activité : ${activityType}`;
-    
-    const documentaryResult = await callGitHubModel(modelConfiguration.documentary, [
-      { role: "system", content: "Tu es un documentaliste expert. Identifie les sections spécifiques du programme ou du manuel qui correspondent aux besoins de l'étudiant." },
-      { role: "user", content: documentaryPrompt }
-    ]);
-    
-    // Étape 3: Tuteur Pédagogue - Transforme en discussion pédagogique
-    const pedagoguePrompt = `Transforme cette analyse technique en une discussion pédagogique empathique avec l'étudiant. Utilise des questions guidantes pour l'aider à comprendre ses erreurs. Sois encourageant.\n\nAnalyse technique : ${logicResult}\n\nRéférences du cours : ${documentaryResult}\n\nType d'activité : ${activityType}`;
-    
-    const tutorResponse = await callGitHubModel(modelConfiguration.pedagogueTutor, [
-      { role: "system", content: "Tu es un tuteur pédagogue empathique. Discute avec l'étudiant de manière encourageante, pose-lui des questions guidantes pour l'aider à comprendre ses erreurs, et référence les bons passages du cours." },
-      { role: "user", content: pedagoguePrompt }
-    ]);
-    
-    // Étape 4: Contrôleur de Qualité - Vérifie l'absence d'hallucinations
-    const qualityControlPrompt = `Vérifie cette réponse du tuteur pédagogue. Assure-toi qu'elle ne contient pas d'hallucinations, qu'elle ne donne pas la réponse directement, et qu'elle n'encourage pas une mauvaise compréhension.\n\nRéponse du tuteur : ${tutorResponse}\n\nAnalyse technique originale : ${logicResult}`;
-    
-    const qualityReport = await callGitHubModel(modelConfiguration.qualityController, [
-      { role: "system", content: "Tu es un contrôleur de qualité. Vérifie que la réponse du tuteur ne contient pas d'erreurs, d'hallucinations, ni de réponses données directement. Valide la qualité pédagogique." },
-      { role: "user", content: qualityControlPrompt }
-    ]);
-    
-    // Retourner la réponse finale après validation
-    return tutorResponse;
-  } catch (err) {
-    console.error("Erreur dans le pipeline à 4 modèles:", err);
-    return "Erreur lors de l'analyse de la réponse. Veuillez vérifier votre connexion Internet.";
-  }
-};
-
-// Fonction de démonstration pour GitHub Pages
-async function runFourModelPipelineDemo(studentAnswer, activityContext, activityType = 'general') {
-  // Simuler un temps de traitement
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-  
-  // Analyser le contexte pour une réponse personnalisée
-  const contextLower = activityContext.toLowerCase();
-  let response = "";
-  
-  if (contextLower.includes('narratif')) {
-    response = `Merci pour votre réponse ! J'analyse votre travail sur le texte narratif.\n\n**Points forts observés :**\n- Vous semblez avoir compris les éléments essentiels du récit\n- La structure narrative est présente\n\n**Pistes d'amélioration :**\n- Pensez à approfondir la caractérisation de vos personnages\n- Travaillez l'enchaînement logique des événements\n- Utilisez des temps verbaux variés pour créer du rythme\n\n**Question pour vous guider :**\nQuel élément perturbateur pourriez-vous ajouter pour rendre votre histoire plus captivante ?\n\nContinuez ainsi, vous êtes sur la bonne voie !`;
-  } else if (contextLower.includes('descriptif')) {
-    response = `Excellente approche descriptive ! Voici mon analyse :\n\n**Réussites :**\n- Le choix des détails est pertinent\n- L'organisation spatiale est cohérente\n\n**Suggestions pour enrichir :**\n- Intégrez davantage de perceptions sensorielles (vues, sons, odeurs)\n- Variez les champs lexicaux pour créer des atmosphères différentes\n- Pensez à l'implication du narrateur (subjectivité vs objectivité)\n\n**Pour aller plus loin :**\nQuel effet émotionnel cherchez-vous à produire chez votre lecteur ?\n\nVotre travail montre déjà une belle sensibilité descriptive !`;
-  } else if (contextLower.includes('explicatif')) {
-    response = `Très bon travail sur le texte explicatif ! Analyse détaillée :\n\n**Points positifs :**\n- La définition du sujet est claire\n- Vous utilisez des connecteurs logiques appropriés\n\n**Axes de progression :**\n- Développez davantage les relations de cause à effet\n- Ajoutez des exemples concrets pour illustrer vos explications\n- Structurez votre propos avec une introduction et une conclusion nettes\n\n**Question de réflexion :**\nComment pourriez-vous rendre votre explication encore plus accessible à quelqu'un qui ne connaît pas le sujet ?\n\nVotre démarche explicative est solide !`;
-  } else if (contextLower.includes('argumentatif')) {
-    response = `Analyse de votre texte argumentatif :\n\n**Forces :**\n- Votre position est clairement affirmée\n- Les arguments présentés sont pertinents\n\n**Recommandations :**\n- Renforcez vos arguments avec des preuves spécifiques\n- Anticipez les contre-arguments possibles\n- Travaillez la progression de vos arguments (du plus faible au plus fort)\n\n**Pour approfondir :**\nQuelles objections pourriez-vous anticiper et comment y répondreiez-vous ?\n\nVotre capacité à convaincre est déjà bien développée !`;
-  } else if (contextLower.includes('resume')) {
-    response = `Bonne analyse dans votre travail de résumé :\n\n**Compétences maîtrisées :**\n- Vous identifiez bien les idées essentielles\n- La concision est respectée\n\n**Points à perfectionner :**\n- Vérifiez que toutes les idées principales sont bien présentes\n- Travaillez les transitions entre les idées\n- Assurez-vous de ne pas introduire d'interprétation personnelle\n\n**Suggestion :**\nRelisez votre résumé et demandez-vous : "Est-ce que quelqu'un qui n'a pas lu le texte original comprend l'essentiel ?"\n\nVotre synthèse est sur la bonne voie !`;
-  } else {
-    // Réponse générale pour les techniques d'écriture
-    response = `Merci pour votre travail ! Voici mon analyse pédagogique :\n\n**Ce qui fonctionne bien :**\n- Votre engagement dans la tâche est évident\n- Les bases de l'expression écrite sont acquises\n\n**Pistes de développement :**\n- Enrichissez votre vocabulaire précis et varié\n- Structurez vos idées de manière plus explicite\n- Relisez-vous attentivement pour corriger les petites erreurs\n\n**Conseil pratique :**\nPrenez le temps de faire un plan rapide avant de rédiger. Cela vous aidera à organiser vos pensées.\n\nContinuez vos efforts, chaque exercice vous fait progresser !`;
-  }
-  
-  return response;
-}
-
-// Fonction de fallback pour le pipeline à 4 modèles (version simplifiée pour tests locaux)
-async function runFourModelPipelineFallback(studentAnswer, activityContext, activityType = 'general') {
-  // Simuler les 4 étapes du pipeline
-  
-  // Étape 1: Évaluation logique (simulée)
-  const logicResult = "Évaluation: La réponse de l'étudiant contient des éléments pertinents mais nécessite des améliorations dans la structure et le vocabulaire.";
-  
-  // Étape 2: Documentaliste (simulé)
-  const documentaryResult = "Références: Voir leçon sur la structure du texte " + activityType + " et chapitre sur les connecteurs logiques.";
-  
-  // Étape 3: Tuteur pédagogue (génération de réponse pédagogique)
-  const tutorResponse = "Merci pour votre réponse ! Celle-ci montre que vous avez bien compris le sujet. Pour l'améliorer, pensez à :\n\n1. Structurer votre réponse avec une introduction, un développement et une conclusion.\n2. Utiliser des connecteurs logiques pour relier vos idées.\n3. Donner des exemples concrets pour illustrer vos points.\n\nConsultez la leçon sur les textes " + activityType + " pour renforcer vos acquis.";
-  
-  // Étape 4: Contrôle qualité (simulé)
-  // Dans la version réelle, cette étape vérifierait que la réponse ne contient pas d'erreurs
-  
-  return tutorResponse;
+    // Si non disponible, erreur explicite
+    throw new Error('Pipeline IA modèles spécifiques non chargé. Veuillez recharger la page et configurer votre token GitHub Models.');
 };
 
 // Fonction pour initialiser l'IA principale (pour la compatibilité avec le code existant)
 async function initIA() {
-  setIaStatus("IA : démarrage (cloud)...", "bg-amber-500", 10);
-  console.log("Démarrage de l'IA cloud...");
-  
-  try {
-    // Simuler le chargement de l'IA principale (pour la compatibilité avec le code existant)
-    setIaStatus("IA : prête (cloud)", "bg-emerald-500", 100);
-    console.log("IA cloud prête !");
-  } catch (err) {
-    console.error("Erreur IA:", err);
-    setIaStatus("IA : erreur - " + err.message, "bg-rose-500", 0);
-  }
+    try {
+        setIaStatus("IA : initialisation...", "bg-amber-500", 10);
+        
+        // Vérifier si le pipeline avec modèles spécifiques est disponible
+        if (typeof window.runSpecificPipelineModels === 'function') {
+            setIaStatus("IA : pipeline modèles spécifiques prêt", "bg-emerald-500", 100);
+            console.log("✅ Pipeline IA modèles spécifiques prêt !");
+        } else {
+            setIaStatus("IA : configuration requise", "bg-amber-500", 50);
+            console.log("⚠️ Pipeline IA modèles spécifiques non configuré");
+        }
+        
+        appState.iaReady = true;
+        
+    } catch (error) {
+        console.error("Erreur IA:", error);
+        setIaStatus("IA : erreur - " + error.message, "bg-rose-500", 0);
+        throw error;
+    }
 }
 
 // Fonction globale pour demander à l'IA (pour la compatibilité avec le code existant)
 window.demanderIA = async function(prompt, contexte) {
-  // Utiliser le pipeline à 4 modèles pour une meilleure qualité
-  if (window.runFourModelPipeline) {
-    return await window.runFourModelPipeline(prompt, contexte);
-  } else {
-    // Fallback si le pipeline à 4 modèles n'est pas disponible
-    return "L'IA est en cours de chargement. Veuillez patienter.";
-  }
-}
+    try {
+        // Utiliser uniquement le pipeline avec modèles spécifiques
+        if (typeof window.runFourModelPipeline === 'function') {
+            return await window.runFourModelPipeline(prompt, contexte);
+        } else {
+            // Message d'erreur explicite pour guider l'utilisateur
+            return `⚠️ Pipeline IA non configuré
+
+Pour activer l'IA avec modèles spécifiques :
+1. Obtenez un token GitHub Models
+2. Configurez-le avec : configureGitHubToken("votre-token-github")
+3. Ou utilisez l'interface graphique qui apparaît automatiquement`;
+        }
+    } catch (error) {
+        console.error('❌ Erreur IA:', error);
+        return `❌ Erreur du pipeline IA: ${error.message}
+
+Veuillez vérifier votre configuration GitHub Models et réessayer.`;
+    }
+};
 
 // Démarrer l'IA au chargement
-// Ne pas initialiser WebLLM car on utilise GitHub Models API
-console.log("Initialisation avec l'API GitHub Models");
+console.log("🚀 Initialisation avec pipeline IA modèles spécifiques - DeepSeek-V3 + GPT-5 + Llama 4 Scout");
