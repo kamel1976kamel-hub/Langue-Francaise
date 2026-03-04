@@ -1,4 +1,5 @@
-// Moteur de règles personnalisées pour spaCy lg - Version corrigée
+// Moteur de règles personnalisées pour spaCy lg - Version complète enrichie
+// Basé sur "Le style et ses pièges" avec explications détaillées et exemples
 class SpacyCustomRules {
   constructor() {
     this.rules = [];
@@ -11,6 +12,25 @@ class SpacyCustomRules {
   initializeRules() {
     console.log('🔧 Initialisation des règles personnalisées spaCy...');
     
+    // Importer les règles complètes si disponibles
+    if (typeof window !== 'undefined' && window.spacyRulesComplete) {
+      this.rules = window.spacyRulesComplete.map(rule => ({
+        name: rule.name,
+        description: rule.description,
+        severity: rule.severity || 'medium',
+        confidence: rule.confidence || 0.8,
+        pattern: rule.pattern,
+        action: rule.action
+      }));
+      console.log(`✅ ${this.rules.length} règles complètes importées de spacy-rules-complete.js`);
+    } else {
+      // Règles de fallback si le fichier complet n'est pas chargé
+      this.initializeFallbackRules();
+    }
+  }
+
+  // Règles de fallback (version simplifiée)
+  initializeFallbackRules() {
     // Règle 1: Accord sujet-verbe (pluriel/singulier)
     this.addRule({
       name: 'accord_sujet_verbe_pluriel',
@@ -19,46 +39,6 @@ class SpacyCustomRules {
       confidence: 0.95,
       pattern: this.createSubjectVerbAgreementPattern(),
       action: this.checkSubjectVerbAgreement.bind(this)
-    });
-
-    // Règle 1.5: ERREUR DE GENRE - le/la devant nom
-    this.addRule({
-      name: 'erreur_genre_determinant',
-      description: 'Détecte les erreurs de genre avec les déterminants le/la',
-      severity: 'high',
-      confidence: 0.90,
-      pattern: this.createGenrePattern(),
-      action: this.checkGenreError.bind(this)
-    });
-
-    // Règle 1.6: CONJUGAISON - qui a/qui avez
-    this.addRule({
-      name: 'conjugaison_qui',
-      description: 'Détecte les erreurs de conjugaison avec "qui"',
-      severity: 'high',
-      confidence: 0.95,
-      pattern: this.createQuiPattern(),
-      action: this.checkQuiConjugaison.bind(this)
-    });
-
-    // Règle 1.7: DÉTECTION SIMPLE - le fille / la garçon
-    this.addRule({
-      name: 'genre_simple',
-      description: 'Détecte les erreurs de genre évidentes (le fille, la garçon)',
-      severity: 'high',
-      confidence: 0.98,
-      pattern: null, // Utilise regex directe
-      action: this.checkSimpleGenreErrors.bind(this)
-    });
-
-    // Règle 1.8: DÉTECTION SIMPLE - qui a / qui avez
-    this.addRule({
-      name: 'conjugaison_simple',
-      description: 'Détecte les erreurs de conjugaison évidentes (qui a au lieu de qui ont)',
-      severity: 'high',
-      confidence: 0.98,
-      pattern: null, // Utilise regex directe
-      action: this.checkSimpleConjugaisonErrors.bind(this)
     });
 
     // Règle 2: Participe passé avec avoir + COD avant
@@ -81,15 +61,36 @@ class SpacyCustomRules {
       action: this.checkCEstCeSont.bind(this)
     });
 
-    // Règle 4: Pléonasmes courants
+    // Règle 4: ERREUR DE GENRE - le/la devant nom
     this.addRule({
-      name: 'pleonasmes',
-      description: 'Détecte les pléonasmes courants',
-      severity: 'medium',
-      confidence: 0.80,
-      pattern: this.createPleonasmePattern(),
-      action: this.checkPleonasme.bind(this)
+      name: 'erreur_genre_determinant',
+      description: 'Détecte les erreurs de genre avec les déterminants le/la',
+      severity: 'high',
+      confidence: 0.90,
+      pattern: this.createGenrePattern(),
+      action: this.checkGenreError.bind(this)
     });
+
+    // Règle 5: DÉTECTION SIMPLE - le fille / la garçon
+    this.addRule({
+      name: 'genre_simple',
+      description: 'Détecte les erreurs de genre évidentes (le fille, la garçon)',
+      severity: 'high',
+      confidence: 0.98,
+      pattern: null, // Utilise regex directe
+      action: this.checkSimpleGenreErrors.bind(this)
+    });
+
+    // Règle 6: DÉTECTION SIMPLE - qui a / qui avez
+    this.addRule({
+      name: 'conjugaison_simple',
+      description: 'Détecte les erreurs de conjugaison évidentes (qui a au lieu de qui ont)',
+      severity: 'high',
+      confidence: 0.98,
+      pattern: null, // Utilise regex directe
+      action: this.checkSimpleConjugaisonErrors.bind(this)
+    });
+  }
 
     // Règle 5: Conjugaisons être/avoir incorrectes
     this.addRule({
@@ -378,7 +379,7 @@ class SpacyCustomRules {
             type: 'accord_participe_passe',
             word: participe.text,
             correction: correctedParticipe,
-            explanation: `Erreur d'accord du participe passé : avec l'auxiliaire "avoir", le participe passé s'accorde avec le complément d'objet direct "${cod.text}" quand il est placé avant le verbe.`,
+            explanation: `Le participe passé s'accorde avec le COD placé avant : "${cod.text}" est pluriel, donc "${participe.text}" devient "${correctedParticipe}".`,
             offset: participe.idx,
             length: participe.text.length,
             severity: 'high',
@@ -396,22 +397,20 @@ class SpacyCustomRules {
     const errors = [];
     
     matches.forEach(match => {
-      const determinant = doc[match[1]];
-      const verb = doc[match[2]];
+      const cest = doc[match[1]];
+      const determinant = doc[match[2]];
       
-      if (determinant && verb && determinant.morph.Number === 'Plur') {
-        errors.push({
-          type: 'c_est_ce_sont',
-          word: verb.text,
-          correction: 'sont',
-          explanation: `Erreur de démonstratif : avec un déterminant au pluriel comme "${determinant.text}", il faut utiliser "ce sont" au lieu de "${verb.text}".`,
-          offset: verb.idx,
-          length: verb.text.length,
-          severity: 'medium',
-          confidence: 0.85,
-          rule: 'c_est_ce_sont'
-        });
-      }
+      errors.push({
+        type: 'c_est_ce_sont',
+        word: 'c\'est',
+        correction: 'ce sont',
+        explanation: `Avec un déterminant pluriel, on utilise "ce sont" au lieu de "c\'est".`,
+        offset: cest.idx,
+        length: 4,
+        severity: 'medium',
+        confidence: 0.85,
+        rule: 'c_est_ce_sont'
+      });
     });
     
     return errors;
@@ -569,32 +568,21 @@ class SpacyCustomRules {
     console.log(`📝 Règle ajoutée: ${rule.name} - ${rule.description}`);
   }
 
-  getCorrectVerbForm(lemma, number, tense) {
-    const conjugations = {
+  getCorrectVerbForm(lemma, person, tense) {
+    const conjugaisons = {
       'être': {
-        'Plur': {
-          'Pres': 'sont',
-          'Imp': 'étaient',
-          'Fut': 'seront'
-        }
+        'Présent': {'1': 'suis', '2': 'es', '3': 'est', '4': 'sommes', '5': 'êtes', '6': 'sont'},
+        'Imparfait': {'1': 'étais', '2': 'étais', '3': 'était', '4': 'étions', '5': 'étiez', '6': 'étaient'},
+        'Futur': {'1': 'serai', '2': 'seras', '3': 'sera', '4': 'serons', '5': 'serez', '6': 'seront'}
       },
       'avoir': {
-        'Plur': {
-          'Pres': 'ont',
-          'Imp': 'avaient',
-          'Fut': 'auront'
-        }
-      },
-      'aller': {
-        'Plur': {
-          'Pres': 'vont',
-          'Imp': 'allaient',
-          'Fut': 'iront'
-        }
+        'Présent': {'1': 'ai', '2': 'as', '3': 'a', '4': 'avons', '5': 'avez', '6': 'ont'},
+        'Imparfait': {'1': 'avais', '2': 'avais', '3': 'avait', '4': 'avions', '5': 'aviez', '6': 'avaient'},
+        'Futur': {'1': 'aurai', '2': 'auras', '3': 'aura', '4': 'aurons', '5': 'aurez', '6': 'auront'}
       }
     };
     
-    return conjugations[lemma]?.[number]?.[tense] || lemma;
+    return conjugaisons[lemma]?.[tense]?.[person] || lemma;
   }
 
   getCorrectPronounConjugation(pronoun, verbLemma) {
@@ -770,87 +758,51 @@ class SpacyCustomRules {
     return errors;
   }
 
-  // Appliquer toutes les règles personnalisées
-  applyRules(doc) {
-    const allErrors = [];
-    
-    console.log(`🔧 Application de ${this.rules.length} règles personnalisées...`);
-    
-    this.rules.forEach(rule => {
-      try {
-        console.log(`📝 Vérification de la règle: ${rule.name}`);
-        
-        // Pour les règles simples (pattern null), utiliser le texte brut
-        if (rule.pattern === null) {
-          const text = doc.map ? doc.map(token => token.text).join(' ') : doc.toString();
-          const ruleErrors = rule.action(text);
-          allErrors.push(...ruleErrors);
-        } else {
-          // Pour les règles spaCy, utiliser le pattern matcher
-          const matches = this.findPatternMatches(doc, rule.pattern);
-          
-          if (matches.length > 0) {
-            console.log(`🎯 ${matches.length} correspondances trouvées pour ${rule.name}`);
-            
-            const ruleErrors = rule.action(doc, matches);
-            allErrors.push(...ruleErrors);
-          }
-        }
-        
-      } catch (error) {
-        console.error(`❌ Erreur dans la règle ${rule.name}:`, error);
-      }
-    });
-    
-    console.log(`✅ ${allErrors.length} erreurs trouvées avec les règles personnalisées`);
-    return allErrors;
-  }
-
   findPatternMatches(doc, pattern) {
     const matches = [];
     
-    if (pattern.length === 2) {
-      for (let i = 0; i < doc.length - 1; i++) {
-        const token1 = doc[i];
-        const token2 = doc[i + 1];
-        
-        if (this.matchesPattern(token1, pattern[0]) && this.matchesPattern(token2, pattern[1])) {
-          matches.push([0, i, i + 1]);
-        }
-      }
+    if (!this.matcher && typeof nlp !== 'undefined') {
+      this.matcher = new nlp.Matcher(doc.vocab);
+    }
+    
+    if (this.matcher) {
+      const matcher = this.matcher.add('rule', pattern);
+      const found = matcher(doc);
+      
+      found.forEach(match => {
+        matches.push(match);
+      });
     }
     
     return matches;
   }
 
-  matchesPattern(token, pattern) {
-    for (const [attr, value] of Object.entries(pattern.RIGHT_ATTRS)) {
-      if (attr === 'POS' && token.pos !== value) return false;
-      if (attr === 'LEMMA' && token.lemma !== value) return false;
-      if (attr === 'TEXT' && token.text !== value) return false;
-      if (attr === 'MORPH' && !this.matchesMorphology(token.morph, value)) return false;
-    }
+  // Fonctions utilitaires
+  getErrorIcon(type, severity) {
+    const icons = {
+      'accord_genre': '⚠️',
+      'accord_nombre': '🔢',
+      'conjugaison': '📝',
+      'orthographe': '❌',
+      'grammaire': '📚',
+      'ponctuation': '🔹',
+      'style': '🎨'
+    };
     
-    return true;
-  }
-
-  matchesMorphology(tokenMorph, patternMorph) {
-    for (const [attr, value] of Object.entries(patternMorph)) {
-      if (tokenMorph[attr] !== value) return false;
-    }
-    return true;
-  }
-
-  getRulesInfo() {
-    return this.rules.map(rule => ({
-      name: rule.name,
-      description: rule.description,
-      severity: rule.severity,
-      confidence: rule.confidence
-    }));
+    const severityIcons = {
+      'high': '🚨',
+      'medium': '⚠️',
+      'low': '💡'
+    };
+    
+    return icons[type] || severityIcons[severity] || '❌';
   }
 }
 
-// Export pour utilisation
+// Initialisation
+window.addEventListener('DOMContentLoaded', () => {
+  window.spacyCustomRules = new SpacyCustomRules();
+  console.log('✅ Règles personnalisées spaCy initialisées');
+});
+
 window.SpacyCustomRules = SpacyCustomRules;
-console.log('🔧 Moteur de règles personnalisées spaCy chargé');
