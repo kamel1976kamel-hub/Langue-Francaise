@@ -22,10 +22,10 @@ const SPECIFIC_PIPELINE_CONFIG = {
         },
         pedagogueTutor: {
             name: 'Tuteur Pédagogue',
-            model: 'llama-3.1-8b-instant',
+            model: 'llama-3.3-70b-versatile',
             role: 'Interface de discussion naturelle et empathique avec l\'étudiant',
             temperature: 0.7,
-            maxTokens: 600
+            maxTokens: 500
         },
         documentary: {
             name: 'Documentaliste',
@@ -36,10 +36,10 @@ const SPECIFIC_PIPELINE_CONFIG = {
         },
         qualityController: {
             name: 'Contrôleur de Qualité',
-            model: 'llama-3.1-8b-instant',
+            model: 'llama-3.3-70b-versatile',
             role: 'Validateur anti-hallucination rapide et contrôle qualité',
             temperature: 0.05,
-            maxTokens: 400
+            maxTokens: 300
         }
     },
     
@@ -331,9 +331,9 @@ async function runSpecificPipelineModels(studentAnswer, activityContext, activit
             timestamp: new Date().toISOString(),
             models: {
                 evaluator: 'Llama 3.3 70B',
-                tutor: 'Llama 3.1 8B',
+                tutor: 'Llama 3.3 70B',
                 documentalist: 'GPT-OSS 20B',
-                qualityController: 'Llama 3.1 8B'
+                qualityController: 'Llama 3.3 70B'
             }
         };
         

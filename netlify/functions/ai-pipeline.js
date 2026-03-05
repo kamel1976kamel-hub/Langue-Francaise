@@ -57,9 +57,9 @@ exports.handler = async function(event) {
             0.1 // Température basse pour analyse précise
         );
 
-        // Agent 2 : tuteur (Llama 3.1 8B)
+        // Agent 2 : tuteur (Llama 3.3 70B)
         const tutor = await callModel(
-            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
             [
                 {
                     role: "system",
@@ -89,9 +89,9 @@ exports.handler = async function(event) {
             0.3 // Température basse pour précision
         );
 
-        // Agent 4 : validation (Llama 3.1 8B)
+        // Agent 4 : validation (Llama 3.3 70B)
         const validation = await callModel(
-            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
             [
                 {
                     role: "system",
