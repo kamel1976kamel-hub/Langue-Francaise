@@ -5,7 +5,7 @@
  */
 
 // Configuration - À REMPLACER
-const GROQ_API_KEY = "gsk_votre_clé_api_groq_ici"; // REMPLACEZ CECI
+const GROQ_API_KEY = "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";
 
 // Pipeline multi-agents
 async function callGroqModel(model, messages, temperature = 0.2) {
