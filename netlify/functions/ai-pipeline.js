@@ -41,9 +41,9 @@ exports.handler = async function(event) {
         const context = body.context || "";
         const activityType = body.activityType || "général";
 
-        // Agent 1 : analyse logique (DeepSeek R1 Distill Qwen)
+        // Agent 1 : analyse logique (Llama 3.1 70B)
         const analysis = await callModel(
-            "deepseek-r1-distill-qwen-32b",
+            "llama-3.1-70b-versatile",
             [
                 {
                     role: "system",
