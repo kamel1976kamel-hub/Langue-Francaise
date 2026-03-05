@@ -7,7 +7,7 @@
 const WORKER_URL = "https://tuteur-ia-api.chellouaikamel50.workers.dev";
 
 // Fonction principale
-window.sendMessage = async function(message) {
+window.sendAIChatMessage = async function(message) {
     try {
         console.log('🚀 Envoi vers Cloudflare Workers:', message);
         
