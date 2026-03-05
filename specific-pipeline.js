@@ -15,7 +15,7 @@ const SPECIFIC_PIPELINE_CONFIG = {
     models: {
         logicEvaluator: {
             name: 'Évaluateur Logique',
-            model: 'deepseek-r1-distill-llama-70b',
+            model: 'deepseek-r1-distill-qwen-32b',
             role: 'Évaluateur logique expert avec capacité de réflexion approfondie',
             temperature: 0.1,
             maxTokens: 800
@@ -112,7 +112,7 @@ async function callGroqModelAPI(modelConfig, prompt, retryCount = 0) {
 
             // Retourner la réponse appropriée selon le modèle
             switch (modelConfig.model) {
-                case 'deepseek-r1-distill-llama-70b':
+                case 'deepseek-r1-distill-qwen-32b':
                     return data.analysis || data.final?.message || 'Analyse effectuée';
                 case 'llama3-70b-8192':
                     return data.tutor || data.final?.message || 'Réponse pédagogique';
@@ -332,7 +332,7 @@ async function runSpecificPipelineModels(studentAnswer, activityContext, activit
             processingTime: Date.now() - startTime,
             timestamp: new Date().toISOString(),
             models: {
-                evaluator: 'DeepSeek R1 Distill',
+                evaluator: 'DeepSeek R1 Distill Qwen',
                 tutor: 'Llama 3 70B',
                 documentalist: 'Mixtral 8x7B',
                 qualityController: 'Phi-3 Mini'
