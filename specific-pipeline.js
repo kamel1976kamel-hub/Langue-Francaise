@@ -357,6 +357,15 @@ async function runSpecificPipelineModels(studentAnswer, activityContext, activit
         console.log(`\n✅ Pipeline complété en ${Date.now() - startTime}ms`);
         console.log('🎯 Réponse finale générée avec succès');
         
+        // Afficher la réponse finale dans la console
+        console.log('🎯 === RÉPONSE FINALE DU PIPELINE ===');
+        console.log('📝 Message principal:', tutoring);
+        console.log('📚 Références:', documentation);
+        console.log('🔍 Validation:', qualityValidation);
+        console.log('🎯 Réponse complète:', finalResponse);
+        console.log('📊 Temps de traitement:', Date.now() - startTime, 'ms');
+        console.log('🏁 === FIN DU PIPELINE ===');
+        
         return finalResponse;
         
     } catch (error) {
