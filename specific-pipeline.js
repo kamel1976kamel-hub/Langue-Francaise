@@ -106,6 +106,15 @@ async function callGroqModelAPI(modelConfig, prompt, retryCount = 0) {
 
             const data = await response.json();
             
+            // Debug : voir la structure de la réponse
+            console.log(`🔍 Réponse de ${modelConfig.name}:`, {
+                hasChoices: !!data.choices,
+                choicesLength: data.choices?.length,
+                firstChoice: data.choices?.[0],
+                messageContent: data.choices?.[0]?.message?.content,
+                fullData: data
+            });
+            
             if (data.error) {
                 throw new Error(data.error);
             }
@@ -113,13 +122,13 @@ async function callGroqModelAPI(modelConfig, prompt, retryCount = 0) {
             // Retourner la réponse appropriée selon le modèle
             switch (modelConfig.model) {
                 case 'llama-3.3-70b-versatile':
-                    return data.analysis || data.final?.message || 'Analyse effectuée';
+                    return data.choices?.[0]?.message?.content || data.analysis || data.final?.message || 'Analyse effectuée';
                 case 'llama-3.1-8b-instant':
-                    return data.tutor || data.final?.message || 'Réponse pédagogique';
+                    return data.choices?.[0]?.message?.content || data.tutor || data.final?.message || 'Réponse pédagogique';
                 case 'openai/gpt-oss-20b':
-                    return data.documentation || data.final?.references || 'Documentation trouvée';
+                    return data.choices?.[0]?.message?.content || data.documentation || data.final?.references || 'Documentation trouvée';
                 default:
-                    return data.final?.message || 'Traitement complété';
+                    return data.choices?.[0]?.message?.content || data.final?.message || 'Traitement complété';
             }
 
         } catch (error) {

@@ -22,7 +22,7 @@ exports.handler = async function(event) {
                     model: model,
                     messages: messages,
                     temperature: temperature,
-                    max_tokens: 1000
+                    max_tokens: 2000
                 })
             }
         );
