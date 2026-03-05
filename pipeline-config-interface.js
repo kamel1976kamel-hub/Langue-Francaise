@@ -77,12 +77,12 @@ function setupPipelineInterface() {
         }
         
         try {
-            // Configurer le token GitHub (corrigé)
-            window.configureGitHubToken(apiKey);
+            // Configurer le token Groq (corrigé)
+            window.configureGroqToken(apiKey);
             
             // Mettre à jour la configuration
-            REAL_PIPELINE_CONFIG.parallelProcessing = processingMode === 'parallel';
-            REAL_PIPELINE_CONFIG.cacheEnabled = cacheEnabled;
+            SPECIFIC_PIPELINE_CONFIG.parallelProcessing = processingMode === 'parallel';
+            SPECIFIC_PIPELINE_CONFIG.cacheEnabled = cacheEnabled;
             
             updateStatus('✅ Configuration sauvegardée avec succès!', 'success');
             
@@ -140,11 +140,15 @@ function setupPipelineInterface() {
  */
 function checkPipelineConfiguration() {
     try {
-        window.getAPIKey();
-        console.log('✅ Pipeline IA déjà configuré');
-        return true;
+        // Vérifier si le token Groq est configuré
+        const token = localStorage.getItem('groq_token') || sessionStorage.getItem('groq_token');
+        if (token && token !== 'YOUR_GROQ_TOKEN_HERE') {
+            console.log('✅ Pipeline Groq déjà configuré');
+            return true;
+        }
+        throw new Error('Token Groq non configuré');
     } catch (error) {
-        console.log('⚠️ Pipeline IA non configuré - affichage de l\'interface');
+        console.log('⚠️ Pipeline Groq non configuré - affichage de l\'interface');
         setupPipelineInterface();
         return false;
     }
@@ -199,17 +203,29 @@ pour toutes les requêtes pédagogiques
 window.checkPipelineConfiguration = checkPipelineConfiguration;
 window.showPipelineGuide = showPipelineGuide;
 
-// Vérification automatique au chargement
-setTimeout(() => {
-    console.log('🔍 Vérification de la configuration du pipeline...');
-    
-    if (!checkPipelineConfiguration()) {
-        console.log('📋 Affichage du guide de configuration...');
-        setTimeout(showPipelineGuide, 1000);
-    } else {
-        console.log('✅ Pipeline IA prêt à utiliser!');
-        showRealTimePipelineStatus();
+// Configuration automatique au chargement - PRIORITAIRE
+if (typeof window !== 'undefined') {
+    const autoToken = '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';
+    if (autoToken && autoToken !== 'YOUR_GROQ_TOKEN_HERE') {
+        // Configurer immédiatement
+        localStorage.setItem('groq_token', autoToken);
+        sessionStorage.setItem('groq_token', autoToken);
+        console.log('🔑 Token Groq configuré automatiquement');
+        
+        // Masquer l'interface si elle existe
+        setTimeout(() => {
+            const configDiv = document.getElementById('pipeline-config');
+            if (configDiv) {
+                configDiv.style.display = 'none';
+                console.log('🚫 Interface de configuration masquée automatiquement');
+            }
+        }, 100);
     }
-}, 2000);
+}
+
+// Vérification automatique au chargement - DÉSACTIVÉE
+setTimeout(() => {
+    console.log('🔍 Configuration automatique déjà effectuée - pas d\'affichage nécessaire');
+}, 500);
 
 console.log('✅ Interface de configuration du pipeline IA chargée');

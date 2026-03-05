@@ -365,15 +365,30 @@ window.runSpecificPipelineModels = runSpecificPipelineModels;
 window.runFourModelPipeline = runSpecificPipelineModels; // Compatibilité
 
 /**
- * Configuration du token Groq
+ * Configuration automatique du token Groq
  */
 window.configureGroqToken = function(token) {
     if (typeof window !== 'undefined') {
         localStorage.setItem('groq_token', token);
         sessionStorage.setItem('groq_token', token);
         console.log('🔑 Token Groq configuré avec succès');
+        
+        // Masquer automatiquement l'interface de configuration
+        const configDiv = document.getElementById('pipeline-config');
+        if (configDiv) {
+            configDiv.style.display = 'none';
+        }
     }
 };
+
+// Configuration automatique au chargement - IMMÉDIAT
+if (typeof window !== 'undefined') {
+    const autoToken = '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';
+    if (autoToken && autoToken !== 'YOUR_GROQ_TOKEN_HERE') {
+        window.configureGroqToken(autoToken);
+        console.log('🔑 Token Groq configuré automatiquement au démarrage');
+    }
+}
 
 /**
  * Afficher le statut du pipeline
