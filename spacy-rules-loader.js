@@ -552,10 +552,16 @@ if (typeof module !== 'undefined' && module.exports) {
     };
     
     // Charger automatiquement toutes les règles au démarrage
-    window.addEventListener('DOMContentLoaded', () => {
-        const rules = loadAllRules();
-        console.log('🚀 Chargeur de règles spaCy initialisé avec succès');
-    });
+    if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const rules = loadAllRules();
+                console.log('🚀 Chargeur de règles spaCy initialisé avec succès');
+            } catch (error) {
+                console.warn('⚠️ Erreur lors du chargement automatique des règles:', error);
+            }
+        });
+    }
 }
 
 console.log('📦 Chargeur unifié de règles spaCy prêt');

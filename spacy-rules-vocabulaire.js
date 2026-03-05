@@ -607,9 +607,10 @@ const vocabulaireRules = [
 
 console.log(`✅ ${vocabulaireRules.length} règles de vocabulaire chargées (dictionnaire complet).`);
 
-// Export pour utilisation (Node.js ou navigateur)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = vocabulaireRules;
-} else if (typeof window !== 'undefined') {
+// Export pour utilisation// Éviter les conflits de variables globales
+if (typeof window.confusions === 'undefined') {
+    window.confusions = confusions;
+}
+if (typeof window.vocabulaireRules === 'undefined') {
     window.vocabulaireRules = vocabulaireRules;
 }

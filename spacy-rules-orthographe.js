@@ -762,8 +762,13 @@ console.log(`✅ ${orthographeRules.length} règles d\'orthographe chargées.`);
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { orthographeRules, orthoConfusions };
 } else if (typeof window !== 'undefined') {
-    window.orthographeRules = orthographeRules;
-    window.orthoConfusions = orthoConfusions;
+    // Éviter les conflits de variables globales
+    if (typeof window.orthoConfusions === 'undefined') {
+        window.orthoConfusions = orthoConfusions;
+    }
+    if (typeof window.orthographeRules === 'undefined') {
+        window.orthographeRules = orthographeRules;
+    }
 }
 
 // Rendre les variables globales pour les tests

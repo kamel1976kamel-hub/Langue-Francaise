@@ -456,9 +456,7 @@ const styleRules = [
 
 console.log(`✅ ${styleRules.length} règles de style chargées.`);
 
-// Export pour utilisation (Node.js ou navigateur)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = styleRules;
-} else if (typeof window !== 'undefined') {
+// Export pour utilisation// Éviter les conflits de variables globales
+if (typeof window.styleRules === 'undefined') {
     window.styleRules = styleRules;
 }
