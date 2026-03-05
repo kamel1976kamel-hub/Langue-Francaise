@@ -41,9 +41,9 @@ exports.handler = async function(event) {
         const context = body.context || "";
         const activityType = body.activityType || "général";
 
-        // Agent 1 : analyse logique (Llama 3.1 70B)
+        // Agent 1 : analyse logique (Llama 3.3 70B)
         const analysis = await callModel(
-            "llama-3.1-70b-versatile",
+            "llama-3.3-70b-versatile",
             [
                 {
                     role: "system",
@@ -57,9 +57,9 @@ exports.handler = async function(event) {
             0.1 // Température basse pour analyse précise
         );
 
-        // Agent 2 : tuteur (Llama 3 70B)
+        // Agent 2 : tuteur (Llama 3.1 8B)
         const tutor = await callModel(
-            "llama3-70b-8192",
+            "llama-3.1-8b-instant",
             [
                 {
                     role: "system",
@@ -73,9 +73,9 @@ exports.handler = async function(event) {
             0.7 // Température moyenne pour discussion naturelle
         );
 
-        // Agent 3 : documentaliste (Mixtral 8x7B)
+        // Agent 3 : documentaliste (GPT-OSS 20B)
         const doc = await callModel(
-            "mixtral-8x7b-32768",
+            "openai/gpt-oss-20b",
             [
                 {
                     role: "system",
@@ -89,9 +89,9 @@ exports.handler = async function(event) {
             0.3 // Température basse pour précision
         );
 
-        // Agent 4 : validation (Phi-3 Mini)
+        // Agent 4 : validation (Llama 3.1 8B)
         const validation = await callModel(
-            "phi3-mini",
+            "llama-3.1-8b-instant",
             [
                 {
                     role: "system",

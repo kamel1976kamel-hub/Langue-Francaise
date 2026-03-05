@@ -36,6 +36,11 @@ class LoadingIndicators {
      * @private
      */
     createContainer() {
+        if (!document.body) {
+            console.warn('Document body not ready, retrying...');
+            setTimeout(() => this.createContainer(), 100);
+            return;
+        }
         this.container = document.createElement('div');
         this.container.id = 'loading-indicators-container';
         this.container.className = 'loading-indicators-container';

@@ -15,28 +15,28 @@ const SPECIFIC_PIPELINE_CONFIG = {
     models: {
         logicEvaluator: {
             name: 'Évaluateur Logique',
-            model: 'llama-3.1-70b-versatile',
+            model: 'llama-3.3-70b-versatile',
             role: 'Évaluateur logique expert avec capacité de réflexion approfondie',
             temperature: 0.1,
             maxTokens: 800
         },
         pedagogueTutor: {
             name: 'Tuteur Pédagogue',
-            model: 'llama3-70b-8192',
+            model: 'llama-3.1-8b-instant',
             role: 'Interface de discussion naturelle et empathique avec l\'étudiant',
             temperature: 0.7,
             maxTokens: 600
         },
         documentary: {
             name: 'Documentaliste',
-            model: 'mixtral-8x7b-32768',
+            model: 'openai/gpt-oss-20b',
             role: 'Synthétiseur de supports de cours et références pédagogiques',
             temperature: 0.3,
             maxTokens: 1200
         },
         qualityController: {
             name: 'Contrôleur de Qualité',
-            model: 'phi3-mini',
+            model: 'llama-3.1-8b-instant',
             role: 'Validateur anti-hallucination rapide et contrôle qualité',
             temperature: 0.05,
             maxTokens: 400
@@ -112,14 +112,12 @@ async function callGroqModelAPI(modelConfig, prompt, retryCount = 0) {
 
             // Retourner la réponse appropriée selon le modèle
             switch (modelConfig.model) {
-                case 'llama-3.1-70b-versatile':
+                case 'llama-3.3-70b-versatile':
                     return data.analysis || data.final?.message || 'Analyse effectuée';
-                case 'llama3-70b-8192':
+                case 'llama-3.1-8b-instant':
                     return data.tutor || data.final?.message || 'Réponse pédagogique';
-                case 'mixtral-8x7b-32768':
+                case 'openai/gpt-oss-20b':
                     return data.documentation || data.final?.references || 'Documentation trouvée';
-                case 'phi3-mini':
-                    return data.validation || data.final?.quality || 'Validation effectuée';
                 default:
                     return data.final?.message || 'Traitement complété';
             }
@@ -332,10 +330,10 @@ async function runSpecificPipelineModels(studentAnswer, activityContext, activit
             processingTime: Date.now() - startTime,
             timestamp: new Date().toISOString(),
             models: {
-                evaluator: 'Llama 3.1 70B',
-                tutor: 'Llama 3 70B',
-                documentalist: 'Mixtral 8x7B',
-                qualityController: 'Phi-3 Mini'
+                evaluator: 'Llama 3.3 70B',
+                tutor: 'Llama 3.1 8B',
+                documentalist: 'GPT-OSS 20B',
+                qualityController: 'Llama 3.1 8B'
             }
         };
         

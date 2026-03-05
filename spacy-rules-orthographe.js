@@ -767,5 +767,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Rendre les variables globales pour les tests
-global.orthographeRules = orthographeRules;
-global.orthoConfusions = orthoConfusions;
+if (typeof global !== 'undefined') {
+    global.orthographeRules = orthographeRules;
+    global.orthoConfusions = orthoConfusions;
+}

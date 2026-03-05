@@ -179,8 +179,8 @@ const conjugaisonRules = [
     },
     {
         name: 'auxiliaire_etre_avoir',
-        description: 'Vérifie le choix de l'auxiliaire (être/avoir) pour les verbes pronominaux et certains verbes de mouvement.',
-        example: '❌ "j'ai parti" → ✅ "je suis parti"',
+        description: 'Verifie le choix de l auxiliaire (être/avoir) pour les verbes pronominaux et certains verbes de mouvement.',
+        example: '❌ "j\'ai parti" → ✅ "je suis parti"',
         pattern: [
             { 'RIGHT_ID': 'aux', 'RIGHT_ATTRS': { 'POS': 'AUX', 'LEMMA': { 'IN': ['être', 'avoir'] } } },
             { 'LEFT_ID': 'aux', 'REL_OP': '>', 'RIGHT_ATTRS': { 'POS': 'VERB', 'MORPH': { 'VerbForm': 'Part' } } }
