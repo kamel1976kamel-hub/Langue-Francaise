@@ -539,6 +539,11 @@ if (typeof module !== 'undefined' && module.exports) {
         applyAllRules
     };
 } else if (typeof window !== 'undefined') {
+    // Export direct pour compatibilité
+    window.loadAllRules = loadAllRules;
+    window.applyAllRules = applyAllRules;
+    
+    // Export groupé aussi
     window.spacyRulesLoader = {
         loadAllRules,
         applyAllRules
