@@ -4,8 +4,7 @@
  * =================================================================
  */
 
-// URL du Worker Cloudflare - REMPLACEZ AVEC VOTRE URL RÉELLE
-const WORKER_URL = "https://tuteur-ia-api.votre-compte.workers.dev"; // Mettez votre URL ici
+const WORKER_URL = "https://tuteur-ia-api.votre-compte.workers.dev";
 
 // Fonction principale
 window.sendMessage = async function(message) {
