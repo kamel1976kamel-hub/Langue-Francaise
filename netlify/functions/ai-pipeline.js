@@ -89,9 +89,9 @@ exports.handler = async function(event) {
             0.3 // Température basse pour précision
         );
 
-        // Agent 4 : validation (Llama 3.3 70B)
+        // Agent 4 : validation (Llama 3.1 8B)
         const validation = await callModel(
-            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
             [
                 {
                     role: "system",

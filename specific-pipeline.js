@@ -36,7 +36,7 @@ const SPECIFIC_PIPELINE_CONFIG = {
         },
         qualityController: {
             name: 'Contrôleur de Qualité',
-            model: 'llama-3.3-70b-versatile',
+            model: 'llama-3.1-8b-instant',
             role: 'Validateur anti-hallucination rapide et contrôle qualité',
             temperature: 0.05,
             maxTokens: 300
@@ -342,7 +342,7 @@ async function runSpecificPipelineModels(studentAnswer, activityContext, activit
                 evaluator: 'Llama 3.3 70B',
                 tutor: 'Llama 3.3 70B',
                 documentalist: 'GPT-OSS 20B',
-                qualityController: 'Llama 3.3 70B'
+                qualityController: 'Llama 3.1 8B'
             }
         };
         
