@@ -7,10 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "netlify deploy --prod"
+    "deploy": "netlify deploy --prod",
+    "start": "node server.js",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "setup": "chmod +x setup.sh && ./setup.sh",
+    "rag:setup": "node rag-setup.js",
+    "rag:test": "node rag-service.js"
   },
   "dependencies": {
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
     "vite": "^5.0.0",

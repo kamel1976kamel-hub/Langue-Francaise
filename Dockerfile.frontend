@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copier les fichiers frontend
+COPY index.html ./
+COPY *.js ./
+COPY *.css ./
+
+# Installer un serveur simple
+RUN npm install -g http-server
+
+# Exposer le port
+EXPOSE 3000
+
+# Démarrer le serveur
+CMD ["http-server", "-p", "3000", "-c-1"]
