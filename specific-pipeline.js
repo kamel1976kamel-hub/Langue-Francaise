@@ -11,32 +11,40 @@ console.log('🚀 Initialisation du pipeline IA avec Groq...');
  * Configuration des modèles pour pipeline IA avec Groq
  */
 const SPECIFIC_PIPELINE_CONFIG = {
-    // Modèles Groq - gratuits et performants
+    // Modèles Groq avec système de failover
     models: {
         logicEvaluator: {
             name: 'Évaluateur Logique',
-            model: 'llama-3.1-8b-instant',
+            primary: 'llama-3.1-8b-instant',
+            secondary: 'llama-3.1-70b-versatile',
+            tertiary: 'mixtral-8x7b-32768',
             role: 'Évaluateur logique expert avec capacité de réflexion approfondie',
             temperature: 0.1,
             maxTokens: 800
         },
         pedagogueTutor: {
             name: 'Tuteur Pédagogue',
-            model: 'llama-3.1-8b-instant',
+            primary: 'llama-3.1-8b-instant',
+            secondary: 'llama-3.1-70b-versatile',
+            tertiary: 'mixtral-8x7b-32768',
             role: 'Interface de discussion naturelle et empathique avec l\'étudiant',
             temperature: 0.7,
             maxTokens: 500
         },
         documentary: {
             name: 'Documentaliste',
-            model: 'openai/gpt-oss-20b',
+            primary: 'openai/gpt-oss-20b',
+            secondary: 'llama-3.1-8b-instant',
+            tertiary: 'mixtral-8x7b-32768',
             role: 'Synthétiseur de supports de cours et références pédagogiques',
             temperature: 0.3,
             maxTokens: 1200
         },
         qualityController: {
             name: 'Contrôleur de Qualité',
-            model: 'llama-3.1-8b-instant',
+            primary: 'llama-3.1-8b-instant',
+            secondary: 'llama-3.1-70b-versatile',
+            tertiary: 'mixtral-8x7b-32768',
             role: 'Validateur anti-hallucination rapide et contrôle qualité',
             temperature: 0.05,
             maxTokens: 300
@@ -150,56 +158,37 @@ async function callGroqModelAPI(modelConfig, prompt, retryCount = 0) {
             messages: [
                 {
                     role: "system",
-                    content: modelConfig.role
-                },
-                {
-                    role: "user", 
-                    content: prompt
                 }
-            ],
-            temperature: modelConfig.temperature,
-            max_tokens: modelConfig.maxTokens
-        };
-
-        try {
-            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getGroqToken()}`,
-                    'User-Agent': 'Langue-Francaise/1.0'
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`❌ Erreur API Groq (${response.status}):`, errorText);
-                throw new Error(`Erreur API Groq: ${response.status} ${response.statusText}`);
+                
+                throw new Error(`HTTP ${response.status}: ${errorData.error || 'Unknown error'}`);
             }
 
             const data = await response.json();
-            const content = data.choices?.[0]?.message?.content;
+            const reply = data.choices?.[0]?.message?.content || 'Réponse vide';
             
-            if (!content) {
-                throw new Error('Réponse vide de l\'API Groq');
-            }
-
-            console.log(`✅ Réponse de ${modelConfig.name}:`, content.substring(0, 100) + '...');
-            return content;
+            console.log(`✅ ${modelConfig.name} (${currentModel}) réponse reçue`);
+            return reply;
 
         } catch (error) {
-            console.error(`❌ Erreur appel local ${modelConfig.name}:`, error.message);
+            console.error(`❌ Erreur ${modelConfig.name} (${currentModel}):`, error.message);
             
-            if (retryCount < SPECIFIC_PIPELINE_CONFIG.retryAttempts) {
+            // Si dernier modèle et retry attempts pas dépassés
+            if (modelIndex === models.length - 1 && retryCount < SPECIFIC_PIPELINE_CONFIG.retryAttempts) {
                 console.warn(`⚠️ Retry ${retryCount + 1}/${SPECIFIC_PIPELINE_CONFIG.retryAttempts} pour ${modelConfig.name}`);
                 await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
                 return callGroqModelAPI(modelConfig, prompt, retryCount + 1);
             }
-
+            
+            // Si pas dernier modèle, continuer avec le suivant
+            if (modelIndex < models.length - 1) {
+                continue;
+            }
+            
             throw error;
         }
     }
+    
+    throw new Error(`Tous les modèles ont échoué pour ${modelConfig.name}`);
 }
 
 /**
