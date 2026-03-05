@@ -107,6 +107,11 @@ exports.handler = async function(event) {
 
         // Construire la réponse finale
         const finalResponse = {
+            choices: [{
+                message: {
+                    content: tutor.choices[0].message.content
+                }
+            }],
             analysis: analysis.choices[0].message.content,
             tutor: tutor.choices[0].message.content,
             documentation: doc.choices[0].message.content,

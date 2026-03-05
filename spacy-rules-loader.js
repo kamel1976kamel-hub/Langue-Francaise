@@ -539,14 +539,16 @@ if (typeof module !== 'undefined' && module.exports) {
         applyAllRules
     };
 } else if (typeof window !== 'undefined') {
-    // Export direct pour compatibilité
+    // Exporter les fonctions globalement pour compatibilité
     window.loadAllRules = loadAllRules;
     window.applyAllRules = applyAllRules;
+    window.applyRule = applyRule;
     
-    // Export groupé aussi
+    // Exporter sous spacyRulesLoader aussi
     window.spacyRulesLoader = {
-        loadAllRules,
-        applyAllRules
+        loadAllRules: loadAllRules,
+        applyAllRules: applyAllRules,
+        applyRule: applyRule
     };
     
     // Charger automatiquement toutes les règles au démarrage
