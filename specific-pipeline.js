@@ -15,14 +15,14 @@ const SPECIFIC_PIPELINE_CONFIG = {
     models: {
         logicEvaluator: {
             name: 'Évaluateur Logique',
-            model: 'llama-3.3-70b-versatile',
+            model: 'llama-3.1-8b-instant',
             role: 'Évaluateur logique expert avec capacité de réflexion approfondie',
             temperature: 0.1,
             maxTokens: 800
         },
         pedagogueTutor: {
             name: 'Tuteur Pédagogue',
-            model: 'llama-3.3-70b-versatile',
+            model: 'llama-3.1-8b-instant',
             role: 'Interface de discussion naturelle et empathique avec l\'étudiant',
             temperature: 0.7,
             maxTokens: 500
@@ -206,20 +206,17 @@ async function callGroqModelAPI(modelConfig, prompt, retryCount = 0) {
  * MODÈLE 1: Évaluateur Logique DeepSeek R1 Distill
  */
 async function evaluateWithDeepSeekR1(studentAnswer, activityContext, activityType) {
-    const prompt = `En tant qu'évaluateur logique expert, analyse cette réponse d'étudiant avec précision.
+    const prompt = `En tant qu'évaluateur logique, analyse cette réponse d'étudiant.
 
 CONTEXTE: ${activityContext}
 TYPE: ${activityType}
 RÉPONSE: "${studentAnswer}"
 
-ANALYSE REQUISE:
-1. Points forts et concepts corrects
-2. Erreurs de raisonnement spécifiques  
-3. Concepts manquants
-4. Score de compréhension (0-10)
-5. Pistes d'amélioration
-
-Sois constructif et précis.`;
+CONSIGNES IMPORTANTES:
+- Réponse MAXIMUM 10 lignes
+- 2-3 points clés maximum
+- Score compréhension (0-10) obligatoire
+- Sois concis et précis`;
 
     return await callGroqModelAPI(SPECIFIC_PIPELINE_CONFIG.models.logicEvaluator, prompt);
 }
@@ -227,19 +224,19 @@ Sois constructif et précis.`;
 /**
  * MODÈLE 2: Tuteur Pédagogue Llama 3 70B
  */
-async function tutorWithLlama3(analysisResult, studentAnswer, activityContext) {
-    const prompt = `En tant que tuteur pédagogue empathique, transforme cette analyse en réponse constructive.
+async function tutorWithLlama3(logicEvaluation, activityContext, activityType) {
+    const prompt = `En tant que tuteur pédagogue, réponds à cette situation pédagogique.
 
-ANALYSE: ${analysisResult}
-RÉPONSE ORIGINALE: ${studentAnswer}
+ÉVALUATION LOGIQUE: ${logicEvaluation}
 CONTEXTE: ${activityContext}
+TYPE: ${activityType}
 
-DIRECTIVES:
-1. Encourage l'étudiant
-2. Pose des questions ouvertes
-3. Donne des indices progressifs (pas de réponses directes)
-4. Utilise un ton bienveillant
-5. Propose des pistes pour approfondir`;
+CONSIGNES IMPORTANTES:
+- Réponse MAXIMUM 10 lignes
+- Sois encourageur et bienveillant
+- Donne 1-2 indices progressifs
+- Pas de réponse directe
+- Termine par une question ouverte`;
 
     return await callGroqModelAPI(SPECIFIC_PIPELINE_CONFIG.models.pedagogueTutor, prompt);
 }
@@ -248,18 +245,17 @@ DIRECTIVES:
  * MODÈLE 3: Documentaliste Mixtral 8x7B
  */
 async function documentWithMixtral(tutorResponse, activityContext, activityType) {
-    const prompt = `En tant que documentaliste expert, trouve les références pour cette situation.
+    const prompt = `En tant que documentaliste, trouve les références pour cette situation.
 
 RÉPONSE DU TUTEUR: ${tutorResponse}
 CONTEXTE: ${activityContext}
 TYPE: ${activityType}
 
-RESSOURCES REQUISES:
-1. Références de manuels pertinents
-2. Pages ou chapitres spécifiques
-3. Exemples concrets et exercices
-4. Ressources complémentaires
-5. Méthodes d'apprentissage adaptées`;
+CONSIGNES IMPORTANTES:
+- Réponse MAXIMUM 10 lignes
+- 2-3 références pertinentes maximum
+- Sois concis et précis
+- Indique pages ou chapitres si possible`;
 
     return await callGroqModelAPI(SPECIFIC_PIPELINE_CONFIG.models.documentary, prompt);
 }
@@ -268,18 +264,17 @@ RESSOURCES REQUISES:
  * MODÈLE 4: Contrôleur Qualité Phi-3 Mini
  */
 async function qualityControlWithPhi3(tutorResponse, documentation, studentAnswer) {
-    const prompt = `En tant que contrôleur qualité rigoureux, valide cette réponse pédagogique.
+    const prompt = `En tant que contrôleur qualité, valide cette réponse pédagogique.
 
 RÉPONSE TUTEUR: ${tutorResponse}
 DOCUMENTATION: ${documentation}
 RÉPONSE ORIGINALE: ${studentAnswer}
 
-VALIDATION:
-1. La réponse est-elle pédagogiquement correcte ?
-2. Y a-t-il des erreurs ou incohérences ?
-3. La réponse aide-t-elle vraiment l'étudiant ?
-4. Les références sont-elles pertinentes ?
-5. Score de qualité (0-100)`;
+CONSIGNES IMPORTANTES:
+- Réponse MAXIMUM 10 lignes
+- Score qualité (0-100) obligatoire
+- 1-2 points clés maximum
+- Sois concis et direct`;
 
     return await callGroqModelAPI(SPECIFIC_PIPELINE_CONFIG.models.qualityController, prompt);
 }
