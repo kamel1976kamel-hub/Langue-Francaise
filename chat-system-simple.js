@@ -4,7 +4,7 @@
  * =================================================================
  */
 
-const WORKER_URL = "https://tuteur-ia-api.votre-compte.workers.dev";
+const WORKER_URL = "https://tuteur-ia-api.chellouaikamel50.workers.dev";
 
 // Fonction principale
 window.sendMessage = async function(message) {
