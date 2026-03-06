@@ -149,8 +149,8 @@ window.submitActivity = async function(chapterId, activityId) {
     return;
   }
 
-  // Vérifier si la pipeline IA est disponible - PLUS DE FALLBACK
-  if (typeof window.runFourModelPipeline !== 'function') {
+  // Vérifier si la pipeline IA est disponible - UTILISATION DE LA BONNE FONCTION
+  if (typeof window.demanderIA !== 'function') {
     feedbackTextEl.textContent = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
     feedbackEl.classList.remove('hidden');
     return;
@@ -202,7 +202,7 @@ window.submitActivity = async function(chapterId, activityId) {
     // Combiner le contexte de base avec le contexte de l'activité
     const contexteFinal = `${baseContexte}\n\n${contexte}`;
     
-    const reponse = await window.runFourModelPipeline(answer, contexteFinal);
+    const reponse = await window.demanderIA(answer, contexteFinal);
     
     // Afficher la réponse de l'IA avec un effet de frappe simulé
     if (typeof simulateTypingEffect !== 'undefined') {
