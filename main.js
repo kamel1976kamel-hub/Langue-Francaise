@@ -819,9 +819,8 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
 async function initIA() {
     try {
         console.log('🚀 DÉBUT INITIALISATION IA...');
-        setIaStatus("IA : initialisation...", "bg-amber-500", 10);
         
-        // Vérifier si notre Worker est disponible
+        // Vérifier d'abord si notre Worker est disponible
         console.log('🔍 Vérification de la fonction sendAIChatMessage...');
         console.log('📋 sendAIChatMessage disponible:', typeof window.sendAIChatMessage);
         
@@ -833,6 +832,7 @@ async function initIA() {
             console.log('🎯 appState.iaReady mis à true');
         } else {
             console.log('⚠️ Worker Cloudflare NON détecté');
+            setIaStatus("IA : initialisation...", "bg-amber-500", 10);
             console.log('🔍 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('send') || key.includes('chat') || key.includes('ai')));
             setIaStatus("IA : Worker non disponible", "bg-amber-500", 50);
             console.log("⚠️ Worker Cloudflare Workers non configuré");
@@ -844,7 +844,6 @@ async function initIA() {
         console.log('📊 État final de l\'initialisation IA:');
         console.log('  - iaReady:', appState.iaReady);
         console.log('  - sendAIChatMessage:', typeof window.sendAIChatMessage);
-        console.log('  - demanderIA:', typeof window.demanderIA);
         
     } catch (error) {
         console.error('❌ ERREUR INITIALISATION IA:', error);
