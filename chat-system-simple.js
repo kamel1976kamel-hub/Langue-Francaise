@@ -6,15 +6,6 @@
 
 const WORKER_URL = "https://tuteur-ia-api.chellouaikamel50.workers.dev";
 
-// Log de démarrage
-console.log('🚀 CHAT SYSTEM CHARGÉ - Pipeline 4 agents IA');
-console.log('🔗 URL Worker:', WORKER_URL);
-console.log('📋 Fonctions disponibles:');
-console.log('  - sendAIChatMessage:', typeof window.sendAIChatMessage);
-console.log('  - addChatMessage:', typeof window.addChatMessage);
-console.log('  - showTypingIndicator:', typeof window.showTypingIndicator);
-console.log('  - hideTypingIndicator:', typeof window.hideTypingIndicator);
-
 // Fonction principale
 window.sendAIChatMessage = async function(message) {
     try {
@@ -85,6 +76,15 @@ window.sendAIChatMessage = async function(message) {
         console.log('💬 Message d\'erreur affiché à l\'utilisateur');
     }
 };
+
+// Log de démarrage (après la définition de la fonction)
+console.log('🚀 CHAT SYSTEM CHARGÉ - Pipeline 4 agents IA');
+console.log('🔗 URL Worker:', WORKER_URL);
+console.log('📋 Fonctions disponibles:');
+console.log('  - sendAIChatMessage:', typeof window.sendAIChatMessage);
+console.log('  - addChatMessage:', typeof window.addChatMessage);
+console.log('  - showTypingIndicator:', typeof window.showTypingIndicator);
+console.log('  - hideTypingIndicator:', typeof window.hideTypingIndicator);
 
 // Formater la réponse
 function formatResponse(result) {
