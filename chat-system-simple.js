@@ -56,10 +56,24 @@ window.sendAIChatMessage = async function(message) {
         hideTypingIndicator();
         console.log('⏹️ Indicateur de chargement masqué');
         
-        // Formater et afficher la réponse
-        const formattedResponse = formatResponse(result);
-        addChatMessage(formattedResponse, 'ai');
-        console.log('💬 Réponse affichée à l\'utilisateur');
+        // Formater et afficher la réponse - afficher tous les agents
+        console.log('📊 Affichage des 4 agents...');
+        
+        // Afficher chaque agent séparément
+        if (result.analysis) {
+            addChatMessage("🔎 **Analyse :**\n" + result.analysis, 'ai');
+        }
+        if (result.tutor) {
+            addChatMessage("👩‍🏫 **Tuteur :**\n" + result.tutor, 'ai');
+        }
+        if (result.documentation) {
+            addChatMessage("📚 **Documentation :**\n" + result.documentation, 'ai');
+        }
+        if (result.validation) {
+            addChatMessage("✅ **Validation :**\n" + result.validation, 'ai');
+        }
+        
+        console.log('💬 Réponses des 4 agents affichées');
         
         console.log('🎯 PIPELINE TERMINÉE AVEC SUCCÈS');
         return result;
@@ -109,45 +123,57 @@ function formatResponse(result) {
 
 // Ajouter un message dans le chat
 function addChatMessage(message, sender) {
-    const chatContainer = document.getElementById('chatMessages');
+    // Chercher le conteneur chat principal
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto');
     if (!chatContainer) return;
     
     const messageDiv = document.createElement('div');
-    messageDiv.className = `${sender}-message`;
-    
+    messageDiv.className = 'flex gap-3 mb-4';
+
     if (sender === 'user') {
         messageDiv.innerHTML = `
-            <div class="message-content">
-                <p>${escapeHtml(message)}</p>
-                <small>${new Date().toLocaleTimeString()}</small>
+            <div class="flex-1"></div>
+            <div class="flex-1">
+                <div class="rounded-lg p-4 bg-blue-500 text-white ml-auto max-w-xs break-words">
+                    <p class="text-sm whitespace-pre-wrap">${escapeHtml(message)}</p>
+                    <p class="text-xs mt-1 text-right">${new Date().toLocaleTimeString()}</p>
+                </div>
             </div>
         `;
     } else {
         messageDiv.innerHTML = `
-            <div class="message-content">
-                <div class="ai-response">${message}</div>
-                <small>${new Date().toLocaleTimeString()}</small>
+            <div class="flex-1">
+                <div class="rounded-lg p-4 bg-gray-200 max-w-xs break-words">
+                    <p class="text-sm whitespace-pre-wrap">${message}</p>
+                    <p class="text-xs mt-1">${new Date().toLocaleTimeString()}</p>
+                </div>
             </div>
+            <div class="flex-1"></div>
         `;
     }
-    
+
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 // Indicateur de frappe
 function showTypingIndicator() {
-    const chatContainer = document.getElementById('chatMessages');
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto');
     if (chatContainer) {
         const indicator = document.createElement('div');
         indicator.id = 'typingIndicator';
-        indicator.className = 'ai-message typing';
+        indicator.className = 'flex gap-3 mb-4 typing-indicator';
         indicator.innerHTML = `
-            <div class="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+            <div class="flex-1">
+                <div class="rounded-lg p-4 bg-gray-200 max-w-xs">
+                    <div class="flex gap-1">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                </div>
             </div>
+            <div class="flex-1"></div>
         `;
         chatContainer.appendChild(indicator);
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -172,25 +198,34 @@ function escapeHtml(text) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Chat System Simple initialisé');
     
-    // Configurer le formulaire
-    const chatForm = document.getElementById('chatForm');
-    const chatInput = document.getElementById('chatInput');
+    // Configurer l'input et le bouton
+    const chatInput = document.querySelector('#chatInput');
+    const sendButton = document.querySelector('button:last-of-type');
     
-    if (chatForm && chatInput) {
-        chatForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
+    if (chatInput && sendButton) {
+        // Créer la fonction sendMessage
+        window.sendMessage = function() {
             const message = chatInput.value.trim();
-            if (!message) return;
-            
-            chatInput.value = '';
-            
-            try {
-                await window.sendMessage(message);
-            } catch (error) {
-                console.error('Erreur:', error);
+            if (message) {
+                window.sendAIChatMessage(message);
+                chatInput.value = '';
             }
-        });
+        };
+        
+        // Connecter le bouton
+        sendButton.onclick = window.sendMessage;
+        
+        // Configurer l'événement Enter
+        chatInput.onkeypress = function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                window.sendMessage();
+            }
+        };
+        
+        console.log('✅ Interface chat configurée');
+    } else {
+        console.log('❌ Input ou bouton non trouvé');
     }
 });
 
