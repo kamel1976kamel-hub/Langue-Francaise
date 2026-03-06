@@ -123,17 +123,15 @@ function formatResponse(result) {
 
 // Ajouter un message dans le chat
 function addChatMessage(message, sender) {
-    // Chercher le conteneur chat principal avec la bonne classe
-    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.px-6.py-4.space-y-4.chatMessages') || 
-                          document.querySelector('.chatMessages') ||
-                          document.querySelector('.flex-1.overflow-y-auto');
+    // Utiliser l'ID direct du conteneur chat
+    const chatContainer = document.getElementById('chatMessages');
     
     if (!chatContainer) {
         console.log("❌ Conteneur chatMessages non trouvé");
         return;
     }
     
-    console.log("✅ Conteneur chatMessages trouvé:", chatContainer.className);
+    console.log("✅ Conteneur chatMessages trouvé:", chatContainer.id);
     
     const messageDiv = document.createElement('div');
     messageDiv.className = 'flex gap-3 mb-4';
@@ -167,10 +165,8 @@ function addChatMessage(message, sender) {
 
 // Indicateur de frappe
 function showTypingIndicator() {
-    // Chercher le conteneur chat principal
-    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.px-6.py-4.space-y-4.chatMessages') || 
-                          document.querySelector('.chatMessages') ||
-                          document.querySelector('.flex-1.overflow-y-auto');
+    // Utiliser l'ID direct du conteneur chat
+    const chatContainer = document.getElementById('chatMessages');
     
     if (chatContainer) {
         const indicator = document.createElement('div');
