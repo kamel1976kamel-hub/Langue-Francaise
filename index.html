@@ -1883,12 +1883,12 @@
                     placeholder="Posez votre question..." 
                     class="flex-1 px-4 py-3 rounded-lg text-sm border resize-none min-h-[44px] max-h-[120px]"
                     style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
-                    onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendAIChatMessage(); }"
+                    onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"
                     oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px';"
                     rows="1"
                   ></textarea>
                   <button 
-                    onclick="sendAIChatMessage()"
+                    onclick="sendMessage()"
                     class="px-4 py-3 rounded-lg transition-colors"
                     style="background-color: var(--bs-primary); color: white;"
                   >
@@ -7024,94 +7024,7 @@
       }
 
       // ============ CHAT AVEC IA (vue Chat) ============
-      window.sendAIChatMessage = function() {
-        const input = document.getElementById('chatInput');
-        const message = input.value.trim();
-        
-        if (!message) return;
-        
-        // Ajouter le message de l'étudiant
-        addChatMessage(message, 'student');
-        
-        // Vider l'input
-        input.value = '';
-        
-        // Obtenir le contexte spécifique du sujet actuel
-        const topicContext = window.currentDiscussion && window.discussionData[window.currentDiscussion] 
-          ? window.discussionData[window.currentDiscussion].context 
-          : 'Tu es un tuteur expert en français. Aide l\'étudiant sans faire le travail à sa place.';
-        
-        // Obtenir la réponse de l'IA (pipeline à 4 modèles si disponible)
-        if (window.demanderIA) {
-          window.demanderIA(message, topicContext)
-            .then(response => {
-              simulateTypingEffectForChat(response);
-            })
-            .catch(err => {
-              console.error('Erreur IA :', err);
-              addChatMessage("Désolé, une erreur technique est survenue. Veuillez réessayer.", 'ai');
-            });
-        } else {
-          console.error('Pipeline IA indisponible.');
-          addChatMessage("Le service IA est temporairement indisponible. Veuillez réessayer plus tard.", 'ai');
-        }
-      };
-
-      function addChatMessage(text, sender) {
-        const chatMessages = document.getElementById('chatMessages');
-        
-        // Sauvegarder le message dans l'historique
-        if (window.currentDiscussion) {
-          addMessageToHistory(window.currentDiscussion, text, sender);
-        }
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'flex gap-3';
-        
-        const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        
-        if (sender === 'student') {
-          messageDiv.innerHTML = `
-            <div class="flex-1">
-              <div class="rounded-lg p-4" style="background-color: var(--bs-primary); margin-left: auto; max-width: 80%;">
-                <p class="text-sm text-white">${escapeHtml(text)}</p>
-              </div>
-              <p class="text-xs mt-1 text-right" style="color: var(--bs-text-muted);">Vous • ${time}</p>
-            </div>
-            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
-              <span class="text-white text-xs font-bold">V</span>
-            </div>
-          `;
-        } else {
-          messageDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
-              <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-              </svg>
-            </div>
-            <div class="flex-1">
-              <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-                <div class="flex justify-between items-start">
-                  <p class="text-sm flex-1" style="color: var(--bs-white);">${escapeHtml(text)}</p>
-                  <button 
-                    onclick="speakChatAIResponse(this)"
-                    class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                    title="Lire la réponse de l'IA"
-                  >
-                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${time}</p>
-            </div>
-          `;
-        }
-        
-        chatMessages.appendChild(messageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
+      // Anciennes fonctions supprimées - utilise chat-system-simple.js
 
       function escapeHtml(text) {
         const div = document.createElement('div');
