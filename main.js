@@ -849,7 +849,6 @@ async function initIA() {
         console.error('❌ ERREUR INITIALISATION IA:', error);
         console.error('📍 Stack trace:', error.stack);
         setIaStatus("IA : erreur - " + error.message, "bg-rose-500", 0);
-        // Mettre iaReady à true pour ne pas bloquer
         appState.iaReady = true;
         console.log('🎯 appState.iaReady forcé à true (après erreur)');
     }
@@ -861,7 +860,7 @@ window.demanderIA = async function(prompt, contexte) {
         console.log('🚀 DÉBUT DEMANDE IA...');
         console.log('📝 Prompt reçu:', prompt);
         console.log('📝 Contexte reçu:', contexte);
-        
+
         // Attendre un peu que sendAIChatMessage soit disponible
         let attempts = 0;
         while (typeof window.sendAIChatMessage !== 'function' && attempts < 10) {
@@ -869,9 +868,9 @@ window.demanderIA = async function(prompt, contexte) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
-        
+
         console.log('🔍 Vérification de sendAIChatMessage:', typeof window.sendAIChatMessage);
-        
+
         // Utiliser notre Worker Cloudflare
         if (typeof window.sendAIChatMessage === 'function') {
             console.log('✅ Appel à sendAIChatMessage...');
@@ -880,13 +879,7 @@ window.demanderIA = async function(prompt, contexte) {
             return result;
         } else {
             console.log('❌ sendAIChatMessage NON disponible après attente');
-            // Message d'erreur explicite pour guider l'utilisateur
-            const errorMsg = `⚠️ Worker Cloudflare non disponible
-
-Pour activer l'IA :
-1. Vérifiez que le Worker est déployé
-2. Actualisez la page
-3. Contactez l'administrateur si le problème persiste`;
+            const errorMsg = `⚠️ Worker Cloudflare non disponible`;
             console.log('📄 Message d'erreur généré:', errorMsg);
             return errorMsg;
         }

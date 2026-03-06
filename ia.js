@@ -1,31 +1,9 @@
 // Fichier de compatibilité IA - Redirige vers la pipeline Cloudflare Workers
 // Ce fichier remplace l'ancienne implémentation WebLLM
+// REDIRECTION VERS main.js pour éviter les conflits
+console.log('🔄 ia.js - Redirection vers main.demanderIA');
 
-// Fonction de compatibilité pour les anciens appels
-window.demanderIA = async function(prompt, contexte) {
-    console.log('🚀 ia.js - demaderIA appelé');
-    console.log('📝 Prompt:', prompt);
-    console.log('📋 Contexte:', contexte);
-    
-    // Attendre un peu que sendAIChatMessage soit disponible (compatibilité avec main.js)
-    let attempts = 0;
-    while (typeof window.sendAIChatMessage !== 'function' && attempts < 10) {
-        console.log(`⏳ ia.js - Attente de sendAIChatMessage... tentative ${attempts + 1}/10`);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-    }
-    
-    // Utiliser le pipeline Cloudflare Workers
-    if (typeof window.sendAIChatMessage === 'function') {
-        console.log('✅ ia.js - Appel à sendAIChatMessage...');
-        const result = await window.sendAIChatMessage(prompt);
-        console.log('✅ ia.js - Réponse reçue de sendAIChatMessage');
-        return result;
-    } else {
-        console.log('❌ ia.js - sendAIChatMessage NON disponible après attente');
-        return "Le service IA est temporairement indisponible. Veuillez réessayer plus tard.";
-    }
-};
+// Ne pas définir demanderIA ici - utiliser celle de main.js
 
 // Fonction d'initialisation de compatibilité
 window.initWebLLM = async function() {

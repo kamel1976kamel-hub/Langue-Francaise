@@ -308,9 +308,9 @@ function addChatMessage(message, sender) {
                 <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex items-start justify-between">
                         <p class="text-sm flex-1" style="color: var(--bs-white);"></p>
-                        <button onclick="playAudio(this)" class="ml-3 p-1 rounded hover:bg-white/10 transition-colors" title="Lire à voix haute">
-                            <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02V12c0-1.8-1.02-3.29-2.5-4.03zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
+                        <button onclick="playAudio(this)" class="ml-3 p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors" title="Lire à voix haute">
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
                             </svg>
                         </button>
                     </div>
