@@ -9,19 +9,26 @@ const WORKER_URL = "https://tuteur-ia-api.chellouaikamel50.workers.dev";
 // Fonction principale
 window.sendAIChatMessage = async function(message) {
     try {
-        console.log('🚀 DÉBUT PIPELINE CLOUDFLARE WORKERS');
+        console.log('\n🚀 ===== DÉBUT PIPELINE CLOUDFLARE WORKERS =====');
         console.log('📝 Message utilisateur:', message);
         console.log('🔗 URL Worker:', WORKER_URL);
+        console.log('⏰ Timestamp:', new Date().toISOString());
         
         // Afficher message utilisateur
+        console.log('📤 ÉTAPE 1: Affichage message utilisateur...');
         addChatMessage(message, 'user');
+        console.log('✅ Message utilisateur affiché dans le chat');
         
         // Afficher indicateur de chargement
+        console.log('⏳ ÉTAPE 2: Affichage indicateur de chargement...');
         showTypingIndicator();
-        console.log('⏳ Indicateur de chargement affiché');
+        console.log('✅ Indicateur de chargement affiché');
         
         // Appeler l'API avec validation CORS
-        console.log('📡 Envoi requête POST vers Worker...');
+        console.log('📡 ÉTAPE 3: Envoi requête POST vers Worker...');
+        const fetchStart = Date.now();
+        console.log('⏱️ Début requête:', fetchStart);
+        
         const response = await fetch(WORKER_URL, {
             method: 'POST',
             headers: {
@@ -35,16 +42,29 @@ window.sendAIChatMessage = async function(message) {
             })
         });
         
-        console.log('📡 Réponse Worker reçue - Status:', response.status);
-        console.log('📡 Headers:', Object.fromEntries(response.headers.entries()));
+        const fetchEnd = Date.now();
+        console.log('⏱️ Fin requête:', fetchEnd);
+        console.log('⏱️ Durée requête:', fetchEnd - fetchStart, 'ms');
+        
+        console.log('📡 ÉTAPE 4: Réponse Worker reçue');
+        console.log('📊 Status HTTP:', response.status, response.statusText);
+        console.log('� Headers:', Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
+        console.log('📡 ÉTAPE 5: Parsing réponse JSON...');
         const result = await response.json();
-        console.log('✅ Pipeline 4 agents terminée !');
+        console.log('✅ Parsing JSON réussi');
         console.log('📊 Résultat complet:', result);
+        console.log('📊 Structure de la réponse:', {
+            studentMessage: !!result.studentMessage,
+            analysis: !!result.analysis,
+            tutor: !!result.tutor,
+            documentation: !!result.documentation,
+            validation: !!result.validation
+        });
         
         // Afficher les détails de chaque agent
         console.log('🔍 Agent 1 - Analyse:', result.analysis ? '✅' : '❌');
@@ -53,35 +73,57 @@ window.sendAIChatMessage = async function(message) {
         console.log('✅ Agent 4 - Validation:', result.validation ? '✅' : '❌');
         
         // Cacher l'indicateur
+        console.log('⏹️ ÉTAPE 6: Masquage indicateur de chargement...');
         hideTypingIndicator();
-        console.log('⏹️ Indicateur de chargement masqué');
+        console.log('✅ Indicateur de chargement masqué');
         
         // Formater et afficher la réponse - afficher tous les agents
-        console.log('📊 Affichage de la réponse finale...');
+        console.log('📊 ÉTAPE 7: Préparation affichage réponse finale...');
         
         // Afficher une seule réponse finale unifiée
         let finalResponse = "";
         
         if (result.tutor && result.tutor.trim() !== '') {
+            console.log('👩‍🏫 Sélection réponse Tuteur (priorité 1)');
             finalResponse = result.tutor;
         } else if (result.analysis && result.analysis.trim() !== '') {
+            console.log('🔍 Sélection réponse Analyse (priorité 2)');
             finalResponse = result.analysis;
         } else if (result.documentation && result.documentation.trim() !== '') {
+            console.log('📚 Sélection réponse Documentation (priorité 3)');
             finalResponse = result.documentation;
         } else {
+            console.log('❌ Aucune réponse valide trouvée');
             finalResponse = "Désolé, je n'ai pas pu générer de réponse complète.";
         }
         
+        console.log('📊 ÉTAPE 8: Affichage réponse finale dans le chat...');
+        console.log('📝 Longueur réponse:', finalResponse.length, 'caractères');
         addChatMessage(finalResponse, 'ai');
-        console.log('💬 Réponse finale affichée');
+        console.log('✅ Réponse finale affichée dans le chat');
         
         // Mettre à jour l'indicateur IA à "prêt"
+        console.log('📊 ÉTAPE 9: Mise à jour indicateur IA...');
         if (typeof setIaStatus === 'function') {
             setIaStatus("IA : Prêt", "bg-emerald-500", 100);
             console.log("✅ Indicateur IA mis à jour : PRÊT");
+        } else {
+            console.log("⚠️ setIaStatus non disponible");
         }
         
-        console.log('🎯 PIPELINE TERMINÉE AVEC SUCCÈS');
+        console.log('🎯 ===== PIPELINE TERMINÉE AVEC SUCCÈS =====');
+        console.log('⏰ Timestamp fin:', new Date().toISOString());
+        console.log('📊 Résumé pipeline:', {
+            input: message,
+            output: finalResponse.substring(0, 100) + '...',
+            agents: {
+                analysis: !!result.analysis,
+                tutor: !!result.tutor,
+                documentation: !!result.documentation,
+                validation: !!result.validation
+            }
+        });
+        
         return result;
         
     } catch (error) {
@@ -90,10 +132,13 @@ window.sendAIChatMessage = async function(message) {
         console.error('📍 Stack trace:', error.stack);
         hideTypingIndicator();
         
-        // Message d'erreur détaillé
+        console.log('📊 ÉTAPE 10: Affichage message erreur...');
         const errorMsg = `Erreur technique: ${error.message}\n\nVérifiez que:\n1. Le Worker est déployé\n2. La clé API est valide\n3. La connexion Internet fonctionne\n4. Le domaine est autorisé`;
+        
         addChatMessage(errorMsg, 'ai');
-        console.log('💬 Message d\'erreur affiché à l\'utilisateur');
+        console.log('✅ Message erreur affiché');
+        console.log('❌ ===== PIPELINE EN ERREUR =====');
+        console.log('⏰ Timestamp erreur:', new Date().toISOString());
     }
 };
 

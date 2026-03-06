@@ -7809,16 +7809,8 @@
     
     <!-- Script de compatibilité IA -->
     <script>
-        // S'assurer que demanderIA est disponible même si le pipeline n'est pas prêt
-        if (!window.demanderIA) {
-            window.demanderIA = async function(prompt, contexte) {
-                if (window.runFourModelPipeline) {
-                    return await window.runFourModelPipeline(prompt, contexte);
-                } else {
-                    return "L'IA n'est pas encore prête. Veuillez patienter...";
-                }
-            };
-        }
+        // Utiliser la version améliorée de demanderIA depuis main.js
+        // Pas besoin de redéfinir ici - main.js gère déjà l'attente intelligente
         
         // Fonction pour simuler l'effet de frappe pour le chat
         window.simulateTypingEffectForChat = function(text) {
