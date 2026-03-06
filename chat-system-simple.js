@@ -151,6 +151,72 @@ console.log('  - addChatMessage:', typeof window.addChatMessage);
 console.log('  - showTypingIndicator:', typeof window.showTypingIndicator);
 console.log('  - hideTypingIndicator:', typeof window.hideTypingIndicator);
 
+// Fonction de lecture audio
+window.playAudio = function(button) {
+    try {
+        // Trouver le texte du message IA
+        const messageDiv = button.closest('.flex-1');
+        const textElement = messageDiv.querySelector('p.text-sm');
+        const text = textElement.textContent;
+        
+        console.log('🔊 Lecture audio du texte:', text);
+        
+        // Utiliser l'API Web Speech pour lire le texte
+        if ('speechSynthesis' in window) {
+            // Annuler toute lecture en cours
+            window.speechSynthesis.cancel();
+            
+            // Créer une nouvelle instance de SpeechSynthesisUtterance
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Configurer la voix (français si disponible)
+            const voices = window.speechSynthesis.getVoices();
+            const frenchVoice = voices.find(voice => voice.lang.startsWith('fr'));
+            if (frenchVoice) {
+                utterance.voice = frenchVoice;
+            }
+            
+            // Configurer les paramètres
+            utterance.rate = 0.9;  // Vitesse de lecture
+            utterance.pitch = 1;   // Ton
+            utterance.volume = 1;  // Volume
+            
+            // Changer l'icône pendant la lecture
+            const originalHTML = button.innerHTML;
+            button.innerHTML = `
+                <svg class="h-4 w-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            `;
+            
+            // Événements de lecture
+            utterance.onstart = () => {
+                console.log('🔊 Début de la lecture audio');
+            };
+            
+            utterance.onend = () => {
+                console.log('🔊 Fin de la lecture audio');
+                button.innerHTML = originalHTML;
+            };
+            
+            utterance.onerror = (event) => {
+                console.error('❌ Erreur lecture audio:', event.error);
+                button.innerHTML = originalHTML;
+            };
+            
+            // Démarrer la lecture
+            window.speechSynthesis.speak(utterance);
+            
+        } else {
+            console.error('❌ API Speech Synthesis non supportée par ce navigateur');
+            alert('La lecture audio n\'est pas supportée par votre navigateur.');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erreur dans playAudio:', error);
+    }
+};
+
 // Formater la réponse
 function formatResponse(result) {
     const { analysis, tutor, documentation, validation } = result;
@@ -207,7 +273,14 @@ function addChatMessage(message, sender) {
             </div>
             <div class="flex-1">
                 <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-                    <p class="text-sm" style="color: var(--bs-white);">${message}</p>
+                    <div class="flex items-start justify-between">
+                        <p class="text-sm flex-1" style="color: var(--bs-white);">${message}</p>
+                        <button onclick="playAudio(this)" class="ml-3 p-1 rounded hover:bg-white/10 transition-colors" title="Lire à voix haute">
+                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date().toLocaleTimeString()}</p>
                 </div>
             </div>
