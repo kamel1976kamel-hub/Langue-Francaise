@@ -6,18 +6,31 @@
 
 const WORKER_URL = "https://tuteur-ia-api.chellouaikamel50.workers.dev";
 
+// Log de démarrage
+console.log('🚀 CHAT SYSTEM CHARGÉ - Pipeline 4 agents IA');
+console.log('🔗 URL Worker:', WORKER_URL);
+console.log('📋 Fonctions disponibles:');
+console.log('  - sendAIChatMessage:', typeof window.sendAIChatMessage);
+console.log('  - addChatMessage:', typeof window.addChatMessage);
+console.log('  - showTypingIndicator:', typeof window.showTypingIndicator);
+console.log('  - hideTypingIndicator:', typeof window.hideTypingIndicator);
+
 // Fonction principale
 window.sendAIChatMessage = async function(message) {
     try {
-        console.log('🚀 Envoi vers Cloudflare Workers:', message);
+        console.log('🚀 DÉBUT PIPELINE CLOUDFLARE WORKERS');
+        console.log('📝 Message utilisateur:', message);
+        console.log('🔗 URL Worker:', WORKER_URL);
         
         // Afficher message utilisateur
         addChatMessage(message, 'user');
         
         // Afficher indicateur de chargement
         showTypingIndicator();
+        console.log('⏳ Indicateur de chargement affiché');
         
         // Appeler l'API avec validation CORS
+        console.log('📡 Envoi requête POST vers Worker...');
         const response = await fetch(WORKER_URL, {
             method: 'POST',
             headers: {
@@ -31,31 +44,45 @@ window.sendAIChatMessage = async function(message) {
             })
         });
         
-        console.log('📡 Réponse Worker:', response.status);
+        console.log('📡 Réponse Worker reçue - Status:', response.status);
+        console.log('📡 Headers:', Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
-        console.log('✅ Réponse reçue:', result);
+        console.log('✅ Pipeline 4 agents terminée !');
+        console.log('📊 Résultat complet:', result);
+        
+        // Afficher les détails de chaque agent
+        console.log('🔍 Agent 1 - Analyse:', result.analysis ? '✅' : '❌');
+        console.log('👨‍🏫 Agent 2 - Tuteur:', result.tutor ? '✅' : '❌');
+        console.log('📚 Agent 3 - Documentation:', result.documentation ? '✅' : '❌');
+        console.log('✅ Agent 4 - Validation:', result.validation ? '✅' : '❌');
         
         // Cacher l'indicateur
         hideTypingIndicator();
+        console.log('⏹️ Indicateur de chargement masqué');
         
         // Formater et afficher la réponse
         const formattedResponse = formatResponse(result);
         addChatMessage(formattedResponse, 'ai');
+        console.log('💬 Réponse affichée à l\'utilisateur');
         
+        console.log('🎯 PIPELINE TERMINÉE AVEC SUCCÈS');
         return result;
         
     } catch (error) {
-        console.error('❌ Erreur:', error);
+        console.error('❌ ERREUR PIPELINE:', error);
+        console.error('📍 Erreur détaillée:', error.message);
+        console.error('📍 Stack trace:', error.stack);
         hideTypingIndicator();
         
         // Message d'erreur détaillé
         const errorMsg = `Erreur technique: ${error.message}\n\nVérifiez que:\n1. Le Worker est déployé\n2. La clé API est valide\n3. La connexion Internet fonctionne\n4. Le domaine est autorisé`;
         addChatMessage(errorMsg, 'ai');
+        console.log('💬 Message d\'erreur affiché à l\'utilisateur');
     }
 };
 
