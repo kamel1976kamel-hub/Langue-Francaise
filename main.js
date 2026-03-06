@@ -818,48 +818,78 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
 // Fonction pour initialiser l'IA principale (pour la compatibilité avec le code existant)
 async function initIA() {
     try {
+        console.log('🚀 DÉBUT INITIALISATION IA...');
         setIaStatus("IA : initialisation...", "bg-amber-500", 10);
         
         // Vérifier si notre Worker est disponible
+        console.log('🔍 Vérification de la fonction sendAIChatMessage...');
+        console.log('📋 sendAIChatMessage disponible:', typeof window.sendAIChatMessage);
+        
         if (typeof window.sendAIChatMessage === 'function') {
+            console.log('✅ Worker Cloudflare détecté !');
             setIaStatus("IA : Cloudflare Workers prêt", "bg-emerald-500", 100);
             console.log("✅ Pipeline Cloudflare Workers prêt !");
             appState.iaReady = true;
+            console.log('🎯 appState.iaReady mis à true');
         } else {
+            console.log('⚠️ Worker Cloudflare NON détecté');
+            console.log('🔍 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('send') || key.includes('chat') || key.includes('ai')));
             setIaStatus("IA : Worker non disponible", "bg-amber-500", 50);
             console.log("⚠️ Worker Cloudflare Workers non configuré");
             // Ne pas bloquer - essayer quand même
             appState.iaReady = true;
+            console.log('🎯 appState.iaReady forcé à true (non bloquant)');
         }
         
+        console.log('📊 État final de l\'initialisation IA:');
+        console.log('  - iaReady:', appState.iaReady);
+        console.log('  - sendAIChatMessage:', typeof window.sendAIChatMessage);
+        console.log('  - demanderIA:', typeof window.demanderIA);
+        
     } catch (error) {
-        console.error("Erreur IA:", error);
+        console.error('❌ ERREUR INITIALISATION IA:', error);
+        console.error('📍 Stack trace:', error.stack);
         setIaStatus("IA : erreur - " + error.message, "bg-rose-500", 0);
         // Mettre iaReady à true pour ne pas bloquer
         appState.iaReady = true;
+        console.log('🎯 appState.iaReady forcé à true (après erreur)');
     }
 }
 
 // Fonction globale pour demander à l'IA (pour la compatibilité avec le code existant)
 window.demanderIA = async function(prompt, contexte) {
     try {
+        console.log('🚀 DÉBUT DEMANDE IA...');
+        console.log('📝 Prompt reçu:', prompt);
+        console.log('📝 Contexte reçu:', contexte);
+        console.log('🔍 Vérification de sendAIChatMessage:', typeof window.sendAIChatMessage);
+        
         // Utiliser notre Worker Cloudflare
         if (typeof window.sendAIChatMessage === 'function') {
-            return await window.sendAIChatMessage(prompt);
+            console.log('✅ Appel à sendAIChatMessage...');
+            const result = await window.sendAIChatMessage(prompt);
+            console.log('✅ Réponse reçue de sendAIChatMessage');
+            return result;
         } else {
+            console.log('❌ sendAIChatMessage NON disponible');
             // Message d'erreur explicite pour guider l'utilisateur
-            return `⚠️ Worker Cloudflare non disponible
+            const errorMsg = `⚠️ Worker Cloudflare non disponible
 
 Pour activer l'IA :
 1. Vérifiez que le Worker est déployé
 2. Actualisez la page
 3. Contactez l'administrateur si le problème persiste`;
+            console.log('📄 Message d'erreur généré:', errorMsg);
+            return errorMsg;
         }
     } catch (error) {
-        console.error('❌ Erreur IA:', error);
-        return `❌ Erreur du pipeline IA: ${error.message}
+        console.error('❌ ERREUR DEMANDE IA:', error);
+        console.error('📍 Stack trace:', error.stack);
+        const errorMsg = `❌ Erreur du pipeline IA: ${error.message}
 
 Veuillez vérifier votre connexion et réessayer.`;
+        console.log('📄 Message d'erreur généré:', errorMsg);
+        return errorMsg;
     }
 };
 
