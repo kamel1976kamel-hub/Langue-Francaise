@@ -820,44 +820,46 @@ async function initIA() {
     try {
         setIaStatus("IA : initialisation...", "bg-amber-500", 10);
         
-        // Vérifier si le pipeline avec modèles spécifiques est disponible
-        if (typeof window.runSpecificPipelineModels === 'function') {
-            setIaStatus("IA : pipeline modèles spécifiques prêt", "bg-emerald-500", 100);
-            console.log("✅ Pipeline IA modèles spécifiques prêt !");
+        // Vérifier si notre Worker est disponible
+        if (typeof window.sendAIChatMessage === 'function') {
+            setIaStatus("IA : Cloudflare Workers prêt", "bg-emerald-500", 100);
+            console.log("✅ Pipeline Cloudflare Workers prêt !");
+            appState.iaReady = true;
         } else {
-            setIaStatus("IA : configuration requise", "bg-amber-500", 50);
-            console.log("⚠️ Pipeline IA modèles spécifiques non configuré");
+            setIaStatus("IA : Worker non disponible", "bg-amber-500", 50);
+            console.log("⚠️ Worker Cloudflare Workers non configuré");
+            // Ne pas bloquer - essayer quand même
+            appState.iaReady = true;
         }
-        
-        appState.iaReady = true;
         
     } catch (error) {
         console.error("Erreur IA:", error);
         setIaStatus("IA : erreur - " + error.message, "bg-rose-500", 0);
-        throw error;
+        // Mettre iaReady à true pour ne pas bloquer
+        appState.iaReady = true;
     }
 }
 
 // Fonction globale pour demander à l'IA (pour la compatibilité avec le code existant)
 window.demanderIA = async function(prompt, contexte) {
     try {
-        // Utiliser uniquement le pipeline avec modèles spécifiques
-        if (typeof window.runFourModelPipeline === 'function') {
-            return await window.runFourModelPipeline(prompt, contexte);
+        // Utiliser notre Worker Cloudflare
+        if (typeof window.sendAIChatMessage === 'function') {
+            return await window.sendAIChatMessage(prompt);
         } else {
             // Message d'erreur explicite pour guider l'utilisateur
-            return `⚠️ Pipeline IA non configuré
+            return `⚠️ Worker Cloudflare non disponible
 
-Pour activer l'IA avec modèles spécifiques :
-1. Obtenez un token GitHub Models
-2. Configurez-le avec : configureGitHubToken("votre-token-github")
-3. Ou utilisez l'interface graphique qui apparaît automatiquement`;
+Pour activer l'IA :
+1. Vérifiez que le Worker est déployé
+2. Actualisez la page
+3. Contactez l'administrateur si le problème persiste`;
         }
     } catch (error) {
         console.error('❌ Erreur IA:', error);
         return `❌ Erreur du pipeline IA: ${error.message}
 
-Veuillez vérifier votre configuration GitHub Models et réessayer.`;
+Veuillez vérifier votre connexion et réessayer.`;
     }
 };
 
