@@ -204,11 +204,47 @@ window.submitActivity = async function(chapterId, activityId) {
     
     const reponse = await window.demanderIA(answer, contexteFinal);
     
-    // Afficher la réponse de l'IA avec un effet de frappe simulé
-    if (typeof simulateTypingEffect !== 'undefined') {
-      simulateTypingEffect(feedbackTextEl, reponse, activity.hasTable);
+    // Afficher la réponse de l'IA avec le même système que le chat
+    if (typeof window.addChatMessage !== 'undefined') {
+      // Créer un message de chat temporaire pour afficher la réponse
+      const tempChatContainer = document.createElement('div');
+      tempChatContainer.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4';
+      tempChatContainer.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+              <div class="flex items-start justify-between">
+                <p class="text-sm flex-1" style="color: var(--bs-white);"></p>
+                <button onclick="playAudio(this)" class="ml-3 p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors" title="Lire à voix haute">
+                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date().toLocaleTimeString()}</p>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Remplacer le feedback par le message de chat
+      feedbackTextEl.innerHTML = '';
+      feedbackTextEl.appendChild(tempChatContainer);
+      
+      // Appliquer l'effet de frappe sur le texte
+      const textElement = tempChatContainer.querySelector('p.text-sm');
+      if (typeof window.simulateTypingEffect === 'function') {
+        window.simulateTypingEffect(textElement, reponse);
+      } else {
+        textElement.textContent = reponse || 'Aucun retour de l\'IA.';
+      }
     } else {
-      // Si la fonction simulateTypingEffect n'est pas disponible, afficher directement
+      // Fallback : afficher directement
       if (activity.hasTable) {
         feedbackTextEl.innerHTML = formatFeedbackAsTable(reponse);
       } else {
