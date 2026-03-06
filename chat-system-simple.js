@@ -198,14 +198,19 @@ function addChatMessage(message, sender) {
             </div>
         `;
     } else {
+        // Style homogène avec le message de bienvenue de l'IA
         messageDiv.innerHTML = `
+            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+            </div>
             <div class="flex-1">
-                <div class="rounded-lg p-4 bg-gray-200 max-w-xs break-words">
-                    <p class="text-sm whitespace-pre-wrap">${message}</p>
-                    <p class="text-xs mt-1">${new Date().toLocaleTimeString()}</p>
+                <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                    <p class="text-sm" style="color: var(--bs-white);">${message}</p>
+                    <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date().toLocaleTimeString()}</p>
                 </div>
             </div>
-            <div class="flex-1"></div>
         `;
     }
 
