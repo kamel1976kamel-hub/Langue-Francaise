@@ -264,7 +264,7 @@ function formatResponse(result) {
     return response || "Réponse non disponible.";
 }
 
-// Ajouter un message dans le chat avec effet de frappe dynamique
+// Ajouter un message dans le chat avec effet de frappe dynamique et sections séparées
 function addChatMessage(message, sender) {
     // Utiliser l'ID direct du conteneur chat
     const chatContainer = document.getElementById('chatMessages');
@@ -294,10 +294,10 @@ function addChatMessage(message, sender) {
         chatContainer.scrollTop = chatContainer.scrollHeight;
         console.log("✅ Message utilisateur ajouté à chatMessages");
     } else {
-        // Pour les messages IA, utiliser l'effet de frappe dynamique
+        // Pour les messages IA, créer des sections séparées avec persistance
         console.log("🎯 Démarrage effet de frappe pour message IA...");
         
-        // Créer la structure du message IA (identique au message de bienvenue)
+        // Créer la structure du message IA avec sections
         messageDiv.innerHTML = `
             <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
                 <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,10 +307,38 @@ function addChatMessage(message, sender) {
             <div class="flex-1">
                 <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex items-start justify-between">
-                        <p class="text-sm flex-1" style="color: var(--bs-white);"></p>
+                        <div class="flex-1">
+                            <!-- Sections séparées avec persistance -->
+                            <div class="space-y-3">
+                                <div class="border-l-2 border-orange-400 pl-3">
+                                    <div class="text-xs font-semibold text-orange-400 mb-1">Techniques et pratiques de l'écrit</div>
+                                    <div class="text-sm" style="color: var(--bs-white);"></div>
+                                </div>
+                                <div class="border-l-2 border-blue-400 pl-3">
+                                    <div class="text-xs font-semibold text-blue-400 mb-1">Texte narratif</div>
+                                    <div class="text-sm" style="color: var(--bs-white);"></div>
+                                </div>
+                                <div class="border-l-2 border-green-400 pl-3">
+                                    <div class="text-xs font-semibold text-green-400 mb-1">Texte descriptif</div>
+                                    <div class="text-sm" style="color: var(--bs-white);"></div>
+                                </div>
+                                <div class="border-l-2 border-purple-400 pl-3">
+                                    <div class="text-xs font-semibold text-purple-400 mb-1">Texte explicatif</div>
+                                    <div class="text-sm" style="color: var(--bs-white);"></div>
+                                </div>
+                                <div class="border-l-2 border-red-400 pl-3">
+                                    <div class="text-xs font-semibold text-red-400 mb-1">Texte argumentatif</div>
+                                    <div class="text-sm" style="color: var(--bs-white);"></div>
+                                </div>
+                                <div class="border-l-2 border-yellow-400 pl-3">
+                                    <div class="text-xs font-semibold text-yellow-400 mb-1">Résumé</div>
+                                    <div class="text-sm" style="color: var(--bs-white);"></div>
+                                </div>
+                            </div>
+                        </div>
                         <button onclick="playAudio(this)" class="ml-3 p-1 rounded hover:bg-white/10 transition-colors" title="Lire à voix haute">
-                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                            <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02V12c0-1.8-1.02-3.29-2.5-4.03zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
                             </svg>
                         </button>
                     </div>
@@ -322,12 +350,81 @@ function addChatMessage(message, sender) {
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         
-        // Lancer l'effet de frappe
-        const textElement = messageDiv.querySelector('p.text-sm');
-        simulateTypingEffect(textElement, message);
+        // Lancer l'effet de frappe et répartir le contenu dans les sections
+        const sections = messageDiv.querySelectorAll('.text-sm');
+        distributeContentInSections(sections, message);
         
-        console.log("✅ Message IA ajouté avec effet de frappe");
+        console.log("✅ Message IA ajouté avec sections séparées");
     }
+}
+
+// Fonction pour répartir le contenu dans les sections avec persistance
+function distributeContentInSections(sections, fullMessage) {
+    // Sauvegarder dans localStorage pour la persistance
+    const chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '{}');
+    const messageId = Date.now();
+    chatHistory[messageId] = {
+        techniques: '',
+        narratif: '',
+        descriptif: '',
+        explicatif: '',
+        argumentatif: '',
+        resume: '',
+        fullMessage: fullMessage,
+        timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    
+    // Répartir le message dans les sections avec effet de frappe
+    const sectionTypes = ['techniques', 'narratif', 'descriptif', 'explicatif', 'argumentatif', 'resume'];
+    let currentSection = 0;
+    let currentCharIndex = 0;
+    
+    // Diviser le message en mots pour répartir intelligemment
+    const words = fullMessage.split(' ');
+    const wordsPerSection = Math.ceil(words.length / sectionTypes.length);
+    
+    function typeNextSection() {
+        if (currentSection >= sections.length) {
+            console.log("✅ Toutes les sections remplies");
+            return;
+        }
+        
+        const section = sections[currentSection];
+        const sectionWords = words.slice(
+            currentSection * wordsPerSection,
+            Math.min((currentSection + 1) * wordsPerSection, words.length)
+        );
+        const sectionText = sectionWords.join(' ');
+        
+        chatHistory[messageId][sectionTypes[currentSection]] = sectionText;
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        
+        // Effet de frappe pour cette section
+        let charIndex = 0;
+        function typeChar() {
+            if (charIndex < sectionText.length) {
+                section.textContent += sectionText.charAt(charIndex);
+                charIndex++;
+                
+                const chatContainer = document.getElementById('chatMessages');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+                
+                const delay = Math.random() * 30 + 20;
+                setTimeout(typeChar, delay);
+            } else {
+                currentSection++;
+                setTimeout(typeNextSection, 500);
+            }
+        }
+        
+        typeChar();
+    }
+    
+    // Commencer la frappe
+    typeNextSection();
 }
 
 // Effet de frappe dynamique
