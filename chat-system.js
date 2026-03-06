@@ -270,25 +270,23 @@ window.sendAIChatMessage = async function() {
     topicContext = await fetchMarkdownContext(window.currentDiscussion);
   }
   
-  // Appeler le pipeline IA - PLUS DE FALLBACK
-  if (typeof window.runFourModelPipeline === 'function') {
+  // Appeler le pipeline IA - UTILISATION DE LA BONNE FONCTION
+  if (typeof window.demanderIA === 'function') {
     console.log('🚀 Lancement du pipeline IA avec message:', message);
-    window.runFourModelPipeline(message, topicContext)
+    window.demanderIA(message, topicContext)
       .then(response => {
         console.log('✅ Réponse du pipeline reçue:', response);
-        console.log('📝 Contenu de la réponse:', response?.finalMessage || response?.tutoring || 'Réponse vide');
+        console.log('📝 Contenu de la réponse:', response);
         
         // Afficher dans la console pour debug
         console.log('🎯 === RÉPONSE POUR INTERFACE ===');
         console.log('Type de réponse:', typeof response);
-        console.log('Clés disponibles:', Object.keys(response || {}));
-        console.log('Message final:', response?.finalMessage);
-        console.log('Tutoring:', response?.tutoring);
+        console.log('Message final:', response);
         
         if (typeof simulateTypingEffectForChat !== 'undefined') {
-          simulateTypingEffectForChat(response?.finalMessage || response?.tutoring || 'Réponse vide');
+          simulateTypingEffectForChat(response);
         } else {
-          addChatMessage(response?.finalMessage || response?.tutoring || 'Réponse vide', 'ai');
+          addChatMessage(response, 'ai');
         }
       })
       .catch(err => {
