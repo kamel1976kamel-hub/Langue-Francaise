@@ -238,7 +238,7 @@ function formatResponse(result) {
     return response || "Réponse non disponible.";
 }
 
-// Ajouter un message dans le chat
+// Ajouter un message dans le chat avec effet de frappe dynamique
 function addChatMessage(message, sender) {
     // Utiliser l'ID direct du conteneur chat
     const chatContainer = document.getElementById('chatMessages');
@@ -263,8 +263,15 @@ function addChatMessage(message, sender) {
                 </div>
             </div>
         `;
+        
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        console.log("✅ Message utilisateur ajouté à chatMessages");
     } else {
-        // Style homogène avec le message de bienvenue de l'IA
+        // Pour les messages IA, utiliser l'effet de frappe dynamique
+        console.log("🎯 Démarrage effet de frappe pour message IA...");
+        
+        // Créer la structure du message IA (identique au message de bienvenue)
         messageDiv.innerHTML = `
             <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
                 <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +281,7 @@ function addChatMessage(message, sender) {
             <div class="flex-1">
                 <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex items-start justify-between">
-                        <p class="text-sm flex-1" style="color: var(--bs-white);">${message}</p>
+                        <p class="text-sm flex-1" style="color: var(--bs-white);"></p>
                         <button onclick="playAudio(this)" class="ml-3 p-1 rounded hover:bg-white/10 transition-colors" title="Lire à voix haute">
                             <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
@@ -285,11 +292,43 @@ function addChatMessage(message, sender) {
                 </div>
             </div>
         `;
+        
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // Lancer l'effet de frappe
+        const textElement = messageDiv.querySelector('p.text-sm');
+        simulateTypingEffect(textElement, message);
+        
+        console.log("✅ Message IA ajouté avec effet de frappe");
     }
+}
 
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    console.log("✅ Message ajouté à chatMessages");
+// Effet de frappe dynamique
+function simulateTypingEffect(element, text) {
+    let index = 0;
+    element.textContent = '';
+    
+    function typeCharacter() {
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            index++;
+            
+            // Faire défiler vers le bas pendant la frappe
+            const chatContainer = document.getElementById('chatMessages');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            // Vitesse de frappe (aléatoire pour plus de naturel)
+            const delay = Math.random() * 30 + 20; // 20-50ms par caractère
+            setTimeout(typeCharacter, delay);
+        } else {
+            console.log("✅ Effet de frappe terminé");
+        }
+    }
+    
+    typeCharacter();
 }
 
 // Indicateur de frappe
