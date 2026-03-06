@@ -151,7 +151,7 @@ console.log('  - addChatMessage:', typeof window.addChatMessage);
 console.log('  - showTypingIndicator:', typeof window.showTypingIndicator);
 console.log('  - hideTypingIndicator:', typeof window.hideTypingIndicator);
 
-// Fonction de lecture audio
+// Fonction de lecture audio avec toggle lecture/arrêt
 window.playAudio = function(button) {
     try {
         // Trouver le texte du message IA
@@ -163,49 +163,75 @@ window.playAudio = function(button) {
         
         // Utiliser l'API Web Speech pour lire le texte
         if ('speechSynthesis' in window) {
-            // Annuler toute lecture en cours
-            window.speechSynthesis.cancel();
-            
-            // Créer une nouvelle instance de SpeechSynthesisUtterance
-            const utterance = new SpeechSynthesisUtterance(text);
-            
-            // Configurer la voix (français si disponible)
-            const voices = window.speechSynthesis.getVoices();
-            const frenchVoice = voices.find(voice => voice.lang.startsWith('fr'));
-            if (frenchVoice) {
-                utterance.voice = frenchVoice;
+            // Vérifier si une lecture est en cours
+            if (window.speechSynthesis.speaking) {
+                if (window.speechSynthesis.paused) {
+                    // Reprendre la lecture
+                    console.log('🔊 Reprise de la lecture');
+                    window.speechSynthesis.resume();
+                    button.innerHTML = `
+                        <svg class="h-4 w-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    `;
+                } else {
+                    // Mettre en pause
+                    console.log('⏸️ Mise en pause de la lecture');
+                    window.speechSynthesis.pause();
+                    button.innerHTML = `
+                        <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    `;
+                }
+            } else {
+                // Démarrer une nouvelle lecture
+                console.log('🔊 Démarrage nouvelle lecture');
+                
+                // Créer une nouvelle instance de SpeechSynthesisUtterance
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Configurer la voix (français si disponible)
+                const voices = window.speechSynthesis.getVoices();
+                const frenchVoice = voices.find(voice => voice.lang.startsWith('fr'));
+                if (frenchVoice) {
+                    utterance.voice = frenchVoice;
+                }
+                
+                // Configurer les paramètres
+                utterance.rate = 0.9;  // Vitesse de lecture
+                utterance.pitch = 1;   // Ton
+                utterance.volume = 1;  // Volume
+                
+                // Sauvegarder l'icône originale
+                const originalHTML = button.innerHTML;
+                
+                // Changer l'icône pendant la lecture
+                button.innerHTML = `
+                    <svg class="h-4 w-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                `;
+                
+                // Événements de lecture
+                utterance.onstart = () => {
+                    console.log('🔊 Début de la lecture audio');
+                };
+                
+                utterance.onend = () => {
+                    console.log('🔊 Fin de la lecture audio');
+                    button.innerHTML = originalHTML;
+                };
+                
+                utterance.onerror = (event) => {
+                    console.error('❌ Erreur lecture audio:', event.error);
+                    button.innerHTML = originalHTML;
+                };
+                
+                // Démarrer la lecture
+                window.speechSynthesis.speak(utterance);
             }
-            
-            // Configurer les paramètres
-            utterance.rate = 0.9;  // Vitesse de lecture
-            utterance.pitch = 1;   // Ton
-            utterance.volume = 1;  // Volume
-            
-            // Changer l'icône pendant la lecture
-            const originalHTML = button.innerHTML;
-            button.innerHTML = `
-                <svg class="h-4 w-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            `;
-            
-            // Événements de lecture
-            utterance.onstart = () => {
-                console.log('🔊 Début de la lecture audio');
-            };
-            
-            utterance.onend = () => {
-                console.log('🔊 Fin de la lecture audio');
-                button.innerHTML = originalHTML;
-            };
-            
-            utterance.onerror = (event) => {
-                console.error('❌ Erreur lecture audio:', event.error);
-                button.innerHTML = originalHTML;
-            };
-            
-            // Démarrer la lecture
-            window.speechSynthesis.speak(utterance);
             
         } else {
             console.error('❌ API Speech Synthesis non supportée par ce navigateur');
