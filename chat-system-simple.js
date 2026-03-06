@@ -57,23 +57,29 @@ window.sendAIChatMessage = async function(message) {
         console.log('⏹️ Indicateur de chargement masqué');
         
         // Formater et afficher la réponse - afficher tous les agents
-        console.log('📊 Affichage des 4 agents...');
+        console.log('📊 Affichage de la réponse finale...');
         
-        // Afficher chaque agent séparément
-        if (result.analysis) {
-            addChatMessage("🔎 **Analyse :**\n" + result.analysis, 'ai');
-        }
-        if (result.tutor) {
-            addChatMessage("👩‍🏫 **Tuteur :**\n" + result.tutor, 'ai');
-        }
-        if (result.documentation) {
-            addChatMessage("📚 **Documentation :**\n" + result.documentation, 'ai');
-        }
-        if (result.validation) {
-            addChatMessage("✅ **Validation :**\n" + result.validation, 'ai');
+        // Afficher une seule réponse finale unifiée
+        let finalResponse = "";
+        
+        if (result.tutor && result.tutor.trim() !== '') {
+            finalResponse = result.tutor;
+        } else if (result.analysis && result.analysis.trim() !== '') {
+            finalResponse = result.analysis;
+        } else if (result.documentation && result.documentation.trim() !== '') {
+            finalResponse = result.documentation;
+        } else {
+            finalResponse = "Désolé, je n'ai pas pu générer de réponse complète.";
         }
         
-        console.log('💬 Réponses des 4 agents affichées');
+        addChatMessage(finalResponse, 'ai');
+        console.log('💬 Réponse finale affichée');
+        
+        // Mettre à jour l'indicateur IA à "prêt"
+        if (typeof setIaStatus === 'function') {
+            setIaStatus("IA : Prêt", "bg-emerald-500", 100);
+            console.log("✅ Indicateur IA mis à jour : PRÊT");
+        }
         
         console.log('🎯 PIPELINE TERMINÉE AVEC SUCCÈS');
         return result;
