@@ -4,7 +4,7 @@
  * =================================================================
  */
 
-const WORKER_URL = "https://tuteur-ia-api-v2.chellouaikamel50.workers.dev";
+const WORKER_URL = "https://tuteur-ia-api-v3.chellouaikamel50.workers.dev";
 
 // Fonction principale
 window.sendAIChatMessage = async function(message) {
@@ -14,7 +14,7 @@ window.sendAIChatMessage = async function(message) {
         // Afficher message utilisateur
         addChatMessage(message, 'user');
         
-        // Indicateur de chargement
+        // Afficher indicateur de chargement
         showTypingIndicator();
         
         // Appeler l'API
@@ -27,6 +27,8 @@ window.sendAIChatMessage = async function(message) {
                 message: message
             })
         });
+        
+        console.log('📡 Réponse Worker:', response.status);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -47,7 +49,10 @@ window.sendAIChatMessage = async function(message) {
     } catch (error) {
         console.error('❌ Erreur:', error);
         hideTypingIndicator();
-        addChatMessage("Désolé, une erreur technique est survenue. Veuillez réessayer.", 'ai');
+        
+        // Message d'erreur détaillé
+        const errorMsg = `Erreur technique: ${error.message}\n\nVérifiez que:\n1. Le Worker est déployé\n2. La clé API est valide\n3. La connexion Internet fonctionne`;
+        addChatMessage(errorMsg, 'ai');
     }
 };
 
