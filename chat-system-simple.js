@@ -17,12 +17,15 @@ window.sendAIChatMessage = async function(message) {
         // Afficher indicateur de chargement
         showTypingIndicator();
         
-        // Appeler l'API
+        // Appeler l'API avec validation CORS
         const response = await fetch(WORKER_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
+            mode: 'cors',
+            credentials: 'omit',
             body: JSON.stringify({
                 message: message
             })
@@ -51,7 +54,7 @@ window.sendAIChatMessage = async function(message) {
         hideTypingIndicator();
         
         // Message d'erreur détaillé
-        const errorMsg = `Erreur technique: ${error.message}\n\nVérifiez que:\n1. Le Worker est déployé\n2. La clé API est valide\n3. La connexion Internet fonctionne`;
+        const errorMsg = `Erreur technique: ${error.message}\n\nVérifiez que:\n1. Le Worker est déployé\n2. La clé API est valide\n3. La connexion Internet fonctionne\n4. Le domaine est autorisé`;
         addChatMessage(errorMsg, 'ai');
     }
 };
