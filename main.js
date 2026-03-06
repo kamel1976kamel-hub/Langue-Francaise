@@ -861,6 +861,15 @@ window.demanderIA = async function(prompt, contexte) {
         console.log('🚀 DÉBUT DEMANDE IA...');
         console.log('📝 Prompt reçu:', prompt);
         console.log('📝 Contexte reçu:', contexte);
+        
+        // Attendre un peu que sendAIChatMessage soit disponible
+        let attempts = 0;
+        while (typeof window.sendAIChatMessage !== 'function' && attempts < 10) {
+            console.log(`⏳ Attente de sendAIChatMessage... tentative ${attempts + 1}/10`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
         console.log('🔍 Vérification de sendAIChatMessage:', typeof window.sendAIChatMessage);
         
         // Utiliser notre Worker Cloudflare
@@ -870,7 +879,7 @@ window.demanderIA = async function(prompt, contexte) {
             console.log('✅ Réponse reçue de sendAIChatMessage');
             return result;
         } else {
-            console.log('❌ sendAIChatMessage NON disponible');
+            console.log('❌ sendAIChatMessage NON disponible après attente');
             // Message d'erreur explicite pour guider l'utilisateur
             const errorMsg = `⚠️ Worker Cloudflare non disponible
 
