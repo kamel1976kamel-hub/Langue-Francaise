@@ -21,7 +21,6 @@
     <script src="services/ai-pedagogical-service.js"></script>
     <script src="nlp/spacy-analyzer.js"></script>
     <script src="memory/student-profile.js"></script>
-    <script src="modules/progression-integration.js"></script>
     <script src="ia.js"></script>
     
     <style>
@@ -4943,13 +4942,8 @@
           teacherView.classList.remove('hidden');
           roleLabel.textContent = 'Enseignant';
           
-          // Tableau de bord désactivé pour l'enseignant
-          if (window.ProgressionIntegration && !teacherView.dataset.initialized) {
-            setTimeout(() => {
-              // window.ProgressionIntegration.replaceTeacherViewContent(); // DÉSACTIVÉ
-              teacherView.dataset.initialized = 'true';
-            },100);
-          }
+          // Progression simplifiée - Plus d'intégration complexe
+          teacherView.dataset.initialized = 'true';
         } else {
           teacherView.classList.add('hidden');
           studentView.classList.remove('hidden');
