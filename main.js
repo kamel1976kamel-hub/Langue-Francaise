@@ -14,15 +14,14 @@ const APP_CONFIG = {
     debug: location.hostname === 'localhost' || location.protocol === 'file:',
     modules: {
         required: [
+            'demanderIA'
+        ],
+        optional: [
             'runFourModelPipeline',
             'initializeUIElements',
             'initializeChatSystem',
             'initializeAudioSystem',
             'initializeActivities'
-        ],
-        optional: [
-            'initializeSpacyRules',
-            'loadCustomRules'
         ]
     },
     api: {
