@@ -250,7 +250,9 @@ window.ActivitiesOptimized = {
             'definir-sujet': ['sujet', 'définir', 'thème', 'domaine', 'objectif'],
             'causes-consequences': ['cause', 'conséquence', 'parce que', 'donc', 'résultat'],
             'exemples-analogies': ['exemple', 'analogue', 'similaire', 'comme', 'tel'],
-            'synthese-claire': ['synthèse', 'résumé', 'idées', 'essentiel', 'conclusion']
+            'synthese-claire': ['synthèse', 'clarté', 'idée', 'essentiel', 'conclusion'],
+            'resume': ['résumé', 'fidélité', 'concision', 'neutralité', 'complétude'],
+            'techniques': ['planification', 'structuration', 'connecteurs', 'vocabulaire']
         };
         
         return keywords[activityType] || [];

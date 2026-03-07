@@ -63,11 +63,11 @@ window.submitActivity = async function(chapterId, activityId) {
     } else if (activity.tableType === 'definir-sujet') {
       contexte += "\n\nVérifie si le sujet est bien défini, avec précision sur le thème, le domaine et l'objectif de l'explication.";
     } else if (activity.tableType === 'causes-consequences') {
-      contexte += "\n\nAnalyse la pertinence des causes et conséquences identifiées, et vérifie si les relations de causalité sont bien établies.";
+      contexte += "\n\nAnalyse la pertinence des causes et conséquences identifiées, et vérifie si les relations de causalité sont bien établies pour un texte argumentatif.";
     } else if (activity.tableType === 'exemples-analogies') {
-      contexte += "\n\nÉvalue la pertinence des exemples et analogies proposés, et suggère des améliorations si nécessaire.";
+      contexte += "\n\nÉvalue la pertinence des exemples et analogies proposés dans une perspective descriptive, et suggère des améliorations si nécessaire.";
     } else if (activity.tableType === 'synthese-claire') {
-      contexte += "\n\nVérifie si la synthèse est complète, claire et si elle reprend bien les idées essentielles avec une conclusion pertinente.";
+      contexte += "\n\nVérifie si la synthèse est complète, claire et si elle reprend bien les idées essentielles avec une conclusion pertinente pour un résumé de qualité.";
     }
   } else {
     contexte += "\n\nAssure-toi de commenter la qualité de la réponse, son développement et sa pertinence par rapport à la question posée.";
@@ -303,4 +303,4 @@ function generateTableRows(data, chapterId, activityId) {
   return rows;
 }
 
-console.log('✅ Activities système chargé');
+console.log('✅ Activities système chargé'); 
