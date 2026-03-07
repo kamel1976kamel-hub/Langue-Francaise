@@ -502,7 +502,7 @@ window.PedagogicalDashboard = {
         alert('Conférence parents planifiée avec l\'ensemble des parents');
     }
     
-    createFloatingButton() {
+    function createFloatingButton() {
         const button = document.createElement('button');
         button.className = 'fixed bottom-4 right-4 bg-blue-600 text-white rounded-full p-3 shadow-lg hover:bg-blue-700 z-40';
         button.innerHTML = '📊';

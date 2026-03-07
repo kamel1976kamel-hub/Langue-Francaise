@@ -57,6 +57,7 @@ window.submitActivity = async function(chapterId, activityId) {
     console.error('❌ ACTIVITÉS - demanderIA toujours non disponible après attente');
     if (feedbackTextEl) {
       feedbackTextEl.innerHTML = '<div class="text-red-600">❌ Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.</div>';
+    }
     if (activity.tableType === 'tri-inductif') {
       contexte += `\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.`;
     } else if (activity.tableType === 'definir-sujet') {

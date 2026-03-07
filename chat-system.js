@@ -434,7 +434,6 @@ function displayChatPedagogicalResponse(response, originalMessage) {
     });
   }
 }
-};
 
 function addChatMessage(text, sender) {
   const chatMessages = document.getElementById('chatMessages');
