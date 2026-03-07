@@ -1,47 +1,41 @@
-// SERVICE IA PÉDAGOGIQUE STRUCTURÉ
-// ==================================
+// SERVICE IA PÉDAGOGIQUE INTÉGRÉ À SPA CY
+// ==========================================
 
 window.AIPedagogicalService = {
     async analyzeProduction(studentText, activityContext) {
         console.log('🔍 Analyse pédagogique de:', studentText);
         
-        // 1. Analyse locale d'abord
-        const localAnalysis = await this.localAnalysis(studentText);
-        console.log('📊 Analyse locale:', localAnalysis);
+        // 1. Utiliser SpacyAnalyzer comme moteur principal
+        let localAnalysis;
+        try {
+            localAnalysis = await window.SpacyAnalyzer?.analyze(studentText) || { errors: [], confidence: 0 };
+            console.log('📊 Analyse SpacyAnalyzer:', localAnalysis);
+        } catch (error) {
+            console.warn('⚠️ SpacyAnalyzer indisponible, fallback analyse interne');
+            localAnalysis = await this.fallbackAnalysis(studentText);
+        }
         
-        if (localAnalysis.confidence > 0.8) {
-            console.log('✅ Confiance locale élevée - Pas besoin d\'IA');
+        // 2. Décider si besoin d'IA externe
+        if (localAnalysis.confidence > 0.8 && localAnalysis.errors.length > 0) {
+            console.log('✅ Confiance SpacyAnalyzer élevée - Réponse directe');
             return this.formatPedagogicalResponse(localAnalysis);
         }
         
-        // 2. Appel IA si nécessaire
-        console.log('🤖 Confiance locale faible - Appel IA requis');
+        // 3. Appel IA externe si nécessaire
+        console.log('🤖 Confiance faible - Appel IA requis');
         const aiAnalysis = await this.callAI(studentText, activityContext);
         return this.formatPedagogicalResponse(aiAnalysis);
     },
     
-    async localAnalysis(text) {
+    // Fallback si SpacyAnalyzer indisponible
+    async fallbackAnalysis(text) {
         const errors = [];
         
-        // Détection des erreurs fréquentes
+        // Patterns essentiels en double secours
         const patterns = [
-            // Conjugaison
             { pattern: /\bil vas\b/g, type: "conjugaison", rule: "aller_present", correction: "il va", confidence: 0.95 },
             { pattern: /\bils vas\b/g, type: "conjugaison", rule: "aller_present", correction: "ils vont", confidence: 0.95 },
-            { pattern: /\bel vas\b/g, type: "conjugaison", rule: "aller_present", correction: "elle va", confidence: 0.95 },
-            
-            // Anglicismes
-            { pattern: /\bweek-end\b/gi, type: "anglicisme", rule: "anglicisme_weekend", correction: "week-end", confidence: 0.90 },
-            { pattern: /\bmail\b/gi, type: "anglicisme", rule: "anglicisme_mail", correction: "courriel", confidence: 0.90 },
-            { pattern: /\bshopping\b/gi, type: "anglicisme", rule: "anglicisme_shopping", correction: "achats", confidence: 0.90 },
-            
-            // Accords
-            { pattern: /les(\w+)s\b/g, type: "accord", rule: "pluriel", correction: "les$1", confidence: 0.85 },
-            { pattern: /\bla(\w+)s\b/g, type: "accord", rule: "féminin", correction: "la$1", confidence: 0.85 },
-            
-            // Orthographe
-            { pattern: /\bparrait\b/g, type: "orthographe", rule: "orth_paraitre", correction: "paraît", confidence: 0.90 },
-            { pattern: /\bcorect\b/gi, type: "orthographe", rule: "orth_correct", correction: "correct", confidence: 0.95 }
+            { pattern: /\bmail\b/gi, type: "anglicisme", rule: "anglicisme_mail", correction: "courriel", confidence: 0.90 }
         ];
         
         patterns.forEach(pattern => {
@@ -52,7 +46,6 @@ window.AIPedagogicalService = {
                     original: matches[0],
                     correction: pattern.correction,
                     rule: pattern.rule,
-                    position: text.indexOf(matches[0]),
                     confidence: pattern.confidence
                 });
             }
@@ -60,8 +53,8 @@ window.AIPedagogicalService = {
         
         return {
             errors: errors,
-            confidence: errors.length > 0 ? 0.9 : 0.3,
-            needsAI: errors.length === 0 || errors.some(e => e.confidence < 0.8)
+            confidence: errors.length > 0 ? 0.7 : 0.3,
+            source: "fallback"
         };
     },
     
