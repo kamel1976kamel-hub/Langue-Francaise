@@ -1,4 +1,4 @@
-// Fonction pour récupérer le contexte depuis les fichiers Markdown
+// Fonction pour recuperer le contexte depuis les fichiers Markdown
 async function fetchMarkdownContext(topic) {
   const fallbackContexts = {
     'techniques': "Tu es un expert en français et en pédagogie. Tu aides les élèves à maîtriser les techniques et pratiques de l'écrit. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la production écrite, la planification, la révision, l'analyse de consignes, la recherche documentaire, la cohérence textuelle et la correction.",
