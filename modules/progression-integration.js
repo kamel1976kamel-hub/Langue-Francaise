@@ -382,13 +382,18 @@ window.ProgressionIntegration = {
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="individual-tab" data-bs-toggle="tab" data-bs-target="#individual" type="button" role="tab">
-                                    👤 Progression individuelle
+                                <button class="nav-link" id="students-tab" data-bs-toggle="tab" data-bs-target="#students" type="button" role="tab">
+                                    👥 Liste des étudiants
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="profiles-tab" data-bs-toggle="tab" data-bs-target="#profiles" type="button" role="tab">
+                                    👤 Profils détaillés
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="comparative-tab" data-bs-toggle="tab" data-bs-target="#comparative" type="button" role="tab">
-                                    📈 Comparaison groupe
+                                    📈 Comparaison
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
@@ -407,12 +412,17 @@ window.ProgressionIntegration = {
                         ${this.generateOverviewHTML()}
                     </div>
                     
-                    <!-- Progression individuelle -->
-                    <div class="tab-pane fade" id="individual" role="tabpanel">
-                        ${this.generateIndividualHTML()}
+                    <!-- Liste des étudiants -->
+                    <div class="tab-pane fade" id="students" role="tabpanel">
+                        ${this.generateStudentsListHTML()}
                     </div>
                     
-                    <!-- Comparaison groupe -->
+                    <!-- Profils détaillés -->
+                    <div class="tab-pane fade" id="profiles" role="tabpanel">
+                        ${this.generateProfilesHTML()}
+                    </div>
+                    
+                    <!-- Comparaison -->
                     <div class="tab-pane fade" id="comparative" role="tabpanel">
                         ${this.generateComparativeHTML()}
                     </div>
@@ -578,7 +588,96 @@ window.ProgressionIntegration = {
         `;
     },
     
-    generateIndividualHTML() {
+    generateStudentsListHTML() {
+        return `
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">� Liste Complète des Étudiants</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Avatar</th>
+                                            <th>Nom Complet</th>
+                                            <th>Identifiant</th>
+                                            <th>Mot de passe</th>
+                                            <th>Email</th>
+                                            <th>Niveau</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${this.studentsDatabase.map(student => `
+                                            <tr>
+                                                <td>
+                                                    <span class="fs-4">${student.avatar}</span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-bold">${student.displayName}</div>
+                                                    <small class="text-muted">${student.nom}</small>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input type="text" class="form-control form-control-sm" value="${student.username}" readonly>
+                                                        <button class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText('${student.username}')" title="Copier">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control form-control-sm" value="${student.password}" readonly id="pwd-list-${student.id}">
+                                                        <button class="btn btn-outline-secondary btn-sm" onclick="window.ProgressionIntegration.togglePassword('pwd-list-${student.id}')" title="Afficher/Masquer">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText('${student.password}')" title="Copier">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input type="email" class="form-control form-control-sm" value="${student.email}" readonly>
+                                                        <button class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText('${student.email}')" title="Copier">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge ${this.getLevelBadgeClass(student.level)}">
+                                                        ${this.getLevelLabel(student.level)}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button onclick="window.ProgressionIntegration.viewStudentProfile('${student.id}')" class="btn btn-outline-primary" title="Voir profil">
+                                                            <i class="fas fa-user"></i>
+                                                        </button>
+                                                        <button onclick="window.ProgressionIntegration.messageStudent('${student.id}')" class="btn btn-outline-success" title="Envoyer message">
+                                                            <i class="fas fa-envelope"></i>
+                                                        </button>
+                                                        <button onclick="window.ProgressionIntegration.parentMeeting('${student.id}')" class="btn btn-outline-warning" title="Réunion parents">
+                                                            <i class="fas fa-calendar"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    generateProfilesHTML() {
         return `
             <div class="row">
                 <div class="col-md-4 mb-4">
@@ -587,7 +686,7 @@ window.ProgressionIntegration = {
                             <h6 class="card-title mb-0">👤 Sélectionner un étudiant</h6>
                         </div>
                         <div class="card-body">
-                            <select id="student-selector" class="form-select" onchange="window.ProgressionIntegration.selectStudent(this.value)">
+                            <select id="profile-student-selector" class="form-select" onchange="window.ProgressionIntegration.displayStudentProfile(this.value)">
                                 <option value="">Choisir un étudiant...</option>
                                 ${this.studentsDatabase.map(student => `
                                     <option value="${student.id}">
@@ -599,27 +698,14 @@ window.ProgressionIntegration = {
                     </div>
                 </div>
                 
-                <div class="col-md-8 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">🔍 Recherche rapide</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="input-group">
-                                <input type="text" id="student-search" class="form-control" placeholder="Rechercher un étudiant..." onkeyup="window.ProgressionIntegration.searchStudents(this.value)">
-                                <button class="btn btn-outline-secondary" type="button" onclick="window.ProgressionIntegration.clearSearch()">
-                                    <i class="fas fa-times"></i>
-                                </button>
+                <div class="col-md-8">
+                    <div id="student-profile-content">
+                        <div class="card">
+                            <div class="card-body text-center py-5">
+                                <p class="text-muted">Sélectionnez un étudiant pour voir son profil détaillé</p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Détails de l'étudiant sélectionné -->
-            <div id="student-details" class="row">
-                <div class="col-12 text-center py-5">
-                    <p class="text-muted">Sélectionnez un étudiant pour voir ses détails</p>
                 </div>
             </div>
         `;
@@ -917,7 +1003,7 @@ window.ProgressionIntegration = {
         this.displayStudentDetails(studentId);
     },
     
-    displayStudentDetails(studentId) {
+    displayStudentProfile(studentId) {
         const student = this.studentsDatabase.find(s => s.id === studentId);
         if (!student) return;
         
@@ -925,152 +1011,209 @@ window.ProgressionIntegration = {
         const stats = profile?.statistics || {};
         const history = profile?.learningHistory || [];
         
-        const detailsHTML = `
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <span class="fs-2 me-3">${student.avatar}</span>
-                                <div>
-                                    <h5 class="mb-1">${student.displayName}</h5>
-                                    <p class="mb-0 opacity-75">${this.getLevelLabel(student.level)} • ${student.username}</p>
-                                </div>
-                            </div>
+        const profileHTML = `
+            <div class="card">
+                <div class="card-header bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <span class="fs-2 me-3">${student.avatar}</span>
                             <div>
-                                <span class="badge bg-white text-blue-600">
-                                    ID: ${student.id}
-                                </span>
+                                <h5 class="mb-1">${student.displayName}</h5>
+                                <p class="mb-0 opacity-75">${this.getLevelLabel(student.level)} • ${student.username}</p>
                             </div>
                         </div>
+                        <div>
+                            <span class="badge bg-white text-blue-600">
+                                ID: ${student.id}
+                            </span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <!-- Informations de connexion -->
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-3">🔐 Connexion</h6>
-                                <div class="mb-3">
-                                    <label class="form-label">Identifiant:</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" value="${student.username}" readonly>
-                                        <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.username}')">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Mot de passe:</label>
-                                    <div class="input-group">
-                                        <input type="password" class="form-control" value="${student.password}" readonly id="password-${student.id}">
-                                        <button class="btn btn-outline-secondary" onclick="window.ProgressionIntegration.togglePassword('${student.id}')">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.password}')">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Email:</label>
-                                    <div class="input-group">
-                                        <input type="email" class="form-control" value="${student.email}" readonly>
-                                        <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.email}')">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Statistiques -->
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-3">📊 Statistiques</h6>
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between">
-                                        <span>Activités:</span>
-                                        <span class="fw-bold">${stats.totalActivities || 0}</span>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between">
-                                        <span>Réussite:</span>
-                                        <span class="fw-bold ${stats.errorRate < 30 ? 'text-success' : 'text-danger'}">
-                                            ${Math.round(100 - (stats.errorRate || 0))}%
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between">
-                                        <span>Amélioration:</span>
-                                        <span class="fw-bold ${stats.improvementRate > 0 ? 'text-success' : 'text-danger'}">
-                                            ${stats.improvementRate > 0 ? '+' : ''}${Math.round(stats.improvementRate || 0)}%
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Actions -->
-                            <div class="col-md-4">
-                                <h6 class="text-muted mb-3">🎯 Actions</h6>
-                                <div class="d-grid gap-2">
-                                    <button onclick="window.ProgressionIntegration.generateStudentReport('${student.id}')" class="btn btn-primary">
-                                        <i class="fas fa-file-pdf"></i> Rapport individuel
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informations de connexion -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">🔐 Identifiants</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Identifiant:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" value="${student.username}" readonly>
+                                    <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.username}')" title="Copier">
+                                        <i class="fas fa-copy"></i>
                                     </button>
-                                    <button onclick="window.ProgressionIntegration.messageStudent('${student.id}')" class="btn btn-success">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mot de passe:</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" value="${student.password}" readonly id="pwd-profile-${student.id}">
+                                    <button class="btn btn-outline-secondary" onclick="window.ProgressionIntegration.togglePassword('pwd-profile-${student.id}')" title="Afficher/Masquer">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.password}')" title="Copier">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email:</label>
+                                <div class="input-group">
+                                    <input type="email" class="form-control" value="${student.email}" readonly>
+                                    <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.email}')" title="Copier">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Statistiques -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">📊 Statistiques d'Apprentissage</h6>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span>Activités complétées:</span>
+                                    <span class="fw-bold">${stats.totalActivities || 0}</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span>Taux de réussite:</span>
+                                    <span class="fw-bold ${stats.errorRate < 30 ? 'text-success' : 'text-danger'}">
+                                        ${Math.round(100 - (stats.errorRate || 0))}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span>Taux d'amélioration:</span>
+                                    <span class="fw-bold ${stats.improvementRate > 0 ? 'text-success' : 'text-danger'}">
+                                        ${stats.improvementRate > 0 ? '+' : ''}${Math.round(stats.improvementRate || 0)}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span>Confiance moyenne:</span>
+                                    <span class="fw-bold text-info">
+                                        ${Math.round((stats.averageConfidence || 0) * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Forces et faiblesses -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">💪 Forces</h6>
+                            <div class="mb-3">
+                                ${profile?.strengths?.length > 0 ? 
+                                    profile.strengths.map(strength => 
+                                        `<div class="d-flex align-items-center mb-2">
+                                            <span class="text-success me-2">✅</span>
+                                            <span>${strength}</span>
+                                        </div>`
+                                    ).join('') :
+                                    '<p class="text-muted">En cours d\'identification...</p>'
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">🎯 Axes d'amélioration</h6>
+                            <div class="mb-3">
+                                ${profile?.weaknesses?.length > 0 ?
+                                    profile.weaknesses.slice(0, 3).map(weakness =>
+                                        `<div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-medium">${weakness.type}</span>
+                                                <span class="badge bg-danger">${weakness.frequency}x</span>
+                                            </div>
+                                            <div class="progress mb-1" style="height: 8px;">
+                                                <div class="progress-bar bg-danger" style="width: ${100 - weakness.masteryLevel}%"></div>
+                                            </div>
+                                        </div>`
+                                    ).join('') :
+                                    '<p class="text-muted">En cours d\'identification...</p>'
+                                }
+                            </div>
+                        </div>
+                        
+                        <!-- Actions pédagogiques -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-muted mb-3">🎯 Actions Pédagogiques</h6>
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <button onclick="window.ProgressionIntegration.generateDetailedReport('${student.id}')" class="btn btn-primary w-100">
+                                        <i class="fas fa-file-pdf"></i> Rapport détaillé
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button onclick="window.ProgressionIntegration.messageStudent('${student.id}')" class="btn btn-success w-100">
                                         <i class="fas fa-envelope"></i> Envoyer message
                                     </button>
-                                    <button onclick="window.ProgressionIntegration.parentMeeting('${student.id}')" class="btn btn-warning">
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button onclick="window.ProgressionIntegration.parentMeeting('${student.id}')" class="btn btn-warning w-100">
                                         <i class="fas fa-calendar"></i> Réunion parents
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button onclick="window.ProgressionIntegration.createCustomExercise('${student.id}')" class="btn btn-info w-100">
+                                        <i class="fas fa-tasks"></i> Exercice personnalisé
                                     </button>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Historique récent -->
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <h6 class="text-muted mb-3">📈 Historique récent</h6>
-                                ${history.length > 0 ? `
-                                    <div class="table-responsive">
-                                        <table class="table table-sm">
-                                            <thead>
+                        <div class="col-12 mt-4">
+                            <h6 class="text-muted mb-3">📈 Historique d'Apprentissage</h6>
+                            ${history.length > 0 ? `
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Activité</th>
+                                                <th>Résultat</th>
+                                                <th>Confiance</th>
+                                                <th>Erreurs</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${history.slice(-10).reverse().map(activity => `
                                                 <tr>
-                                                    <th>Date</th>
-                                                    <th>Activité</th>
-                                                    <th>Résultat</th>
-                                                    <th>Confiance</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                ${history.slice(-10).reverse().map(activity => `
-                                                    <tr>
-                                                        <td>${new Date(activity.timestamp).toLocaleDateString()}</td>
-                                                        <td>${activity.type}</td>
-                                                        <td>
-                                                            <span class="badge ${activity.success ? 'bg-success' : 'bg-danger'}">
-                                                                ${activity.success ? '✅' : '❌'}
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <div class="progress" style="height: 20px;">
-                                                                <div class="progress-bar" style="width: ${(activity.confidence || 0) * 100}%">
-                                                                    ${Math.round((activity.confidence || 0) * 100)}%
-                                                                </div>
+                                                    <td>${new Date(activity.timestamp).toLocaleDateString()}</td>
+                                                    <td>${activity.type}</td>
+                                                    <td>
+                                                        <span class="badge ${activity.success ? 'bg-success' : 'bg-danger'}">
+                                                            ${activity.success ? '✅ Succès' : '❌ Échec'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="progress" style="height: 16px; width: 100px;">
+                                                            <div class="progress-bar ${activity.confidence > 0.8 ? 'bg-success' : activity.confidence > 0.6 ? 'bg-warning' : 'bg-danger'}" style="width: ${(activity.confidence || 0) * 100}%">
+                                                                ${Math.round((activity.confidence || 0) * 100)}%
                                                             </div>
-                                                        </td>
-                                                    </tr>
-                                                `).join('')}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ` : '<p class="text-muted">Aucun historique disponible</p>'}
-                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        ${activity.errors && activity.errors.length > 0 ? 
+                                                            activity.errors.slice(0, 2).join(', ') : 'Aucune'
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ` : '<p class="text-muted">Aucun historique disponible</p>'}
                         </div>
                     </div>
                 </div>
             </div>
         `;
         
-        document.getElementById('student-details').innerHTML = detailsHTML;
+        document.getElementById('student-profile-content').innerHTML = profileHTML;
     },
     
     searchStudents(query) {
@@ -1136,10 +1279,31 @@ window.ProgressionIntegration = {
         }, 100);
     },
     
-    // Fonctions d'actions (simulées pour démo)
-    generateStudentReport(studentId) {
+    // Fonctions d'actions supplémentaires
+    viewStudentProfile(studentId) {
+        // Activer l'onglet profils et afficher l'étudiant
+        const profilesTab = document.getElementById('profiles-tab');
+        if (profilesTab) {
+            profilesTab.click();
+        }
+        
+        setTimeout(() => {
+            this.displayStudentProfile(studentId);
+            const selector = document.getElementById('profile-student-selector');
+            if (selector) {
+                selector.value = studentId;
+            }
+        }, 100);
+    },
+    
+    generateDetailedReport(studentId) {
         const student = this.studentsDatabase.find(s => s.id === studentId);
-        alert(`📄 Rapport individuel généré pour ${student.displayName}`);
+        alert(`📄 Rapport détaillé généré pour ${student.displayName}`);
+    },
+    
+    createCustomExercise(studentId) {
+        const student = this.studentsDatabase.find(s => s.id === studentId);
+        alert(`🎯 Exercice personnalisé créé pour ${student.displayName}`);
     },
     
     messageStudent(studentId) {
