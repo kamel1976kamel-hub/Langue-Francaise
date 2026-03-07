@@ -251,7 +251,7 @@ async function fetchMarkdownContext(topic) {
   }
 }
 
-// ============ CHAT AVEC IA (vue Chat) ============
+// ============ CHAT AVEC IA (vue Chat) - ARCHITECTURE PÉDAGOGIQUE ============
 window.sendAIChatMessage = async function() {
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
@@ -264,48 +264,176 @@ window.sendAIChatMessage = async function() {
   // Vider l'input
   input.value = '';
   
-  // Charger automatiquement le contexte Markdown du sujet
-  let topicContext = "Tu es un tuteur expert en français.";
-  if (window.currentDiscussion) {
-    topicContext = await fetchMarkdownContext(window.currentDiscussion);
+  // ARCHITECTURE PÉDAGOGIQUE : Analyse locale d'abord
+  console.log('🔍 CHAT - Analyse locale du message:', message);
+  const localAnalysis = await window.FrenchAnalyzer?.analyze(message) || { errors: [], confidence: 0 };
+  
+  console.log('📊 CHAT - Résultat analyse locale:', localAnalysis);
+  
+  // Si l'analyse locale est suffisamment confidente
+  if (localAnalysis.errors.length > 0 && localAnalysis.confidence > 0.8) {
+    console.log('✅ CHAT - Analyse locale suffisante - Réponse directe');
+    const pedagogicalResponse = window.AIPedagogicalService?.formatPedagogicalResponse(localAnalysis);
+    displayChatPedagogicalResponse(pedagogicalResponse, message);
+    return;
   }
+  
+  // Sinon, appel IA avec contexte pédagogique
+  console.log('🤖 CHAT - Analyse locale insuffisante - Appel IA');
   
   // ATTEndre que demanderIA soit disponible
   const maxWaitTime = 5000; // 5 secondes max
   const startTime = Date.now();
   
   while (typeof window.demanderIA !== 'function' && (Date.now() - startTime) < maxWaitTime) {
-    console.log('⏳ En attente de demanderIA...');
+    console.log('⏳ CHAT - En attente de demanderIA...');
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   
   // Appeler le pipeline IA - AVEC ATTENTE INTELLIGENTE
   if (typeof window.demanderIA === 'function') {
-    console.log('🚀 Lancement du pipeline IA avec message:', message);
-    window.demanderIA(message, topicContext)
+    console.log('🚀 CHAT - Lancement du pipeline IA avec message:', message);
+    
+    // Charger automatiquement le contexte Markdown du sujet
+    let topicContext = "Tu es un tuteur expert en français.";
+    if (window.currentDiscussion) {
+      topicContext = await fetchMarkdownContext(window.currentDiscussion);
+    }
+    
+    // Construire le contexte pédagogique structuré
+    const pedagogicalContext = {
+      message_type: "chat",
+      student_message: message,
+      local_analysis: localAnalysis,
+      topic_context: topicContext,
+      instructions: `
+Tu es un professeur expert de français dans une conversation pédagogique.
+
+Réponds OBLIGATOIREMENT dans ce format JSON :
+{
+  "analysis": "analyse linguistique du message",
+  "error_type": "type d'erreur principal",
+  "rule": "règle grammaticale",
+  "hint": "indice pédagogique",
+  "example": "exemple correct",
+  "exercise": "exercice de consolidation",
+  "validation": false
+}
+
+Instructions :
+- Sois encourageant mais précis
+- Identifie les erreurs linguistiques si présentes
+- Donne des explications claires et structurées
+- Propose des exemples concrets
+- Adapte ton niveau à un élève de collège/lycée
+
+Contexte du sujet : ${topicContext}
+Message de l'étudiant : ${message}
+Analyse locale détectée : ${JSON.stringify(localAnalysis)}
+      `
+    };
+    
+    window.demanderIA(message, JSON.stringify(pedagogicalContext))
       .then(response => {
-        console.log('✅ Réponse du pipeline reçue:', response);
-        console.log('📝 Contenu de la réponse:', response);
+        console.log('✅ CHAT - Réponse du pipeline reçue:', response);
         
-        // Afficher dans la console pour debug
-        console.log('🎯 === RÉPONSE POUR INTERFACE ===');
-        console.log('Type de réponse:', typeof response);
-        console.log('Message final:', response);
-        
-        if (typeof simulateTypingEffectForChat !== 'undefined') {
-          simulateTypingEffectForChat(response);
-        } else {
-          addChatMessage(response, 'ai');
+        // Essayer de parser la réponse JSON
+        let pedagogicalResponse;
+        try {
+          pedagogicalResponse = JSON.parse(response);
+        } catch (e) {
+          // Fallback si ce n'est pas du JSON
+          pedagogicalResponse = {
+            analysis: "Réponse pédagogique",
+            error_type: "conversation",
+            rule: "expression française",
+            hint: "Continuer la conversation",
+            example: response.substring(0, 150) + "...",
+            exercise: "Pratiquer régulièrement",
+            validation: true
+          };
         }
+        
+        displayChatPedagogicalResponse(pedagogicalResponse, message);
       })
       .catch(err => {
-        console.error('Erreur IA :', err);
+        console.error('❌ CHAT - Erreur IA :', err);
         addChatMessage("Désolé, une erreur technique est survenue. Veuillez réessayer.", 'ai');
       });
   } else {
-    console.error('Pipeline IA indisponible après 5 secondes d\'attente.');
+    console.error('❌ CHAT - Pipeline IA indisponible après 5 secondes d\'attente.');
     addChatMessage("Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.", 'ai');
   }
+};
+
+// Fonction pour afficher la réponse pédagogique dans le chat
+function displayChatPedagogicalResponse(response, originalMessage) {
+  const responseHTML = `
+    <div class="chat-pedagogical-response" style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px; margin: 8px 0; border-radius: 8px;">
+      <div class="response-header" style="display: flex; align-items: center; margin-bottom: 12px;">
+        <span class="status-icon" style="font-size: 18px; margin-right: 8px;">
+          ${response.validation ? '✅' : '💡'}
+        </span>
+        <strong style="color: #1f2937;">Analyse linguistique</strong>
+      </div>
+      
+      <div class="analysis-content" style="margin: 8px 0;">
+        <p style="margin: 0; line-height: 1.5;">${response.analysis}</p>
+      </div>
+      
+      ${response.error_type !== 'aucune' && response.error_type !== 'conversation' ? `
+        <div class="error-details" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 8px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #92400e;"><strong>Type :</strong> ${response.error_type}</p>
+          ${response.rule ? `<p style="margin: 4px 0; color: #78350f;"><strong>Règle :</strong> ${response.rule}</p>` : ''}
+        </div>
+      ` : ''}
+      
+      ${response.hint ? `
+        <div class="pedagogical-hint" style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 12px; margin: 8px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #1e3a8a;">
+            <strong>💡 Conseil :</strong> ${response.hint}
+          </p>
+        </div>
+      ` : ''}
+      
+      ${response.example ? `
+        <div class="correct-example" style="background: #d1fae5; border-left: 4px solid #10b981; padding: 12px; margin: 8px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #065f46;">
+            <strong>✏️ Exemple :</strong> ${response.example}
+          </p>
+        </div>
+      ` : ''}
+      
+      ${response.exercise ? `
+        <div class="practice-exercise" style="background: #f3e8ff; border-left: 4px solid #8b5cf6; padding: 12px; margin: 8px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #5b21b6;">
+            <strong>🎯 Exercice :</strong> ${response.exercise}
+          </p>
+        </div>
+      ` : ''}
+      
+      <div class="confidence-indicator" style="margin-top: 12px; text-align: right; font-size: 12px; color: #6b7280;">
+        Confiance : ${Math.round((response.confidence || 0.8) * 100)}%
+      </div>
+    </div>
+  `;
+  
+  // Afficher avec effet de frappe ou directement
+  if (typeof simulateTypingEffectForChat === 'function') {
+    simulateTypingEffectForChat(responseHTML);
+  } else {
+    addChatMessage(responseHTML, 'ai');
+  }
+  
+  // Enregistrer dans le profil d'apprentissage
+  if (window.StudentProfile && response.error_type !== 'aucune' && response.error_type !== 'conversation') {
+    window.StudentProfile.recordError('anonymous', {
+      type: response.error_type,
+      context: originalMessage,
+      correction: response.hint
+    });
+  }
+}
 };
 
 function addChatMessage(text, sender) {
