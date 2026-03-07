@@ -3,11 +3,17 @@
 
 // ============ SÉLECTION DE DISCUSSION ============
 window.selectDiscussion = function(topic) {
+  console.log('🔄 SÉLECTION DE DISCUSSION - DÉBUT');
+  console.log('📝 Topic sélectionné:', topic);
+  
   window.currentDiscussion = topic;
   const data = window.discussionData[topic];
+  console.log('📊 Données de discussion:', data);
   
   // Mettre à jour l'apparence des boutons
-  document.querySelectorAll('.discussion-item').forEach(btn => {
+  console.log('🎨 MISE À JOUR APPARENCE BOUTONS');
+  document.querySelectorAll('.discussion-item').forEach((btn, index) => {
+    console.log(`  🔘 Bouton ${index + 1}:`, btn.dataset.topic);
     btn.classList.remove('active');
     btn.style.backgroundColor = '';
     btn.style.color = 'var(--bs-text-muted)';
@@ -17,6 +23,7 @@ window.selectDiscussion = function(topic) {
   });
   
   const activeBtn = document.querySelector(`[data-topic="${topic}"]`);
+  console.log('✅ Bouton activé:', activeBtn);
   activeBtn.classList.add('active');
   activeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
   activeBtn.style.color = 'var(--bs-white)';
@@ -25,14 +32,22 @@ window.selectDiscussion = function(topic) {
   activeIndicator.style.backgroundColor = 'var(--bs-primary)';
   
   // Mettre à jour le titre dans la colonne 3
-  document.getElementById('chatTitle').textContent = data.title;
+  console.log('📝 MISE À JOUR TITRE');
+  const titleElement = document.getElementById('chatTitle');
+  if (titleElement) {
+    titleElement.textContent = data.title;
+    console.log('  📝 Titre mis à jour:', data.title);
+  }
   
   // Mettre à jour la description
+  console.log('📝 MISE À JOUR DESCRIPTION');
   const descriptionEl = document.getElementById('discussionDescription');
   if (descriptionEl) {
     descriptionEl.textContent = data.description || '';
+    console.log('  📝 Description mise à jour:', data.description || 'vide');
   }
   
+  console.log('✅ SÉLECTION DE DISCUSSION - FIN');
   console.log('📝 Discussion sélectionnée:', topic);
 };
 
@@ -43,20 +58,36 @@ window.ChatSystemUnified = {
     
     // Analyse locale améliorée avec cache
     async analyzeWithCache(message) {
+        console.log('🔍 ANALYSE LOCALE AVEC CACHE - DÉBUT');
+        console.log('📝 Message à analyser:', message);
+        
         const cacheKey = message.toLowerCase().trim();
+        console.log('🔑 Clé de cache:', cacheKey);
         
         if (this.analysisCache.has(cacheKey)) {
-            console.log('📋 Cache analyse locale trouvé');
-            return this.analysisCache.get(cacheKey);
+            console.log('✅ Cache analyse locale trouvé');
+            const cachedResult = this.analysisCache.get(cacheKey);
+            console.log('📋 Résultat du cache:', cachedResult);
+            console.log('🔍 ANALYSE LOCALE AVEC CACHE - FIN (CACHE)');
+            return cachedResult;
         }
         
+        console.log('❌ Cache non trouvé, analyse en cours...');
+        console.log('📞 Appel à SpacyAnalyzer...');
+        
         const analysis = await window.SpacyAnalyzer?.analyze(message) || { errors: [], confidence: 0 };
+        console.log('📊 Résultat analyse SpacyAnalyzer:', analysis);
         
         // Mettre en cache si confiance > 0.7
         if (analysis.confidence > 0.7) {
+            console.log('💾 Mise en cache du résultat (confiance > 0.7)');
             this.analysisCache.set(cacheKey, analysis);
+            console.log(`📊 Taille du cache: ${this.analysisCache.size} entrées`);
+        } else {
+            console.log('⏭️ Pas de mise en cache (confiance <= 0.7)');
         }
         
+        console.log('🔍 ANALYSE LOCALE AVEC CACHE - FIN (NOUVELLE ANALYSE)');
         return analysis;
     },
     

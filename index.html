@@ -1850,7 +1850,7 @@
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex justify-between items-start">
-                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans l'atelier sur les techniques et pratiques de l'écrit ! Je peux vous aider à maîtriser tous les aspects de la production écrite, de la planification à la révision. Par quoi aimeriez-vous commencer ?</p>
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module "Techniques et pratiques de l'écrit" ! Je suis votre assistant pour maîtriser tous les aspects de la production écrite, de la planification à la révision. Par quoi aimeriez-vous commencer ?</p>
                       <button 
                         onclick="speakChatAIResponse(this)"
                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -1878,7 +1878,7 @@
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex justify-between items-start">
-                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans l'atelier sur le texte narratif ! Je peux vous aider à comprendre la structure narrative, les types de narrateurs, les temps du récit, et les techniques pour créer des personnages et des situations captivantes. Qu'aimeriez-vous explorer ?</p>
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module "Texte narratif" ! Je peux vous aider à comprendre la structure narrative, les types de narrateurs, les temps du récit, et les techniques pour créer des personnages et des situations captivantes. Qu'aimeriez-vous explorer ?</p>
                       <button 
                         onclick="speakChatAIResponse(this)"
                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -1906,7 +1906,7 @@
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex justify-between items-start">
-                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module sur le texte descriptif ! Je vais vous aider à créer des descriptions vivantes et détaillées, à organiser l'espace et le temps, et à utiliser les figures de style pour rendre vos textes captivants. Par où commencerons-nous ?</p>
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module "Texte descriptif" ! Je vais vous aider à créer des descriptions vivantes et détaillées, à organiser l'espace et le temps, et à utiliser les figures de style pour rendre vos textes captivants. Par où commencerons-nous ?</p>
                       <button 
                         onclick="speakChatAIResponse(this)"
                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -1934,7 +1934,7 @@
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex justify-between items-start">
-                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module sur le texte explicatif ! Je suis là pour vous aider à structurer vos explications, utiliser les connecteurs logiques, et rendre vos textes clairs et pédagogiques. Par quoi commençons-nous ?</p>
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module "Texte explicatif" ! Je suis là pour vous aider à structurer vos explications, utiliser les connecteurs logiques, et rendre vos textes clairs et pédagogiques. Par quoi commençons-nous ?</p>
                       <button 
                         onclick="speakChatAIResponse(this)"
                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -1962,7 +1962,7 @@
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex justify-between items-start">
-                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans l'atelier sur le texte argumentatif ! Je vais vous aider à construire des arguments solides, à convaincre votre audience, et à maîtriser les techniques de persuasion. Quel sujet aimeriez-vous argumenter ?</p>
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module "Texte argumentatif" ! Je vais vous aider à construire des arguments solides, à convaincre votre audience, et à maîtriser les techniques de persuasion. Quel sujet aimeriez-vous argumenter ?</p>
                       <button 
                         onclick="speakChatAIResponse(this)"
                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -1990,7 +1990,7 @@
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                     <div class="flex justify-between items-start">
-                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module sur le résumé ! Je vais vous aider à identifier les idées essentielles, synthétiser l'information, et produire des résumés concis et fidèles. Quel type de texte souhaitez-vous apprendre à résumer ?</p>
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module "Résumé" ! Je vais vous aider à identifier les idées essentielles, synthétiser l'information, et produire des résumés concis et fidèles. Quel type de texte souhaitez-vous apprendre à résumer ?</p>
                       <button 
                         onclick="speakChatAIResponse(this)"
                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -4953,7 +4953,8 @@
         
         if (!text) return;
         
-        const sourceId = 'chat-ai-response-' + Date.now();
+        // Utiliser un ID unique mais stable basé sur le contenu du message
+        const sourceId = 'chat-ai-response-' + text.substring(0, 20).replace(/\s+/g, '-').toLowerCase();
         
         // Si on clique sur la même source qui est en cours de lecture, on arrête
         if (window.currentAudioSource === sourceId && window.isSpeaking()) {
