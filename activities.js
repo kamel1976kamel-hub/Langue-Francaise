@@ -59,7 +59,7 @@ window.submitActivity = async function(chapterId, activityId) {
       feedbackTextEl.innerHTML = '<div class="text-red-600">❌ Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.</div>';
     }
     if (activity.tableType === 'tri-inductif') {
-      contexte += `\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.`;
+      contexte += "\\n\\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.";
     } else if (activity.tableType === 'definir-sujet') {
       contexte += `\n\nVérifie si le sujet est bien défini, avec précision sur le thème, le domaine et l'objectif de l'explication.`;
     } else if (activity.tableType === 'causes-consequences') {
