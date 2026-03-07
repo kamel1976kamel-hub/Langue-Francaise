@@ -3810,10 +3810,13 @@
         const phrase = phraseInput.value;
         const consigne =
           "L'élève doit utiliser un connecteur logique (car, donc, parce que...). Indique s'il a réussi et suggère une amélioration si besoin.";
-        const reponse = await (window.demanderIA
-          ? window.demanderIA(phrase, consigne)
-          : Promise.resolve("L'IA n'est pas encore chargée."));
-        feedbackEl.textContent = reponse || "";
+        
+        if (window.demanderIA) {
+          const reponse = await window.demanderIA(phrase, consigne);
+          feedbackEl.textContent = reponse || "";
+        } else {
+          feedbackEl.textContent = "L'IA n'est pas encore chargée.";
+        }
       }
 
       // Gestion des hotspots (si contentBody existe)
@@ -4002,8 +4005,12 @@
             );
 
             try {
-              const rep = await window.demanderIA(answer, contexte);
-              feedbackEl.textContent = rep || "Aucun retour de l’IA.";
+              if (window.demanderIA) {
+                const rep = await window.demanderIA(answer, contexte);
+                feedbackEl.textContent = rep || "Aucun retour de l'IA.";
+              } else {
+                feedbackEl.textContent = "L'IA n'est pas encore chargée.";
+              }
             } catch (e) {
               feedbackEl.textContent = `Erreur IA : ${String(e?.message || e)}`;
             } finally {
