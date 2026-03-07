@@ -35,6 +35,8 @@ window.submitActivity = async function(chapterId, activityId) {
           <li>Relire votre travail avant de soumettre</li>
         </ul>
         <p style="margin-top: 8px; font-style: italic;">💡 Une réponse vide ne permet pas à l'IA de vous aider efficacement.</p>
+      </div>
+    `;
     return;
   }
 
@@ -45,52 +47,75 @@ window.submitActivity = async function(chapterId, activityId) {
   console.log('📋 demanderIA disponible:', typeof window.demanderIA);
   
   // ATTEndre que demanderIA soit disponible
-  const maxWaitTime = 5000; // 5 secondes max
-  const startTime = Date.now();
-  
-  while (typeof window.demanderIA !== 'function' && (Date.now() - startTime) < maxWaitTime) {
-    console.log('⏳ ACTIVITÉS - En attente de demanderIA...');
-    await new Promise(resolve => setTimeout(resolve, 100));
+  let attempts = 0;
+  const maxAttempts = 10;
+  while (typeof window.demanderIA !== 'function' && attempts < maxAttempts) {
+    console.log(`⏳ Attente de demanderIA... tentative ${attempts + 1}/${maxAttempts}`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    attempts++;
   }
-  
+
   if (typeof window.demanderIA !== 'function') {
     console.error('❌ ACTIVITÉS - demanderIA toujours non disponible après attente');
     if (feedbackTextEl) {
       feedbackTextEl.innerHTML = '<div class="text-red-600">❌ Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.</div>';
     }
-    if (activity.tableType === 'tri-inductif') {
-      contexte += "\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.";
-    } else if (activity.tableType === 'definir-sujet') {
-      contexte += "\n\nVérifie si le sujet est bien défini, avec précision sur le thème, le domaine et l'objectif de l'explication.";
-    } else if (activity.tableType === 'causes-consequences') {
-      contexte += "\n\nAnalyse la pertinence des causes et conséquences identifiées, et vérifie si les relations de causalité sont bien établies pour un texte argumentatif.";
-    } else if (activity.tableType === 'exemples-analogies') {
-      contexte += "\n\nÉvalue la pertinence des exemples et analogies proposés dans une perspective descriptive, et suggère des améliorations si nécessaire.";
-    } else if (activity.tableType === 'synthese-claire') {
-      contexte += "\n\nVérifie si la synthèse est complète, claire et si elle reprend bien les idées essentielles avec une conclusion pertinente pour un résumé de qualité.";
-    }
+    return;
+  }
+
+  // Construire le contexte pour l'IA
+  let contexte = `Activité pédagogique - ${activity.title || 'Sans titre'}
+
+Consigne : ${activity.question || 'Consigne non spécifiée'}
+
+Réponse de l'étudiant :
+${answer}
+
+Instructions pour l'IA :
+- Analyse la réponse de manière constructive et pédagogique
+- Identifie les points forts et les axes d'amélioration
+- Propose des suggestions concrètes et actionnables
+- Adapte ton niveau de langage à un élève de niveau secondaire
+- Sois encourageant et bienveillant`;
+
+  // Ajouter le contexte spécifique selon le type d'activité
+  if (activity.tableType === 'tri-inductif') {
+    contexte += "\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.";
+  } else if (activity.tableType === 'definir-sujet') {
+    contexte += "\n\nVérifie si le sujet est bien défini, avec précision sur le thème, le domaine et l'objectif de l'explication.";
+  } else if (activity.tableType === 'causes-consequences') {
+    contexte += "\n\nAnalyse la pertinence des causes et conséquences identifiées, et vérifie si les relations de causalité sont bien établies pour un texte argumentatif.";
+  } else if (activity.tableType === 'exemples-analogies') {
+    contexte += "\n\nÉvalue la pertinence des exemples et analogies proposés dans une perspective descriptive, et suggère des améliorations si nécessaire.";
+  } else if (activity.tableType === 'synthese-claire') {
+    contexte += "\n\nVérifie si la synthèse est complète, claire et si elle reprend bien les idées essentielles avec une conclusion pertinente pour un résumé de qualité.";
   } else {
     contexte += "\n\nAssure-toi de commenter la qualité de la réponse, son développement et sa pertinence par rapport à la question posée.";
   }
+
+  // Combiner le contexte de base avec le contexte de l'activité
+  const contexteFinal = baseContexte + '\n\n' + contexte;
 
   try {
     console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 2: Préparation appel IA');
     console.log('📝 Réponse étudiant:', answer);
     console.log('📝 Contexte final:', contexteFinal);
     
-    // Combiner le contexte de base avec le contexte de l'activité
-    const contexteFinal = baseContexte + '\n\n' + contexte;
+    // Afficher un indicateur de chargement
+    if (feedbackTextEl) {
+      feedbackTextEl.innerHTML = '<div class="text-blue-600">🤖 L\'IA analyse votre réponse...</div>';
+    }
+
+    // Appeler l'IA avec le contexte enrichi
+    const reponse = await window.demanderIA(answer, contexteFinal);
     
-    console.log('🚀 DIAGNOSTIC ACTIVITÉS - Étape 3: Appel de demanderIA');
-    window.demanderIA(answer, contexteFinal).then(reponse => {
-      console.log('✅ DIAGNOSTIC ACTIVITÉS - Étape 4: Réponse reçue');
-      console.log('📨 Réponse IA:', reponse);
-      console.log('📋 Type de réponse:', typeof reponse);
-    console.log('📋 Longueur de réponse:', reponse ? reponse.length : 0);
-    
-    // Afficher la réponse de l'IA avec le même système que le chat
-    if (typeof window.addChatMessage !== 'undefined') {
-      // Créer un message de chat temporaire pour afficher la réponse
+    console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 3: Réponse IA reçue');
+    console.log('📝 Longueur réponse:', reponse ? reponse.length : 0);
+    console.log('📝 Type de réponse:', typeof reponse);
+
+    // Afficher la réponse dans un conteneur de chat
+    if (feedbackTextEl && reponse) {
+      // Créer un conteneur temporaire pour le message de chat
       const tempChatContainer = document.createElement('div');
       tempChatContainer.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4';
       tempChatContainer.innerHTML = 
@@ -134,14 +159,14 @@ window.submitActivity = async function(chapterId, activityId) {
         feedbackTextEl.textContent = reponse || 'Aucun retour de l\'IA.';
       }
     }
-  }).catch(e => {
+  } catch (e) {
     console.error('❌ DIAGNOSTIC ACTIVITÉS - Erreur dans appel IA');
     console.error('📍 Erreur:', e);
     console.error('📍 Stack trace:', e.stack);
     console.error('📍 Message erreur:', e.message);
     
     feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
-  });
+  }
 };
 
 // Fonction pour créer un textarea avec assistant d'écriture
@@ -245,8 +270,9 @@ function generateTableInput(chapterId, activityId, tableType) {
       { element: 'Objectif', description: 'But de l\'explication' }
     ],
     'causes-consequences': [
-      { element: 'Cause principale', description: 'Origine du phénomène' },
-      { element: 'Conséquence directe', description: 'Résultat immédiat' },
+      { element: 'Cause principale', description: 'Raison principale' },
+      { element: 'Cause secondaire', description: 'Raison secondaire' },
+      { element: 'Conséquence directe', description: 'Effet principal' },
       { element: 'Conséquence indirecte', description: 'Effet secondaire' }
     ],
     'exemples-analogies': [
@@ -303,4 +329,4 @@ function generateTableRows(data, chapterId, activityId) {
   return rows;
 }
 
-console.log('✅ Activities système chargé'); 
+console.log("✅ Activities system charge");
