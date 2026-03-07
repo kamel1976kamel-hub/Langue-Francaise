@@ -4942,10 +4942,10 @@
           teacherView.classList.remove('hidden');
           roleLabel.textContent = 'Enseignant';
           
-          // Initialiser le tableau de bord pour l'enseignant
+          // Tableau de bord désactivé pour l'enseignant
           if (window.ProgressionIntegration && !teacherView.dataset.initialized) {
             setTimeout(() => {
-              window.ProgressionIntegration.replaceTeacherViewContent();
+              // window.ProgressionIntegration.replaceTeacherViewContent(); // DÉSACTIVÉ
               teacherView.dataset.initialized = 'true';
             },100);
           }

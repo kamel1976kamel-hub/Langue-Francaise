@@ -29,9 +29,10 @@ window.PedagogicalDashboard = {
     ],
     
     init() {
-        console.log('📊 Initialisation tableau de bord pédagogique');
-        this.createDashboard();
-        this.setupEventListeners();
+        console.log('📊 Tableau de bord pédagogique désactivé');
+        // this.createDashboard(); // DÉSACTIVÉ
+        // this.setupEventListeners(); // DÉSACTIVÉ
+        // this.createFloatingButton(); // DÉSACTIVÉ
     },
     
     createDashboard() {

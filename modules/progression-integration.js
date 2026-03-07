@@ -257,13 +257,13 @@ window.ProgressionIntegration = {
         setTimeout(() => {
             const teacherView = document.getElementById('teacherProgressionView');
             if (teacherView) {
-                console.log('✅ Vue enseignant trouvée, intégration du tableau de bord');
-                this.replaceTeacherViewContent();
+                console.log('✅ Vue enseignant trouvée, tableau de bord désactivé');
+                // this.replaceTeacherViewContent(); // DÉSACTIVÉ
             } else {
                 console.log('⚠️ Vue enseignant non trouvée, création manuelle');
                 this.createTeacherView();
             }
-        }, 1000);
+        }, 100);
     },
     
     replaceTeacherViewContent() {
