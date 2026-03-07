@@ -207,7 +207,7 @@ window.submitActivity = async function(chapterId, activityId) {
   }
 
   // Charger le contexte depuis le fichier Markdown
-  const baseContexte = await fetchMarkdownContext(texteType);
+  fetchMarkdownContext(texteType).then(baseContexte => {
   
   // Contexte adapté pour l'activité spécifique
   let contexte = `Activité : ${activity.title}\n\nConsigne originale : ${activity.instructions || 'Non spécifiée'}\n\nVoici la réponse de l'élève à corriger et analyser en détail :\n\n${answer}\n\nIMPORTANT : Analyse la réponse de l'élève ligne par ligne. Pour chaque élément du tableau, indique si c'est correct ou incorrect, et explique pourquoi. Donne des conseils précis pour améliorer chaque réponse. Sois spécifique et constructif.`;
@@ -302,6 +302,7 @@ window.submitActivity = async function(chapterId, activityId) {
     
     feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
   }
+  });
   };
 };
 
