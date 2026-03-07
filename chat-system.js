@@ -266,7 +266,7 @@ window.sendAIChatMessage = async function() {
   
   // ARCHITECTURE PÉDAGOGIQUE : Analyse locale d'abord
   console.log('🔍 CHAT - Analyse locale du message:', message);
-  const localAnalysis = await window.FrenchAnalyzer?.analyze(message) || { errors: [], confidence: 0 };
+  const localAnalysis = await window.SpacyAnalyzer?.analyze(message) || { errors: [], confidence: 0 };
   
   console.log('📊 CHAT - Résultat analyse locale:', localAnalysis);
   

@@ -1,0 +1,187 @@
+// ANALYSEUR LINGUISTIQUE SPA CY
+// =================================
+
+window.SpacyAnalyzer = {
+    patterns: {
+        // Erreurs de conjugaison courantes
+        conjugaison: [
+            { pattern: /\bil vas\b/g, correction: "il va", type: "conjugaison", rule: "aller_present", confidence: 0.95 },
+            { pattern: /\bils vas\b/g, correction: "ils vont", type: "conjugaison", rule: "aller_present", confidence: 0.95 },
+            { pattern: /\bel vas\b/g, correction: "elle va", type: "conjugaison", rule: "aller_present", confidence: 0.95 },
+            { pattern: /\bil sont\b/g, correction: "il est", type: "conjugaison", rule: "etre_present", confidence: 0.95 },
+            { pattern: /\bel sont\b/g, correction: "elles sont", type: "conjugaison", rule: "etre_present", confidence: 0.95 },
+            { pattern: /\bil faut\b/g, correction: "il faut", type: "conjugaison", rule: "falloir_present", confidence: 0.95 },
+            { pattern: /\bil font\b/g, correction: "ils font", type: "conjugaison", rule: "faire_present", confidence: 0.95 },
+            { pattern: /\bel font\b/g, correction: "elles font", type: "conjugaison", rule: "faire_present", confidence: 0.95 }
+        ],
+        
+        // Anglicismes courants
+        anglicisms: [
+            { pattern: /\bweek-end\b/gi, correction: "week-end", type: "anglicisme", rule: "weekend", confidence: 0.95 },
+            { pattern: /\bmail\b/gi, correction: "courriel", type: "anglicisme", rule: "mail", confidence: 0.95 },
+            { pattern: /\bshopping\b/gi, correction: "achats", type: "anglicisme", rule: "shopping", confidence: 0.95 },
+            { pattern: /\bmeeting\b/gi, correction: "réunion", type: "anglicisme", rule: "meeting", confidence: 0.95 },
+            { pattern: /\bdeadline\b/gi, correction: "date limite", type: "anglicisme", rule: "deadline", confidence: 0.95 },
+            { pattern: /\bfeedback\b/gi, correction: "retour", type: "anglicisme", rule: "feedback", confidence: 0.95 },
+            { pattern: /\bmanager\b/gi, correction: "gestionnaire", type: "anglicisme", rule: "manager", confidence: 0.95 }
+        ],
+        
+        // Accords grammaticaux
+        accords: [
+            { pattern: /\bles(\w+)s\b/g, correction: "les$1", type: "accord", rule: "pluriel_masculin", confidence: 0.90 },
+            { pattern: /\bla(\w+)s\b/g, correction: "la$1", type: "accord", rule: "féminin_singulier", confidence: 0.90 },
+            { pattern: /\bun(\w+)s\b/g, correction: "un$1", type: "accord", rule: "masculin_singulier", confidence: 0.90 }
+        ],
+        
+        // Ponctuation
+        ponctuation: [
+            { pattern: /\s+[.,!?]/g, correction: "", type: "ponctuation", rule: "espace_avant_ponctuation", confidence: 0.95 },
+            { pattern: /[a-z][A-Z]/g, correction: (match) => match[0] + ' ' + match[1], type: "ponctuation", rule: "espace_mots", confidence: 0.90 }
+        ]
+    },
+
+    /**
+     * Analyse un texte et retourne les erreurs détectées
+     */
+    analyze(text) {
+        const analysis = {
+            errors: [],
+            suggestions: [],
+            confidence: 0,
+            processingTime: 0
+        };
+        
+        const startTime = performance.now();
+        
+        // Analyser chaque type de pattern
+        Object.keys(this.patterns).forEach(category => {
+            this.patterns[category].forEach(rule => {
+                const matches = text.match(rule.pattern);
+                if (matches) {
+                    matches.forEach(match => {
+                        const correction = typeof rule.correction === 'function' ? 
+                            rule.correction(match) : rule.correction;
+                        
+                        analysis.errors.push({
+                            text: match,
+                            correction: correction,
+                            type: rule.type,
+                            rule: rule.rule,
+                            confidence: rule.confidence,
+                            explanation: this.getExplanation(rule.type, rule.rule)
+                        });
+                    });
+                }
+            });
+        });
+        
+        // Calculer la confiance globale
+        if (analysis.errors.length === 0) {
+            analysis.confidence = 1.0;
+        } else {
+            const avgConfidence = analysis.errors.reduce((sum, error) => sum + error.confidence, 0) / analysis.errors.length;
+            analysis.confidence = avgConfidence;
+        }
+        
+        analysis.processingTime = performance.now() - startTime;
+        
+        console.log('🧠 SpacyAnalyzer - Analyse terminée:', analysis);
+        return analysis;
+    },
+
+    /**
+     * Retourne une explication pour un type d'erreur
+     */
+    getExplanation(type, rule) {
+        const explanations = {
+            conjugaison: "Erreur de conjugaison détectée. Vérifiez l'accord sujet-verbe.",
+            anglicisms: "Anglicisme détecté. Préférez le terme français équivalent.",
+            accords: "Erreur d'accord grammatical. Vérifiez genre et nombre.",
+            ponctuation: "Erreur de ponctuation. Vérifiez l'espacement."
+        };
+        return explanations[type] || "Erreur grammaticale détectée.";
+    },
+
+    /**
+     * Valide un texte et retourne un score
+     */
+    validate(text, level = 'intermediate') {
+        const analysis = this.analyze(text);
+        const validation = {
+            isValid: true,
+            score: 0,
+            level: level,
+            errors: analysis.errors,
+            suggestions: analysis.suggestions,
+            recommendations: []
+        };
+        
+        // Calculer le score
+        if (analysis.errors.length === 0) {
+            validation.score = 100;
+            validation.recommendations.push("Excellent ! Aucune erreur détectée.");
+        } else {
+            const errorPenalty = analysis.errors.reduce((sum, error) => {
+                return sum + (1 - error.confidence) * 10;
+            }, 0);
+            
+            validation.score = Math.max(0, 100 - errorPenalty);
+            validation.isValid = validation.score >= 70;
+            
+            // Recommandations spécifiques
+            const errorTypes = [...new Set(analysis.errors.map(e => e.type))];
+            errorTypes.forEach(type => {
+                validation.recommendations.push(this.getRecommendation(type));
+            });
+        }
+        
+        return validation;
+    },
+
+    /**
+     * Retourne une recommandation pour un type d'erreur
+     */
+    getRecommendation(errorType) {
+        const recommendations = {
+            conjugaison: "Vérifiez la conjugaison des verbes au temps requis.",
+            anglicisms: "Évitez les anglicismes en utilisant les termes français appropriés.",
+            accords: "Assurez-vous des accords corrects en genre et en nombre.",
+            ponctuation: "Vérifiez la ponctuation et les espaces."
+        };
+        return recommendations[errorType] || "Revoyez la structure de votre phrase.";
+    },
+
+    /**
+     * Corrige automatiquement un texte
+     */
+    correct(text) {
+        let correctedText = text;
+        const corrections = [];
+        
+        // Appliquer les corrections dans l'ordre
+        Object.keys(this.patterns).forEach(category => {
+            this.patterns[category].forEach(rule => {
+                const originalText = correctedText;
+                correctedText = correctedText.replace(rule.pattern, rule.correction);
+                
+                if (originalText !== correctedText) {
+                    corrections.push({
+                        type: rule.type,
+                        rule: rule.rule,
+                        original: originalText,
+                        corrected: correctedText
+                    });
+                }
+            });
+        });
+        
+        return {
+            original: text,
+            corrected: correctedText,
+            corrections: corrections,
+            improved: text !== correctedText
+        };
+    }
+};
+
+console.log('✅ SpacyAnalyzer chargé - Analyse linguistique française');
