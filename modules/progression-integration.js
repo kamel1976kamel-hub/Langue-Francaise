@@ -250,15 +250,104 @@ window.ProgressionIntegration = {
     },
     
     replaceProgressionContent() {
-        // Remplacer le contenu de l'élément "Progression"
-        const progressionElement = document.querySelector('[data-section="progression"]');
+        // Chercher l'élément "Progression" dans la première colonne
+        let progressionElement = null;
+        
+        // Essayer plusieurs sélecteurs possibles
+        const selectors = [
+            '[data-section="progression"]',
+            '[data-page="progression"]',
+            '[href*="progression"]',
+            'a:contains("Progression")',
+            '.nav-link:contains("Progression")',
+            '[onclick*="progression"]'
+        ];
+        
+        for (const selector of selectors) {
+            try {
+                progressionElement = document.querySelector(selector);
+                if (progressionElement) {
+                    console.log(`✅ Élément "Progression" trouvé avec sélecteur: ${selector}`);
+                    break;
+                }
+            } catch (e) {
+                console.log(`⚠️ Sélecteur ${selector} échoué:`, e);
+            }
+        }
+        
+        // Si toujours pas trouvé, chercher dans le menu navigation
         if (!progressionElement) {
-            console.error('❌ Élément "Progression" non trouvé');
+            const navLinks = document.querySelectorAll('a, .nav-link, .menu-item');
+            for (const link of navLinks) {
+                if (link.textContent && link.textContent.includes('Progression')) {
+                    progressionElement = link;
+                    console.log('✅ Élément "Progression" trouvé par texte');
+                    break;
+                }
+            }
+        }
+        
+        // Dernière tentative : chercher par ID ou classe
+        if (!progressionElement) {
+            progressionElement = document.getElementById('progression') || 
+                             document.getElementById('progression-section') ||
+                             document.getElementById('progression-page') ||
+                             document.querySelector('.progression');
+        }
+        
+        if (!progressionElement) {
+            console.error('❌ Élément "Progression" non trouvé - Création manuelle');
+            this.createProgressionSection();
             return;
         }
         
         console.log('🔄 Remplacement du contenu de "Progression"');
-        progressionElement.innerHTML = this.generateProgressionHTML();
+        this.setupProgressionClick(progressionElement);
+    },
+    
+    createProgressionSection() {
+        // Créer manuellement la section Progression si elle n'existe pas
+        const navContainer = document.querySelector('.nav, .sidebar, .menu, header');
+        if (navContainer) {
+            const progressionLink = document.createElement('a');
+            progressionLink.href = '#progression';
+            progressionLink.className = 'nav-link menu-item';
+            progressionLink.innerHTML = '📊 Progression';
+            progressionLink.setAttribute('data-section', 'progression');
+            progressionLink.onclick = (e) => {
+                e.preventDefault();
+                this.showProgressionContent();
+            };
+            
+            navContainer.appendChild(progressionLink);
+            console.log('✅ Section "Progression" créée manuellement');
+        }
+    },
+    
+    setupProgressionClick(element) {
+        // Remplacer le comportement du clic sur l'élément Progression
+        const originalHref = element.href;
+        const originalOnclick = element.onclick;
+        
+        element.onclick = (e) => {
+            e.preventDefault();
+            console.log('📊 Clic sur "Progression" détecté');
+            this.showProgressionContent();
+        };
+        
+        // Conserver l'attribut data-section pour référence
+        element.setAttribute('data-section', 'progression');
+    },
+    
+    showProgressionContent() {
+        // Afficher le contenu du tableau de bord
+        const mainContent = document.querySelector('.main-content, .content, main, #content');
+        if (mainContent) {
+            mainContent.innerHTML = this.generateProgressionHTML();
+            console.log('✅ Contenu "Progression" affiché');
+        } else {
+            console.error('❌ Conteneur principal non trouvé');
+        }
     },
     
     generateProgressionHTML() {
@@ -1102,10 +1191,21 @@ window.ProgressionIntegration = {
 
 // Initialiser au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
-    // Attendre que les autres modules soient chargés
+    // Attendre que les autres modules soient chargés et que le DOM soit prêt
     setTimeout(() => {
         if (window.StudentProfile) {
             window.ProgressionIntegration.init();
+        } else {
+            console.warn('⚠️ StudentProfile non disponible, nouvelle tentative dans 2 secondes');
+            setTimeout(() => {
+                if (window.StudentProfile) {
+                    window.ProgressionIntegration.init();
+                } else {
+                    console.error('❌ StudentProfile toujours non disponible après 2 secondes');
+                    // Initialiser quand même sans StudentProfile
+                    window.ProgressionIntegration.init();
+                }
+            }, 2000);
         }
-    }, 1000);
+    }, 2000); // Augmenté à 2 secondes pour laisser le temps au DOM de se charger
 });
