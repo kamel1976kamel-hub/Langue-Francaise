@@ -154,15 +154,40 @@ window.submitActivity = async function(chapterId, activityId) {
   console.log('📋 demanderIA disponible:', typeof window.demanderIA);
   console.log('📋 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('IA') || key.includes('ia') || key.includes('demander')));
   
+  // FORCER LA CHARGE DE demanderIA si non disponible
   if (typeof window.demanderIA !== 'function') {
-    console.error('❌ DIAGNOSTIC ACTIVITÉS - demanderIA non disponible');
-    console.log('📋 Fonctions IA trouvées:', Object.keys(window).filter(key => key.toLowerCase().includes('ia')));
-    feedbackTextEl.textContent = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
-    feedbackEl.classList.remove('hidden');
-    return;
+    console.log('⏳ DIAGNOSTIC ACTIVITÉS - demanderIA non disponible, tentative de chargement...');
+    
+    // Attendre un peu que main.js se charge
+    let retryCount = 0;
+    const maxRetries = 20;
+    
+    const checkDemanderIA = setInterval(() => {
+      retryCount++;
+      console.log(`🔄 DIAGNOSTIC ACTIVITÉS - Tentative ${retryCount}/${maxRetries} pour trouver demanderIA`);
+      console.log('📋 Fonctions IA trouvées:', Object.keys(window).filter(key => key.toLowerCase().includes('ia')));
+      
+      if (typeof window.demanderIA === 'function') {
+        console.log('✅ DIAGNOSTIC ACTIVITÉS - demanderIA trouvé après attente !');
+        clearInterval(checkDemanderIA);
+        // Continuer l'exécution
+        proceedWithActivity();
+      } else if (retryCount >= maxRetries) {
+        console.error('❌ DIAGNOSTIC ACTIVITÉS - demanderIA toujours non disponible après 20 tentatives');
+        feedbackTextEl.textContent = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
+        feedbackEl.classList.remove('hidden');
+        clearInterval(checkDemanderIA);
+      }
+    }, 200);
+    
+    return; // Sortir et attendre le retry
   }
   
   console.log('✅ DIAGNOSTIC ACTIVITÉS - demanderIA disponible');
+  proceedWithActivity();
+  
+  // Fonction pour continuer l'activité
+  function proceedWithActivity() {
 
   feedbackTextEl.textContent = 'Correction en cours...';
   feedbackEl.classList.remove('hidden');
@@ -277,6 +302,7 @@ window.submitActivity = async function(chapterId, activityId) {
     
     feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
   }
+  };
 };
 
 // Fonction pour créer un textarea avec assistant d'écriture
