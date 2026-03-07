@@ -268,19 +268,53 @@ window.addChatMessage = function(message, sender, timestamp = null) {
   if (!chatMessages) return;
   
   const messageDiv = document.createElement('div');
-  messageDiv.className = `message mb-4 ${sender === 'student' ? 'text-end' : 'text-start'}`;
+  messageDiv.className = `flex gap-3 mb-4 ${sender === 'student' ? 'flex-row-reverse' : ''}`;
   messageDiv.dataset.sender = sender;
   messageDiv.dataset.timestamp = timestamp || new Date().toISOString();
   
-  const messageContent = document.createElement('div');
-  messageContent.className = `message-text inline-block p-3 rounded-lg max-w-xs lg:max-w-md ${
-    sender === 'student' 
-      ? 'bg-blue-500 text-white' 
-      : 'bg-gray-100 text-gray-800'
-  }`;
-  messageContent.textContent = message;
+  if (sender === 'student') {
+    // Message de l'étudiant
+    messageDiv.innerHTML = `
+      <div class="flex-1 text-end">
+        <div class="rounded-lg p-4 inline-block" style="background-color: var(--bs-primary); color: white;">
+          <p class="text-sm">${message}</p>
+        </div>
+        <p class="text-xs mt-1" style="color: var(--bs-text-muted);">Vous • ${new Date().toLocaleTimeString()}</p>
+      </div>
+      <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
+        <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+      </div>
+    `;
+  } else {
+    // Message de l'IA avec icône audio
+    messageDiv.innerHTML = `
+      <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+        <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+          <div class="flex justify-between items-start">
+            <p class="text-sm flex-1" style="color: var(--bs-white);">${message}</p>
+            <button 
+              onclick="speakChatAIResponse(this)"
+              class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+              title="Lire la réponse de l'IA"
+            >
+              <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date().toLocaleTimeString()}</p>
+      </div>
+    `;
+  }
   
-  messageDiv.appendChild(messageContent);
   chatMessages.appendChild(messageDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 };

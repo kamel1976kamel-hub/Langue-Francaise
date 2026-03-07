@@ -4802,11 +4802,17 @@
         
         if (!text) return;
         
-        const sourceId = 'chat-ai-response';
+        const sourceId = 'chat-ai-response-' + Date.now();
         
         // Si on clique sur la même source qui est en cours de lecture, on arrête
         if (window.currentAudioSource === sourceId && window.isSpeaking()) {
           window.stopAllAudio();
+          // Remettre l'icône de lecture
+          buttonElement.innerHTML = `
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+          `;
           return;
         }
         
@@ -4814,7 +4820,26 @@
         window.stopAllAudio();
         window.currentAudioSource = sourceId;
         
+        // Changer l'icône pour indiquer la lecture en cours
+        buttonElement.innerHTML = `
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6 6h2v12H6zm4 0h2v12h-2zm4 0h2v12h-2z"/>
+          </svg>
+        `;
+        
         window.speakText(text);
+        
+        // Remettre l'icône de lecture quand la lecture est terminée
+        const checkAudioEnd = setInterval(() => {
+          if (!window.isSpeaking()) {
+            clearInterval(checkAudioEnd);
+            buttonElement.innerHTML = `
+              <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+            `;
+          }
+        }, 500);
       };
       
       // Fonction pour lire le texte de la réponse
