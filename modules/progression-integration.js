@@ -245,109 +245,48 @@ window.ProgressionIntegration = {
     
     init() {
         console.log('📊 Initialisation intégration Progression');
-        this.replaceProgressionContent();
+        this.setupProgressionPanel();
         this.setupEventListeners();
     },
     
-    replaceProgressionContent() {
-        // Chercher l'élément "Progression" dans la première colonne
-        let progressionElement = null;
+    setupProgressionPanel() {
+        // Intégrer la logique dans le panel de progression existant
+        console.log('🔄 Intégration dans le panel Progression existant');
         
-        // Essayer plusieurs sélecteurs possibles
-        const selectors = [
-            '[data-section="progression"]',
-            '[data-page="progression"]',
-            '[href*="progression"]',
-            'a:contains("Progression")',
-            '.nav-link:contains("Progression")',
-            '[onclick*="progression"]'
-        ];
-        
-        for (const selector of selectors) {
-            try {
-                progressionElement = document.querySelector(selector);
-                if (progressionElement) {
-                    console.log(`✅ Élément "Progression" trouvé avec sélecteur: ${selector}`);
-                    break;
-                }
-            } catch (e) {
-                console.log(`⚠️ Sélecteur ${selector} échoué:`, e);
+        // Attendre que le DOM soit chargé
+        setTimeout(() => {
+            const teacherView = document.getElementById('teacherProgressionView');
+            if (teacherView) {
+                console.log('✅ Vue enseignant trouvée, intégration du tableau de bord');
+                this.replaceTeacherViewContent();
+            } else {
+                console.log('⚠️ Vue enseignant non trouvée, création manuelle');
+                this.createTeacherView();
             }
-        }
-        
-        // Si toujours pas trouvé, chercher dans le menu navigation
-        if (!progressionElement) {
-            const navLinks = document.querySelectorAll('a, .nav-link, .menu-item');
-            for (const link of navLinks) {
-                if (link.textContent && link.textContent.includes('Progression')) {
-                    progressionElement = link;
-                    console.log('✅ Élément "Progression" trouvé par texte');
-                    break;
-                }
-            }
-        }
-        
-        // Dernière tentative : chercher par ID ou classe
-        if (!progressionElement) {
-            progressionElement = document.getElementById('progression') || 
-                             document.getElementById('progression-section') ||
-                             document.getElementById('progression-page') ||
-                             document.querySelector('.progression');
-        }
-        
-        if (!progressionElement) {
-            console.error('❌ Élément "Progression" non trouvé - Création manuelle');
-            this.createProgressionSection();
-            return;
-        }
-        
-        console.log('🔄 Remplacement du contenu de "Progression"');
-        this.setupProgressionClick(progressionElement);
+        }, 1000);
     },
     
-    createProgressionSection() {
-        // Créer manuellement la section Progression si elle n'existe pas
-        const navContainer = document.querySelector('.nav, .sidebar, .menu, header');
-        if (navContainer) {
-            const progressionLink = document.createElement('a');
-            progressionLink.href = '#progression';
-            progressionLink.className = 'nav-link menu-item';
-            progressionLink.innerHTML = '📊 Progression';
-            progressionLink.setAttribute('data-section', 'progression');
-            progressionLink.onclick = (e) => {
-                e.preventDefault();
-                this.showProgressionContent();
-            };
-            
-            navContainer.appendChild(progressionLink);
-            console.log('✅ Section "Progression" créée manuellement');
-        }
+    replaceTeacherViewContent() {
+        const teacherView = document.getElementById('teacherProgressionView');
+        if (!teacherView) return;
+        
+        // Remplacer le contenu de la vue enseignant avec notre tableau de bord
+        teacherView.innerHTML = this.generateProgressionHTML();
+        console.log('✅ Contenu vue enseignant remplacé avec le tableau de bord');
     },
     
-    setupProgressionClick(element) {
-        // Remplacer le comportement du clic sur l'élément Progression
-        const originalHref = element.href;
-        const originalOnclick = element.onclick;
+    createTeacherView() {
+        // Si la vue enseignant n'existe pas, la créer
+        const progressionPanel = document.getElementById('progressionPanel');
+        if (!progressionPanel) return;
         
-        element.onclick = (e) => {
-            e.preventDefault();
-            console.log('📊 Clic sur "Progression" détecté');
-            this.showProgressionContent();
-        };
+        const teacherView = document.createElement('div');
+        teacherView.id = 'teacherProgressionView';
+        teacherView.className = 'hidden';
+        teacherView.innerHTML = this.generateProgressionHTML();
         
-        // Conserver l'attribut data-section pour référence
-        element.setAttribute('data-section', 'progression');
-    },
-    
-    showProgressionContent() {
-        // Afficher le contenu du tableau de bord
-        const mainContent = document.querySelector('.main-content, .content, main, #content');
-        if (mainContent) {
-            mainContent.innerHTML = this.generateProgressionHTML();
-            console.log('✅ Contenu "Progression" affiché');
-        } else {
-            console.error('❌ Conteneur principal non trouvé');
-        }
+        progressionPanel.appendChild(teacherView);
+        console.log('✅ Vue enseignant créée manuellement');
     },
     
     generateProgressionHTML() {

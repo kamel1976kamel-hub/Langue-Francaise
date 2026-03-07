@@ -4965,39 +4965,24 @@
           studentView.classList.add('hidden');
           teacherView.classList.remove('hidden');
           roleLabel.textContent = 'Enseignant';
+          
+          // Initialiser le tableau de bord pour l'enseignant
+          if (window.ProgressionIntegration && !teacherView.dataset.initialized) {
+            setTimeout(() => {
+              window.ProgressionIntegration.replaceTeacherViewContent();
+              teacherView.dataset.initialized = 'true';
+            },100);
+          }
         } else {
-          studentView.classList.remove('hidden');
           teacherView.classList.add('hidden');
+          studentView.classList.remove('hidden');
           roleLabel.textContent = 'Étudiant';
+          
+          // Mettre à jour les données étudiant
+          if (window.updateStudentProgression) {
+            window.updateStudentProgression();
+          }
         }
-      };
-
-      // ============ PANEL BASE DE DONNÉES ============
-      window.toggleDatabasePanel = function() {
-        const panel = document.getElementById('databasePanel');
-        const accessibilityPanel = document.getElementById('accessibilityPanel');
-        const settingsPanel = document.getElementById('settingsPanel');
-        const progressionPanel = document.getElementById('progressionPanel');
-        
-        accessibilityPanel.classList.add('hidden');
-        settingsPanel.classList.add('hidden');
-        progressionPanel.classList.add('hidden');
-        panel.classList.toggle('hidden');
-        
-        // Afficher/masquer la section upload selon le rôle
-        const uploadSection = document.getElementById('teacherUploadSection');
-        const roleLabel = document.getElementById('databaseRole');
-        
-        if (currentUser && currentUser.role === 'teacher') {
-          uploadSection.classList.remove('hidden');
-          roleLabel.textContent = 'Déposer des documents pour les étudiants';
-        } else {
-          uploadSection.classList.add('hidden');
-          roleLabel.textContent = 'Documents du cours disponibles';
-        }
-        
-        // Charger la liste des documents
-        loadDocumentsList();
       };
       
       // ============ GESTION DES DOCUMENTS ============
