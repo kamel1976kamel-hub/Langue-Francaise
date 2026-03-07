@@ -856,40 +856,48 @@ async function initIA() {
 
 // Fonction globale pour demander à l'IA (pour la compatibilité avec le code existant)
 window.demanderIA = async function(prompt, contexte) {
+    console.log('🚀 DIAGNOSTIC MAIN.DEMANDERIA - DÉBUT FONCTION');
+    console.log('📝 Prompt reçu:', prompt);
+    console.log('📝 Contexte reçu:', contexte);
+    console.log('📋 appState.iaReady:', appState.iaReady);
+
     try {
-        console.log('🚀 DÉBUT DEMANDE IA...');
-        console.log('📝 Prompt reçu:', prompt);
-        console.log('📝 Contexte reçu:', contexte);
+        if (!appState.iaReady) {
+            console.log('⏳ DIAGNOSTIC MAIN.DEMANDERIA - IA pas encore ready, attente...');
+            return "L'IA est en cours d'initialisation. Veuillez patienter...";
+        }
 
         // Attendre un peu que sendAIChatMessage soit disponible
         let attempts = 0;
         while (typeof window.sendAIChatMessage !== 'function' && attempts < 10) {
-            console.log(`⏳ Attente de sendAIChatMessage... tentative ${attempts + 1}/10`);
+            console.log(`⏳ DIAGNOSTIC MAIN.DEMANDERIA - Attente de sendAIChatMessage... tentative ${attempts + 1}/10`);
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
-
-        console.log('🔍 Vérification de sendAIChatMessage:', typeof window.sendAIChatMessage);
-
-        // Utiliser notre Worker Cloudflare
-        if (typeof window.sendAIChatMessage === 'function') {
-            console.log('✅ Appel à sendAIChatMessage...');
-            const result = await window.sendAIChatMessage(prompt);
-            console.log('✅ Réponse reçue de sendAIChatMessage');
-            return result;
-        } else {
-            console.log('❌ sendAIChatMessage NON disponible après attente');
-            const errorMsg = `⚠️ Worker Cloudflare non disponible`;
-            console.log('📄 Message d'erreur généré:', errorMsg);
+        
+        console.log('🔍 DIAGNOSTIC MAIN.DEMANDERIA - Vérification de sendAIChatMessage:', typeof window.sendAIChatMessage);
+        
+        if (typeof window.sendAIChatMessage !== 'function') {
+            console.error('❌ DIAGNOSTIC MAIN.DEMANDERIA - sendAIChatMessage NON disponible après attente');
+            const errorMsg = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
+            console.log('📄 Message d\'erreur généré:', errorMsg);
             return errorMsg;
         }
+        
+        console.log('✅ DIAGNOSTIC MAIN.DEMANDERIA - Appel à sendAIChatMessage...');
+        const result = await window.sendAIChatMessage(prompt);
+        console.log('✅ DIAGNOSTIC MAIN.DEMANDERIA - Réponse reçue de sendAIChatMessage');
+        console.log('� Résultat:', result);
+        return result;
+        
     } catch (error) {
-        console.error('❌ ERREUR DEMANDE IA:', error);
+        console.error('❌ DIAGNOSTIC MAIN.DEMANDERIA - ERREUR:', error);
         console.error('📍 Stack trace:', error.stack);
+        console.error('📍 Message erreur:', error.message);
         const errorMsg = `❌ Erreur du pipeline IA: ${error.message}
 
 Veuillez vérifier votre connexion et réessayer.`;
-        console.log('📄 Message d'erreur généré:', errorMsg);
+        console.log('📄 Message d\'erreur généré:', errorMsg);
         return errorMsg;
     }
 };

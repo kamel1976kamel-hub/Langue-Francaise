@@ -150,11 +150,19 @@ window.submitActivity = async function(chapterId, activityId) {
   }
 
   // Vérifier si la pipeline IA est disponible - UTILISATION DE LA BONNE FONCTION
+  console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 1: Vérification demanderIA');
+  console.log('📋 demanderIA disponible:', typeof window.demanderIA);
+  console.log('📋 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('IA') || key.includes('ia') || key.includes('demander')));
+  
   if (typeof window.demanderIA !== 'function') {
+    console.error('❌ DIAGNOSTIC ACTIVITÉS - demanderIA non disponible');
+    console.log('📋 Fonctions IA trouvées:', Object.keys(window).filter(key => key.toLowerCase().includes('ia')));
     feedbackTextEl.textContent = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
     feedbackEl.classList.remove('hidden');
     return;
   }
+  
+  console.log('✅ DIAGNOSTIC ACTIVITÉS - demanderIA disponible');
 
   feedbackTextEl.textContent = 'Correction en cours...';
   feedbackEl.classList.remove('hidden');
@@ -199,10 +207,20 @@ window.submitActivity = async function(chapterId, activityId) {
   }
 
   try {
+    console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 2: Préparation appel IA');
+    console.log('📝 Réponse étudiant:', answer);
+    console.log('📝 Contexte final:', contexteFinal);
+    
     // Combiner le contexte de base avec le contexte de l'activité
     const contexteFinal = `${baseContexte}\n\n${contexte}`;
     
+    console.log('🚀 DIAGNOSTIC ACTIVITÉS - Étape 3: Appel de demanderIA');
     const reponse = await window.demanderIA(answer, contexteFinal);
+    
+    console.log('✅ DIAGNOSTIC ACTIVITÉS - Étape 4: Réponse reçue');
+    console.log('📨 Réponse IA:', reponse);
+    console.log('📋 Type de réponse:', typeof reponse);
+    console.log('📋 Longueur de réponse:', reponse ? reponse.length : 0);
     
     // Afficher la réponse de l'IA avec le même système que le chat
     if (typeof window.addChatMessage !== 'undefined') {
@@ -252,7 +270,11 @@ window.submitActivity = async function(chapterId, activityId) {
       }
     }
   } catch (e) {
-    console.error('Erreur IA :', e);
+    console.error('❌ DIAGNOSTIC ACTIVITÉS - Erreur dans appel IA');
+    console.error('📍 Erreur:', e);
+    console.error('📍 Stack trace:', e.stack);
+    console.error('📍 Message erreur:', e.message);
+    
     feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
   }
 };
