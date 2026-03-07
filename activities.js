@@ -79,14 +79,13 @@ window.submitActivity = async function(chapterId, activityId) {
     console.log('📝 Contexte final:', contexteFinal);
     
     // Combiner le contexte de base avec le contexte de l'activité
-    const contexteFinal = `${baseContexte}\n\n${contexte}`;
+    const contexteFinal = baseContexte + '\n\n' + contexte;
     
     console.log('🚀 DIAGNOSTIC ACTIVITÉS - Étape 3: Appel de demanderIA');
     window.demanderIA(answer, contexteFinal).then(reponse => {
-    
-    console.log('✅ DIAGNOSTIC ACTIVITÉS - Étape 4: Réponse reçue');
-    console.log('📨 Réponse IA:', reponse);
-    console.log('📋 Type de réponse:', typeof reponse);
+      console.log('✅ DIAGNOSTIC ACTIVITÉS - Étape 4: Réponse reçue');
+      console.log('📨 Réponse IA:', reponse);
+      console.log('📋 Type de réponse:', typeof reponse);
     console.log('📋 Longueur de réponse:', reponse ? reponse.length : 0);
     
     // Afficher la réponse de l'IA avec le même système que le chat
@@ -94,28 +93,27 @@ window.submitActivity = async function(chapterId, activityId) {
       // Créer un message de chat temporaire pour afficher la réponse
       const tempChatContainer = document.createElement('div');
       tempChatContainer.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4';
-      tempChatContainer.innerHTML = `
-        <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
-            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-              <div class="flex items-start justify-between">
-                <p class="text-sm flex-1" style="color: var(--bs-white);"></p>
-                <button onclick="playAudio(this)" class="ml-3 p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors" title="Lire à voix haute">
-                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
-                  </svg>
-                </button>
-              </div>
-              <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date().toLocaleTimeString()}</p>
-            </div>
-          </div>
-        </div>
-      `;
+      tempChatContainer.innerHTML = 
+        '<div class="flex items-start gap-3">' +
+          '<div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">' +
+            '<svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>' +
+            '</svg>' +
+          '</div>' +
+          '<div class="flex-1">' +
+            '<div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">' +
+              '<div class="flex items-start justify-between">' +
+                '<p class="text-sm flex-1" style="color: var(--bs-white);"></p>' +
+                '<button onclick="window.readText && window.readText(this)" class="ml-3 p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors" title="Lire à voix haute">' +
+                  '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">' +
+                    '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>' +
+                  '</svg>' +
+                '</button>' +
+              '</div>' +
+              '<p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ' + new Date().toLocaleTimeString() + '</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
       
       // Remplacer le feedback par le message de chat
       feedbackTextEl.innerHTML = '';
@@ -123,8 +121,8 @@ window.submitActivity = async function(chapterId, activityId) {
       
       // Appliquer l'effet de frappe sur le texte
       const textElement = tempChatContainer.querySelector('p.text-sm');
-      if (typeof window.simulateTypingEffect === 'function') {
-        window.simulateTypingEffect(textElement, reponse);
+      if (typeof window.typeText === 'function') {
+        window.typeText(textElement, reponse);
       } else {
         textElement.textContent = reponse || 'Aucun retour de l\'IA.';
       }
@@ -144,35 +142,33 @@ window.submitActivity = async function(chapterId, activityId) {
     
     feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
   });
-  });
-  };
 };
 
 // Fonction pour créer un textarea avec assistant d'écriture
-window.createSmartTextarea = function(chapterId, activityId, placeholder = "Votre réponse...") {
-  return `
-    <div class="smart-textarea-container">
-      <textarea 
-        id="activity-answer-${chapterId}-${activityId}"
-        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-        rows="6"
-        placeholder="${placeholder}"
-        oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
-      ></textarea>
-      <div class="flex justify-between items-center mt-2 text-xs text-gray-500">
-        <span>💡 L'assistant d'écriture vous aide en temps réel</span>
-        <button 
-          class="px-2 py-1 bg-amber-100 text-amber-600 rounded hover:bg-amber-200 transition-colors"
-          onclick="window.writingAssistant && window.writingAssistant.toggleAudio()"
-        >
-          <svg class="h-5 w-5 inline mr-1" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
-          </svg>
-          Audio
-        </button>
-      </div>
-    </div>
-  `;
+window.createSmartTextarea = function(chapterId, activityId, placeholder) {
+  if (!placeholder) placeholder = "Votre réponse...";
+  
+  return '<div class="smart-textarea-container">' +
+    '<textarea ' +
+      'id="activity-answer-' + chapterId + '-' + activityId + '" ' +
+      'class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" ' +
+      'rows="6" ' +
+      'placeholder="' + placeholder + '" ' +
+      'oninput="window.checkWriting && window.checkWriting(this)"' +
+    '></textarea>' +
+    '<div class="flex justify-between items-center mt-2 text-xs text-gray-500">' +
+      '<span>💡 L\'assistant d\'écriture vous aide en temps réel</span>' +
+      '<button ' +
+        'class="px-2 py-1 bg-amber-100 text-amber-600 rounded hover:bg-amber-200 transition-colors" ' +
+        'onclick="window.toggleAudio && window.toggleAudio()"' +
+      '>' +
+        '<svg class="h-5 w-5 inline mr-1" fill="currentColor" viewBox="0 0 24 24">' +
+          '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>' +
+        '</svg>' +
+        'Audio' +
+      '</button>' +
+    '</div>' +
+  '</div>';
 };
 
 // Fonction pour formater la réponse de l'IA en tableau si elle contient des données tabulaires
@@ -185,13 +181,13 @@ function formatFeedbackAsTable(response) {
     const lines = response.split('\n');
     let tableHtml = '<table class="w-full border-collapse border border-gray-300">';
     
-    lines.forEach(line => {
+    lines.forEach(function(line) {
       if (line.trim()) {
-        const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
+        const cells = line.split('|').map(function(cell) { return cell.trim(); }).filter(function(cell) { return cell; });
         if (cells.length > 0) {
           tableHtml += '<tr>';
-          cells.forEach(cell => {
-            tableHtml += `<td class="border border-gray-300 px-2 py-1 text-sm">${cell}</td>`;
+          cells.forEach(function(cell) {
+            tableHtml += '<td class="border border-gray-300 px-2 py-1 text-sm">' + cell + '</td>';
           });
           tableHtml += '</tr>';
         }
@@ -210,19 +206,19 @@ window.getActivityAnswer = function(chapterId, activityId, hasTable) {
   if (hasTable) {
     // Récupérer les données du tableau
     const tableData = {};
-    const tableRows = document.querySelectorAll(`#activity-table-${chapterId}-${activityId} tbody tr`);
+    const tableRows = document.querySelectorAll('#activity-table-' + chapterId + '-' + activityId + ' tbody tr');
     
-    tableRows.forEach((row, index) => {
+    tableRows.forEach(function(row, index) {
       const cells = row.querySelectorAll('td');
       if (cells.length >= 3) {
         const textType = cells[0].textContent.trim();
         const question = cells[1].textContent.trim();
-        const answer = cells[2].querySelector('input, textarea')?.value?.trim() || '';
+        const answer = cells[2].querySelector('input, textarea') ? cells[2].querySelector('input, textarea').value.trim() : '';
         
-        tableData[`row_${index}`] = {
-          textType,
-          question,
-          answer
+        tableData['row_' + index] = {
+          textType: textType,
+          question: question,
+          answer: answer
         };
       }
     });
@@ -230,7 +226,7 @@ window.getActivityAnswer = function(chapterId, activityId, hasTable) {
     return JSON.stringify(tableData);
   } else {
     // Récupérer le contenu du textarea
-    const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+    const textarea = document.getElementById('activity-answer-' + chapterId + '-' + activityId);
     return textarea ? textarea.value.trim() : '';
   }
 };
@@ -267,30 +263,44 @@ function generateTableInput(chapterId, activityId, tableType) {
 
   const data = tableData[tableType] || tableData['tri-inductif'];
   
-  return `
-    <table id="activity-table-${chapterId}-${activityId}" class="w-full border-collapse border border-gray-300">
-      <thead>
-        <tr class="bg-gray-50">
-          ${Object.keys(data[0]).map(key => `<th class="border border-gray-300 px-2 py-1 text-left text-xs font-medium">${key}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        ${data.map((row, index) => `
-          <tr>
-            ${Object.values(row).map((value, cellIndex) => `
-              <td class="border border-gray-300 px-2 py-1">
-                ${cellIndex === 0 ? value : `
-                  <input type="text" 
-                    class="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="${value}">
-                `}
-              </td>
-            `).join('')}
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  return '<table id="activity-table-' + chapterId + '-' + activityId + '" class="w-full border-collapse border border-gray-300">' +
+      '<thead>' +
+        '<tr class="bg-gray-50">' +
+          generateTableHeaders(data[0]) +
+        '</tr>' +
+      '</thead>' +
+      '<tbody>' +
+        generateTableRows(data, chapterId, activityId) +
+      '</tbody>' +
+    '</table>';
+}
+
+function generateTableHeaders(rowData) {
+  var headers = '';
+  Object.keys(rowData).forEach(function(key) {
+    headers += '<th class="border border-gray-300 px-2 py-1 text-left text-xs font-medium">' + key + '</th>';
+  });
+  return headers;
+}
+
+function generateTableRows(data, chapterId, activityId) {
+  var rows = '';
+  data.forEach(function(row, index) {
+    rows += '<tr>';
+    Object.values(row).forEach(function(value, cellIndex) {
+      rows += '<td class="border border-gray-300 px-2 py-1">';
+      if (cellIndex === 0) {
+        rows += value;
+      } else {
+        rows += '<input type="text" ' +
+                'class="w-full px-2 py-1 border-0 focus:ring-1 focus:ring-blue-500" ' +
+                'placeholder="Votre réponse...">';
+      }
+      rows += '</td>';
+    });
+    rows += '</tr>';
+  });
+  return rows;
 }
 
 console.log('✅ Activities système chargé');
