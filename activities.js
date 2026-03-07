@@ -59,18 +59,18 @@ window.submitActivity = async function(chapterId, activityId) {
       feedbackTextEl.innerHTML = '<div class="text-red-600">❌ Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.</div>';
     }
     if (activity.tableType === 'tri-inductif') {
-      contexte += "\\n\\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.";
+      contexte += "\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.";
     } else if (activity.tableType === 'definir-sujet') {
-      contexte += `\n\nVérifie si le sujet est bien défini, avec précision sur le thème, le domaine et l'objectif de l'explication.`;
+      contexte += "\n\nVérifie si le sujet est bien défini, avec précision sur le thème, le domaine et l'objectif de l'explication.";
     } else if (activity.tableType === 'causes-consequences') {
-      contexte += `\n\nAnalyse la pertinence des causes et conséquences identifiées, et vérifie si les relations de causalité sont bien établies.`;
+      contexte += "\n\nAnalyse la pertinence des causes et conséquences identifiées, et vérifie si les relations de causalité sont bien établies.";
     } else if (activity.tableType === 'exemples-analogies') {
-      contexte += `\n\nÉvalue la pertinence des exemples et analogies proposés, et suggère des améliorations si nécessaire.`;
+      contexte += "\n\nÉvalue la pertinence des exemples et analogies proposés, et suggère des améliorations si nécessaire.";
     } else if (activity.tableType === 'synthese-claire') {
-      contexte += `\n\nVérifie si la synthèse est complète, claire et si elle reprend bien les idées essentielles avec une conclusion pertinente.`;
+      contexte += "\n\nVérifie si la synthèse est complète, claire et si elle reprend bien les idées essentielles avec une conclusion pertinente.";
     }
   } else {
-    contexte += `\n\nAssure-toi de commenter la qualité de la réponse, son développement et sa pertinence par rapport à la question posée.`;
+    contexte += "\n\nAssure-toi de commenter la qualité de la réponse, son développement et sa pertinence par rapport à la question posée.";
   }
 
   try {
