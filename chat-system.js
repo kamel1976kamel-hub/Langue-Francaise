@@ -270,7 +270,16 @@ window.sendAIChatMessage = async function() {
     topicContext = await fetchMarkdownContext(window.currentDiscussion);
   }
   
-  // Appeler le pipeline IA - UTILISATION DE LA BONNE FONCTION
+  // ATTEndre que demanderIA soit disponible
+  const maxWaitTime = 5000; // 5 secondes max
+  const startTime = Date.now();
+  
+  while (typeof window.demanderIA !== 'function' && (Date.now() - startTime) < maxWaitTime) {
+    console.log('⏳ En attente de demanderIA...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  // Appeler le pipeline IA - AVEC ATTENTE INTELLIGENTE
   if (typeof window.demanderIA === 'function') {
     console.log('🚀 Lancement du pipeline IA avec message:', message);
     window.demanderIA(message, topicContext)
@@ -294,8 +303,8 @@ window.sendAIChatMessage = async function() {
         addChatMessage("Désolé, une erreur technique est survenue. Veuillez réessayer.", 'ai');
       });
   } else {
-    console.error('Pipeline IA indisponible.');
-    addChatMessage("Le service IA est temporairement indisponible. Veuillez réessayer plus tard.", 'ai');
+    console.error('Pipeline IA indisponible après 5 secondes d\'attente.');
+    addChatMessage("Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.", 'ai');
   }
 };
 

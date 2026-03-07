@@ -35,98 +35,28 @@ window.submitActivity = async function(chapterId, activityId) {
           <li>Relire votre travail avant de soumettre</li>
         </ul>
         <p style="margin-top: 8px; font-style: italic;">💡 Une réponse vide ne permet pas à l'IA de vous aider efficacement.</p>
-      </div>
-    `;
-    feedbackEl.classList.remove('hidden');
-    return;
-  }
-  
-  // Vérifier si la réponse est trop courte ou superficielle
-  const minLength = activity.hasTable ? 50 : 30;
-  if (answer.length < minLength) {
-    feedbackTextEl.innerHTML = `
-      <div style="color: #d97706;">
-        <p style="font-weight: bold; margin-bottom: 8px;">⚠️ Réponse trop courte</p>
-        <p>Votre réponse semble incomplète. Pour une correction pertinente :</p>
-        <ul style="margin: 8px 0; padding-left: 20px;">
-          <li>Développez votre réponse avec plus de détails</li>
-          <li>Répondez à tous les aspects de la consigne</li>
-          <li>Donnez des exemples ou des justifications</li>
-        </ul>
-        <p style="margin-top: 8px; font-style: italic;">💡 Une réponse développée permet à l'IA de mieux vous guider.</p>
-      </div>
-    `;
-    feedbackEl.classList.remove('hidden');
     return;
   }
 
-  // Vérifier si la pipeline IA est disponible - UTILISATION DE LA BONNE FONCTION
+  console.log('📝 Réponse récupérée:', answer);
+
+  // Vérifier si la pipeline IA est disponible - AVEC ATTENTE
   console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 1: Vérification demanderIA');
   console.log('📋 demanderIA disponible:', typeof window.demanderIA);
-  console.log('📋 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('IA') || key.includes('ia') || key.includes('demander')));
   
-  // FORCER LA CHARGE DE demanderIA si non disponible
+  // ATTEndre que demanderIA soit disponible
+  const maxWaitTime = 5000; // 5 secondes max
+  const startTime = Date.now();
+  
+  while (typeof window.demanderIA !== 'function' && (Date.now() - startTime) < maxWaitTime) {
+    console.log('⏳ ACTIVITÉS - En attente de demanderIA...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
   if (typeof window.demanderIA !== 'function') {
-    console.log('⏳ DIAGNOSTIC ACTIVITÉS - demanderIA non disponible, tentative de chargement...');
-    
-    // Attendre un peu que main.js se charge
-    let retryCount = 0;
-    const maxRetries = 20;
-    
-    const checkDemanderIA = setInterval(() => {
-      retryCount++;
-      console.log(`🔄 DIAGNOSTIC ACTIVITÉS - Tentative ${retryCount}/${maxRetries} pour trouver demanderIA`);
-      console.log('📋 Fonctions IA trouvées:', Object.keys(window).filter(key => key.toLowerCase().includes('ia')));
-      
-      if (typeof window.demanderIA === 'function') {
-        console.log('✅ DIAGNOSTIC ACTIVITÉS - demanderIA trouvé après attente !');
-        clearInterval(checkDemanderIA);
-        // Continuer l'exécution
-        proceedWithActivity();
-      } else if (retryCount >= maxRetries) {
-        console.error('❌ DIAGNOSTIC ACTIVITÉS - demanderIA toujours non disponible après 20 tentatives');
-        feedbackTextEl.textContent = 'Le service IA est temporairement indisponible. Veuillez réessayer plus tard.';
-        feedbackEl.classList.remove('hidden');
-        clearInterval(checkDemanderIA);
-      }
-    }, 200);
-    
-    return; // Sortir et attendre le retry
-  }
-  
-  console.log('✅ DIAGNOSTIC ACTIVITÉS - demanderIA disponible');
-  proceedWithActivity();
-  
-  // Fonction pour continuer l'activité
-  function proceedWithActivity() {
-
-  feedbackTextEl.textContent = 'Correction en cours...';
-  feedbackEl.classList.remove('hidden');
-
-  // Récupérer le contexte depuis le fichier Markdown selon le type de texte
-  let texteType = 'techniques'; // défaut
-  if (chapterId.includes('explicatif')) {
-    texteType = 'explicatif';
-  } else if (chapterId.includes('narratif')) {
-    texteType = 'narratif';
-  } else if (chapterId.includes('descriptif')) {
-    texteType = 'descriptif';
-  } else if (chapterId.includes('argumentatif')) {
-    texteType = 'argumentatif';
-  } else if (chapterId.includes('resume')) {
-    texteType = 'resume';
-  }
-
-  // Charger le contexte depuis le fichier Markdown
-  fetchMarkdownContext(texteType).then(baseContexte => {
-  
-  // Contexte adapté pour l'activité spécifique
-  let contexte = `Activité : ${activity.title}\n\nConsigne originale : ${activity.instructions || 'Non spécifiée'}\n\nVoici la réponse de l'élève à corriger et analyser en détail :\n\n${answer}\n\nIMPORTANT : Analyse la réponse de l'élève ligne par ligne. Pour chaque élément du tableau, indique si c'est correct ou incorrect, et explique pourquoi. Donne des conseils précis pour améliorer chaque réponse. Sois spécifique et constructif.`;
-  
-  // Si c'est une activité avec tableau, adapter le contexte
-  if (activity.hasTable) {
-    contexte += `\n\nL'élève a répondu avec un tableau. Corrige chaque élément du tableau et donne des conseils précis pour améliorer sa réponse.`;
-    
+    console.error('❌ ACTIVITÉS - demanderIA toujours non disponible après attente');
+    if (feedbackTextEl) {
+      feedbackTextEl.innerHTML = '<div class="text-red-600">❌ Le service IA met du temps à se charger. Veuillez réessayer dans quelques instants.</div>';
     if (activity.tableType === 'tri-inductif') {
       contexte += `\n\nFais attention à la distinction entre les différents types de textes (narratif, descriptif, explicatif) et à la pertinence des intentions et indices linguistiques.`;
     } else if (activity.tableType === 'definir-sujet') {
