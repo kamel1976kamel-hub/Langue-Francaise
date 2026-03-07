@@ -433,6 +433,135 @@ window.ProgressionIntegration = {
                     </div>
                 </div>
             </div>
+            
+            <!-- Styles CSS pour le profil détaillé -->
+            <style>
+                .score-card {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 20px;
+                    text-align: center;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 15px;
+                }
+                
+                .score-number {
+                    font-size: 2.5rem;
+                    font-weight: bold;
+                    color: #2c3e50;
+                    margin-bottom: 5px;
+                }
+                
+                .score-label {
+                    font-size: 0.9rem;
+                    color: #6c757d;
+                    font-weight: 500;
+                }
+                
+                .progress {
+                    background: #e9ecef;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    margin-top: 8px;
+                }
+                
+                .competencies-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 15px;
+                }
+                
+                .competency-item {
+                    padding: 15px;
+                    border-radius: 8px;
+                    border: 2px solid #e9ecef;
+                }
+                
+                .competency-item.mastered {
+                    background: #d4edda;
+                    border-color: #28a745;
+                }
+                
+                .competency-item.needs-work {
+                    background: #f8d7da;
+                    border-color: #dc3545;
+                }
+                
+                .competency-icon {
+                    font-size: 1.2rem;
+                    margin-right: 8px;
+                }
+                
+                .competency-name {
+                    font-weight: 500;
+                    color: #495057;
+                }
+                
+                .recommendation-card {
+                    background: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 15px;
+                }
+                
+                .recommendation-number {
+                    display: inline-block;
+                    width: 30px;
+                    height: 30px;
+                    background: #ffc107;
+                    color: white;
+                    border-radius: 50%;
+                    text-align: center;
+                    line-height: 30px;
+                    font-weight: bold;
+                    margin-right: 15px;
+                    font-size: 0.9rem;
+                }
+                
+                .recommendation-content strong {
+                    color: #856404;
+                    margin-bottom: 5px;
+                }
+                
+                .alert {
+                    border-radius: 8px;
+                    border: none;
+                }
+                
+                .alert-info {
+                    background: linear-gradient(135deg, #d1ecf1 0%, #cfe2ff 100%);
+                    color: #0c5460;
+                }
+                
+                .alert-warning {
+                    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                    color: #856404;
+                }
+                
+                .alert-success {
+                    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                    color: #155724;
+                }
+                
+                .alert-heading {
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    margin-bottom: 15px;
+                }
+                
+                .table-bordered th {
+                    background: #f8f9fa;
+                    font-weight: 600;
+                    color: #495057;
+                }
+                
+                .badge {
+                    font-size: 0.8rem;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                }
+            </style>
         `;
     },
     
@@ -1011,8 +1140,12 @@ window.ProgressionIntegration = {
         const stats = profile?.statistics || {};
         const history = profile?.learningHistory || [];
         
+        // Calculer les scores détaillés
+        const detailedScores = this.calculateDetailedScores(studentId);
+        
         const profileHTML = `
             <div class="card">
+                <!-- En-tête profil -->
                 <div class="card-header bg-gradient-to-r from-blue-500 to-purple-600 text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
@@ -1029,87 +1162,135 @@ window.ProgressionIntegration = {
                         </div>
                     </div>
                 </div>
+                
                 <div class="card-body">
-                    <div class="row">
-                        <!-- Informations de connexion -->
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">🔐 Identifiants</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Identifiant:</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" value="${student.username}" readonly>
-                                    <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.username}')" title="Copier">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Mot de passe:</label>
-                                <div class="input-group">
-                                    <input type="password" class="form-control" value="${student.password}" readonly id="pwd-profile-${student.id}">
-                                    <button class="btn btn-outline-secondary" onclick="window.ProgressionIntegration.togglePassword('pwd-profile-${student.id}')" title="Afficher/Masquer">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.password}')" title="Copier">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Email:</label>
-                                <div class="input-group">
-                                    <input type="email" class="form-control" value="${student.email}" readonly>
-                                    <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${student.email}')" title="Copier">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Statistiques -->
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">📊 Statistiques d'Apprentissage</h6>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>Activités complétées:</span>
-                                    <span class="fw-bold">${stats.totalActivities || 0}</span>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>Taux de réussite:</span>
-                                    <span class="fw-bold ${stats.errorRate < 30 ? 'text-success' : 'text-danger'}">
-                                        ${Math.round(100 - (stats.errorRate || 0))}%
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>Taux d'amélioration:</span>
-                                    <span class="fw-bold ${stats.improvementRate > 0 ? 'text-success' : 'text-danger'}">
-                                        ${stats.improvementRate > 0 ? '+' : ''}${Math.round(stats.improvementRate || 0)}%
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>Confiance moyenne:</span>
-                                    <span class="fw-bold text-info">
-                                        ${Math.round((stats.averageConfidence || 0) * 100)}%
-                                    </span>
+                    <!-- Scores principaux -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">📊 Scores d'Apprentissage</h6>
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <div class="score-card">
+                                            <div class="score-number">${detailedScores.completionRate}%</div>
+                                            <div class="score-label">Taux d'Achèvement</div>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-info" style="width: ${detailedScores.completionRate}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="score-card">
+                                            <div class="score-number">${detailedScores.successRate}%</div>
+                                            <div class="score-label">Taux de Réussite</div>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-success" style="width: ${detailedScores.successRate}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="score-card">
+                                            <div class="score-number">${detailedScores.averageScore}/20</div>
+                                            <div class="score-label">Score Moyen</div>
+                                            <div class="progress">
+                                                <div class="progress-bar ${detailedScores.averageScore >= 15 ? 'bg-success' : detailedScores.averageScore >= 10 ? 'bg-warning' : 'bg-danger'}" style="width: ${(detailedScores.averageScore / 20) * 100}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="score-card">
+                                            <div class="score-number">${detailedScores.improvementRate > 0 ? '+' : ''}${detailedScores.improvementRate}%</div>
+                                            <div class="score-label">Amélioration</div>
+                                            <div class="progress">
+                                                <div class="progress-bar ${detailedScores.improvementRate > 0 ? 'bg-success' : 'bg-danger'}" style="width: ${Math.abs(detailedScores.improvementRate)}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Forces et faiblesses -->
+                    </div>
+                    
+                    <!-- Détail par type d'activité -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">📋 Détail par Type d'Activité</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Type d'activité</th>
+                                            <th>Complétées</th>
+                                            <th>Réussite</th>
+                                            <th>Score moyen</th>
+                                            <th>Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${detailedScores.activityBreakdown.map(activity => `
+                                            <tr>
+                                                <td>
+                                                    <span class="badge ${this.getActivityBadgeClass(activity.type)}">
+                                                        ${activity.type}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <strong>${activity.completed}</strong>/${activity.total}
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge ${activity.successRate >= 80 ? 'bg-success' : activity.successRate >= 60 ? 'bg-warning' : 'bg-danger'}">
+                                                        ${activity.successRate}%
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <strong>${activity.averageScore}/20</strong>
+                                                </td>
+                                                <td class="text-center">
+                                                    ${this.getActivityStatusIcon(activity.successRate, activity.completed)}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Parcours recommandé -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert ${detailedScores.recommendedPath.length > 0 ? 'alert-warning' : 'alert-success'}">
+                                <h6 class="alert-heading">💡 Parcours Recommandé</h6>
+                                ${detailedScores.recommendedPath.length > 0 ? `
+                                    <div class="row">
+                                        ${detailedScores.recommendedPath.map((item, index) => `
+                                            <div class="col-md-6 mb-3">
+                                                <div class="recommendation-card">
+                                                    <div class="recommendation-number">${index + 1}</div>
+                                                    <div class="recommendation-content">
+                                                        <strong>${item.title}</strong>
+                                                        <p class="mb-1">${item.description}</p>
+                                                        <small class="text-muted">Priorité: ${item.priority}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : '<p class="mb-0">✅ Excellent parcours ! Continuez ainsi.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Compétences maîtrisées -->
+                    <div class="row mb-4">
                         <div class="col-md-6">
-                            <h6 class="text-muted mb-3">💪 Forces</h6>
-                            <div class="mb-3">
+                            <h6 class="text-muted mb-3">💪 Compétences Maîtrisées</h6>
+                            <div class="competencies-grid">
                                 ${profile?.strengths?.length > 0 ? 
                                     profile.strengths.map(strength => 
-                                        `<div class="d-flex align-items-center mb-2">
-                                            <span class="text-success me-2">✅</span>
-                                            <span>${strength}</span>
+                                        `<div class="competency-item mastered">
+                                            <span class="competency-icon">✅</span>
+                                            <span class="competency-name">${strength}</span>
                                         </div>`
                                     ).join('') :
                                     '<p class="text-muted">En cours d\'identification...</p>'
@@ -1118,17 +1299,17 @@ window.ProgressionIntegration = {
                         </div>
                         
                         <div class="col-md-6">
-                            <h6 class="text-muted mb-3">🎯 Axes d'amélioration</h6>
-                            <div class="mb-3">
+                            <h6 class="text-muted mb-3">🎯 Axes d'Amélioration</h6>
+                            <div class="competencies-grid">
                                 ${profile?.weaknesses?.length > 0 ?
-                                    profile.weaknesses.slice(0, 3).map(weakness =>
-                                        `<div class="mb-2">
+                                    profile.weaknesses.slice(0, 5).map(weakness =>
+                                        `<div class="competency-item needs-work">
                                             <div class="d-flex justify-content-between align-items-center">
-                                                <span class="fw-medium">${weakness.type}</span>
+                                                <span class="competency-name">${weakness.type}</span>
                                                 <span class="badge bg-danger">${weakness.frequency}x</span>
                                             </div>
-                                            <div class="progress mb-1" style="height: 8px;">
-                                                <div class="progress-bar bg-danger" style="width: ${100 - weakness.masteryLevel}%"></div>
+                                            <div class="progress mb-2" style="height: 6px;">
+                                                <div class="progress-bar bg-warning" style="width: ${100 - weakness.masteryLevel}%"></div>
                                             </div>
                                         </div>`
                                     ).join('') :
@@ -1136,77 +1317,29 @@ window.ProgressionIntegration = {
                                 }
                             </div>
                         </div>
-                        
-                        <!-- Actions pédagogiques -->
-                        <div class="col-12 mt-4">
-                            <h6 class="text-muted mb-3">🎯 Actions Pédagogiques</h6>
+                    </div>
+                    
+                    <!-- Actions pédagogiques -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">🎯 Actions Pédagogiques Recommandées</h6>
                             <div class="row">
-                                <div class="col-md-3 mb-2">
-                                    <button onclick="window.ProgressionIntegration.generateDetailedReport('${student.id}')" class="btn btn-primary w-100">
-                                        <i class="fas fa-file-pdf"></i> Rapport détaillé
+                                <div class="col-md-4 mb-3">
+                                    <button onclick="window.ProgressionIntegration.generatePersonalizedPlan('${student.id}')" class="btn btn-primary w-100">
+                                        <i class="fas fa-route"></i> Plan Personnalisé
                                     </button>
                                 </div>
-                                <div class="col-md-3 mb-2">
-                                    <button onclick="window.ProgressionIntegration.messageStudent('${student.id}')" class="btn btn-success w-100">
-                                        <i class="fas fa-envelope"></i> Envoyer message
+                                <div class="col-md-4 mb-3">
+                                    <button onclick="window.ProgressionIntegration.scheduleTutoring('${student.id}')" class="btn btn-success w-100">
+                                        <i class="fas fa-chalkboard-teacher"></i> Soutien Individualisé
                                     </button>
                                 </div>
-                                <div class="col-md-3 mb-2">
-                                    <button onclick="window.ProgressionIntegration.parentMeeting('${student.id}')" class="btn btn-warning w-100">
-                                        <i class="fas fa-calendar"></i> Réunion parents
-                                    </button>
-                                </div>
-                                <div class="col-md-3 mb-2">
-                                    <button onclick="window.ProgressionIntegration.createCustomExercise('${student.id}')" class="btn btn-info w-100">
-                                        <i class="fas fa-tasks"></i> Exercice personnalisé
+                                <div class="col-md-4 mb-3">
+                                    <button onclick="window.ProgressionIntegration.parentConference('${student.id}')" class="btn btn-warning w-100">
+                                        <i class="fas fa-users"></i> Conférence Parents
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <!-- Historique récent -->
-                        <div class="col-12 mt-4">
-                            <h6 class="text-muted mb-3">📈 Historique d'Apprentissage</h6>
-                            ${history.length > 0 ? `
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Activité</th>
-                                                <th>Résultat</th>
-                                                <th>Confiance</th>
-                                                <th>Erreurs</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${history.slice(-10).reverse().map(activity => `
-                                                <tr>
-                                                    <td>${new Date(activity.timestamp).toLocaleDateString()}</td>
-                                                    <td>${activity.type}</td>
-                                                    <td>
-                                                        <span class="badge ${activity.success ? 'bg-success' : 'bg-danger'}">
-                                                            ${activity.success ? '✅ Succès' : '❌ Échec'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div class="progress" style="height: 16px; width: 100px;">
-                                                            <div class="progress-bar ${activity.confidence > 0.8 ? 'bg-success' : activity.confidence > 0.6 ? 'bg-warning' : 'bg-danger'}" style="width: ${(activity.confidence || 0) * 100}%">
-                                                                ${Math.round((activity.confidence || 0) * 100)}%
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        ${activity.errors && activity.errors.length > 0 ? 
-                                                            activity.errors.slice(0, 2).join(', ') : 'Aucune'
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ` : '<p class="text-muted">Aucun historique disponible</p>'}
                         </div>
                     </div>
                 </div>
@@ -1214,6 +1347,132 @@ window.ProgressionIntegration = {
         `;
         
         document.getElementById('student-profile-content').innerHTML = profileHTML;
+    },
+    
+    calculateDetailedScores(studentId) {
+        const profile = window.StudentProfile?.getProfile(studentId);
+        const history = profile?.learningHistory || [];
+        
+        // Analyser les activités par type
+        const activityTypes = {
+            'Texte narratif': { completed: 0, successful: 0, totalScore: 0 },
+            'Texte descriptif': { completed: 0, successful: 0, totalScore: 0 },
+            'Texte explicatif': { completed: 0, successful: 0, totalScore: 0 },
+            'Texte argumentatif': { completed: 0, successful: 0, totalScore: 0 },
+            'Résumé': { completed: 0, successful: 0, totalScore: 0 }
+        };
+        
+        // Parcourir l'historique
+        history.forEach(activity => {
+            if (activityTypes[activity.type]) {
+                activityTypes[activity.type].completed++;
+                if (activity.success) {
+                    activityTypes[activity.type].successful++;
+                }
+                activityTypes[activity.type].totalScore += (activity.score || 0);
+            }
+        });
+        
+        // Calculer les scores
+        const activityBreakdown = Object.entries(activityTypes).map(([type, data]) => ({
+            type,
+            completed: data.completed,
+            total: Math.max(data.completed, 1),
+            successRate: data.completed > 0 ? Math.round((data.successful / data.completed) * 100) : 0,
+            averageScore: data.completed > 0 ? Math.round(data.totalScore / data.completed) : 0
+        }));
+        
+        // Calculer les scores globaux
+        const totalActivities = activityBreakdown.reduce((sum, act) => sum + act.completed, 0);
+        const totalSuccessful = activityBreakdown.reduce((sum, act) => sum + act.successful, 0);
+        const totalScore = activityBreakdown.reduce((sum, act) => sum + (act.averageScore * act.completed), 0);
+        const possibleScore = totalActivities * 20; // Score maximum par activité
+        
+        const completionRate = totalActivities > 0 ? Math.round((totalActivities / 20) * 100) : 0; // 20 activités max
+        const successRate = totalActivities > 0 ? Math.round((totalSuccessful / totalActivities) * 100) : 0;
+        const averageScore = totalActivities > 0 ? Math.round(totalScore / totalActivities) : 0;
+        
+        // Calculer le taux d'amélioration
+        const recentActivities = history.slice(-5);
+        const olderActivities = history.slice(-10, -5);
+        const recentSuccess = recentActivities.filter(a => a.success).length;
+        const olderSuccess = olderActivities.filter(a => a.success).length;
+        const improvementRate = olderActivities.length > 0 ? 
+            Math.round(((recentSuccess - olderSuccess) / olderSuccess.length) * 100) : 0;
+        
+        // Déterminer le parcours recommandé
+        const recommendedPath = this.getRecommendedPath(activityBreakdown, averageScore);
+        
+        return {
+            completionRate,
+            successRate,
+            averageScore,
+            improvementRate,
+            activityBreakdown,
+            recommendedPath
+        };
+    },
+    
+    getRecommendedPath(activityBreakdown, averageScore) {
+        const recommendations = [];
+        
+        // Analyser les faiblesses
+        if (activityBreakdown.length === 0) return recommendations;
+        
+        // Trouver les activités les moins réussies
+        const sortedActivities = activityBreakdown.sort((a, b) => a.successRate - b.successRate);
+        const weakestActivities = sortedActivities.slice(0, 2);
+        
+        // Générer des recommandations
+        weakestActivities.forEach(activity => {
+            if (activity.successRate < 60) {
+                recommendations.push({
+                    title: `Renforcer ${activity.type}`,
+                    description: `Seulement ${activity.successRate}% de réussite. Pratiquez régulièrement les exercices de ${activity.type.toLowerCase()}.`,
+                    priority: 'Haute'
+                });
+            } else if (activity.successRate < 80) {
+                recommendations.push({
+                    title: `Améliorer ${activity.type}`,
+                    description: `Progression possible avec ${activity.successRate}% de réussite. Concentrez-vous sur la structure et les éléments clés.`,
+                    priority: 'Moyenne'
+                });
+            }
+        });
+        
+        // Recommandation générale basée sur le score moyen
+        if (averageScore < 12) {
+            recommendations.push({
+                title: 'Renforcement général',
+                description: 'Score moyen en dessous de la moyenne. Consacrez plus de temps à la pratique et révisez les fondamentaux.',
+                priority: 'Haute'
+            });
+        }
+        
+        return recommendations;
+    },
+    
+    getActivityBadgeClass(activityType) {
+        const badgeClasses = {
+            'Texte narratif': 'bg-primary',
+            'Texte descriptif': 'bg-info',
+            'Texte explicatif': 'bg-success',
+            'Texte argumentatif': 'bg-warning',
+            'Résumé': 'bg-secondary'
+        };
+        return badgeClasses[activityType] || 'bg-light';
+    },
+    
+    getActivityStatusIcon(successRate, completed) {
+        if (completed === 0) {
+            return '<span class="badge bg-secondary">⏸ Non commencé</span>';
+        } else if (successRate >= 80) {
+            return '<span class="badge bg-success">✅ Maîtrisé</span>';
+        } else if (successRate >= 60) {
+            return '<span class="badge bg-warning">🔄 En progrès</span>';
+        } else {
+            return '<span class="badge bg-danger">❌ À améliorer</span>';
+        }
     },
     
     searchStudents(query) {
@@ -1314,6 +1573,99 @@ window.ProgressionIntegration = {
     parentMeeting(studentId) {
         const student = this.studentsDatabase.find(s => s.id === studentId);
         alert(`📅 Réunion parents planifiée pour ${student.displayName}`);
+    },
+    
+    // Fonctions d'actions pédagogiques
+    generatePersonalizedPlan(studentId) {
+        const student = this.studentsDatabase.find(s => s.id === studentId);
+        const profile = window.StudentProfile?.getProfile(studentId);
+        const scores = this.calculateDetailedScores(studentId);
+        
+        // Créer un plan personnalisé basé sur les faiblesses
+        const plan = {
+            student: student.displayName,
+            level: student.level,
+            focusAreas: scores.recommendedPath.map(r => r.title),
+            exercises: this.generatePersonalizedExercises(scores),
+            timeline: this.generateLearningTimeline(scores)
+        };
+        
+        console.log('📋 Plan personnalisé généré:', plan);
+        alert(`📋 Plan d'apprentissage personnalisé créé pour ${student.displayName}\n\nFocus: ${plan.focusAreas.join(', ')}\nExercices: ${plan.exercises.length} personnalisés`);
+    },
+    
+    scheduleTutoring(studentId) {
+        const student = this.studentsDatabase.find(s => s.id === studentId);
+        const scores = this.calculateDetailedScores(studentId);
+        
+        // Identifier les besoins de soutien
+        const needs = scores.activityBreakdown.filter(act => act.successRate < 60);
+        
+        console.log('🎯 Soutien individualisé planifié pour:', student.displayName);
+        alert(`🎯 Soutien individualisé planifié pour ${student.displayName}\n\nBesoins identifiés: ${needs.map(n => n.type).join(', ')}\nSessions recommandées: ${needs.length * 2} séances`);
+    },
+    
+    parentConference(studentId) {
+        const student = this.studentsDatabase.find(s => s.id === studentId);
+        const scores = this.calculateDetailedScores(studentId);
+        
+        // Préparer l'ordre du jour pour la conférence
+        const agenda = {
+            student: student.displayName,
+            performance: scores,
+            strengths: this.getStudentStrengths(studentId),
+            improvements: scores.recommendedPath,
+            nextSteps: this.getNextSteps(scores)
+        };
+        
+        console.log('👥 Conférence parents planifiée:', agenda);
+        alert(`👥 Conférence parents planifiée pour ${student.displayName}\n\nPerformance globale: ${scores.averageScore}/20\nPoints forts: ${agenda.strengths.length} identifiés\nRecommandations: ${agenda.nextSteps.length} actions`);
+    },
+    
+    generatePersonalizedExercises(scores) {
+        const exercises = [];
+        
+        scores.recommendedPath.forEach(recommendation => {
+            if (recommendation.priority === 'Haute') {
+                exercises.push({
+                    type: recommendation.title,
+                    difficulty: 'Adapté',
+                    duration: '30 min',
+                    focus: recommendation.description
+                });
+            }
+        });
+        
+        return exercises;
+    },
+    
+    generateLearningTimeline(scores) {
+        const timeline = [];
+        const weeks = 4; // 4 semaines de planification
+        
+        for (let week = 1; week <= weeks; week++) {
+            timeline.push({
+                week: `Semaine ${week}`,
+                goals: scores.recommendedPath.slice(0, 2).map(r => r.title),
+                exercises: week * 3, // 3 exercices par semaine
+                assessment: `Évaluation semaine ${week}`
+            });
+        }
+        
+        return timeline;
+    },
+    
+    getStudentStrengths(studentId) {
+        const profile = window.StudentProfile?.getProfile(studentId);
+        return profile?.strengths || [];
+    },
+    
+    getNextSteps(scores) {
+        return scores.recommendedPath.slice(0, 3).map(rec => ({
+            action: rec.title,
+            priority: rec.priority,
+            timeline: 'Prochaines 2 semaines'
+        }));
     },
     
     generateClassReport() {
