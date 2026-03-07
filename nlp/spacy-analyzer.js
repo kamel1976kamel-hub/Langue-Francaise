@@ -12,7 +12,18 @@ window.SpacyAnalyzer = {
             { pattern: /\bel sont\b/g, correction: "elles sont", type: "conjugaison", rule: "etre_present", confidence: 0.95 },
             { pattern: /\bil faut\b/g, correction: "il faut", type: "conjugaison", rule: "falloir_present", confidence: 0.95 },
             { pattern: /\bil font\b/g, correction: "ils font", type: "conjugaison", rule: "faire_present", confidence: 0.95 },
-            { pattern: /\bel font\b/g, correction: "elles font", type: "conjugaison", rule: "faire_present", confidence: 0.95 }
+            { pattern: /\bel font\b/g, correction: "elles font", type: "conjugaison", rule: "faire_present", confidence: 0.95 },
+            
+            // Règles supplémentaires depuis spacy-rules-conjugaison-fixed.js
+            { pattern: /\bnous vas\b/g, correction: "nous allons", type: "conjugaison", rule: "aller_present", confidence: 0.95 },
+            { pattern: /\bvous vas\b/g, correction: "vous allez", type: "conjugaison", rule: "aller_present", confidence: 0.95 },
+            { pattern: /\bil sommes\b/g, correction: "nous sommes", type: "conjugaison", rule: "etre_present", confidence: 0.95 },
+            { pattern: /\bil etes\b/g, correction: "vous êtes", type: "conjugaison", rule: "etre_present", confidence: 0.95 },
+            
+            // Accords sujet-verbe simplifiés
+            { pattern: /\bles enfant joue\b/g, correction: "les enfants jouent", type: "conjugaison", rule: "accord_sujet_verbe", confidence: 0.90 },
+            { pattern: /\bles chat mange\b/g, correction: "les chats mangent", type: "conjugaison", rule: "accord_sujet_verbe", confidence: 0.90 },
+            { pattern: /\bles fille danse\b/g, correction: "les filles dansent", type: "conjugaison", rule: "accord_sujet_verbe", confidence: 0.90 }
         ],
         
         // Anglicismes courants
