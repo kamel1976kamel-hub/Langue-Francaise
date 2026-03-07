@@ -264,8 +264,14 @@ window.sendAIChatMessage = async function() {
 
 // ============ UTILITAIRES DE CHAT ============
 window.addChatMessage = function(message, sender, timestamp = null) {
-  const chatMessages = document.getElementById('chatMessages');
-  if (!chatMessages) return;
+  // Récupérer le topic actuel pour déterminer quel conteneur utiliser
+  const currentTopic = window.currentDiscussion || 'techniques';
+  const chatMessages = document.getElementById(`chatMessages-${currentTopic}`);
+  
+  if (!chatMessages) {
+    console.error(`Conteneur chatMessages-${currentTopic} non trouvé`);
+    return;
+  }
   
   const messageDiv = document.createElement('div');
   messageDiv.className = `flex gap-3 mb-4 ${sender === 'student' ? 'flex-row-reverse' : ''}`;

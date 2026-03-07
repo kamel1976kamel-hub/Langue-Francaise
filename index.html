@@ -1839,7 +1839,7 @@
             </div>
             
             <!-- Zone de chat (messages) -->
-            <div id="chatMessages" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div id="chatMessages-techniques" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
               <!-- Message de bienvenue de l'IA -->
               <div class="flex gap-3">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
@@ -1849,7 +1849,158 @@
                 </div>
                 <div class="flex-1">
                   <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-                    <p class="text-sm" style="color: var(--bs-white);">Bonjour ! Je suis votre assistant pour le module "Techniques et pratiques de l'écrit". Posez-moi vos questions sur la production écrite, les techniques de rédaction, ou les pratiques d'écriture. Je suis là pour vous aider !</p>
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans l'atelier sur les techniques et pratiques de l'écrit ! Je peux vous aider à maîtriser tous les aspects de la production écrite, de la planification à la révision. Par quoi aimeriez-vous commencer ?</p>
+                      <button 
+                        onclick="speakChatAIResponse(this)"
+                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                        title="Lire le message de bienvenue"
+                      >
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="chatMessages-narratif" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
+              <!-- Message de bienvenue de l'IA -->
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                  <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans l'atelier sur le texte narratif ! Je peux vous aider à comprendre la structure narrative, les types de narrateurs, les temps du récit, et les techniques pour créer des personnages et des situations captivantes. Qu'aimeriez-vous explorer ?</p>
+                      <button 
+                        onclick="speakChatAIResponse(this)"
+                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                        title="Lire le message de bienvenue"
+                      >
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="chatMessages-descriptif" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
+              <!-- Message de bienvenue de l'IA -->
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                  <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module sur le texte descriptif ! Je vais vous aider à créer des descriptions vivantes et détaillées, à organiser l'espace et le temps, et à utiliser les figures de style pour rendre vos textes captivants. Par où commencerons-nous ?</p>
+                      <button 
+                        onclick="speakChatAIResponse(this)"
+                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                        title="Lire le message de bienvenue"
+                      >
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="chatMessages-explicatif" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
+              <!-- Message de bienvenue de l'IA -->
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                  <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module sur le texte explicatif ! Je suis là pour vous aider à structurer vos explications, utiliser les connecteurs logiques, et rendre vos textes clairs et pédagogiques. Par quoi commençons-nous ?</p>
+                      <button 
+                        onclick="speakChatAIResponse(this)"
+                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                        title="Lire le message de bienvenue"
+                      >
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="chatMessages-argumentatif" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
+              <!-- Message de bienvenue de l'IA -->
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                  <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans l'atelier sur le texte argumentatif ! Je vais vous aider à construire des arguments solides, à convaincre votre audience, et à maîtriser les techniques de persuasion. Quel sujet aimeriez-vous argumenter ?</p>
+                      <button 
+                        onclick="speakChatAIResponse(this)"
+                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                        title="Lire le message de bienvenue"
+                      >
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="chatMessages-resume" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
+              <!-- Message de bienvenue de l'IA -->
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                  <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm flex-1" style="color: var(--bs-white);">Bienvenue dans le module sur le résumé ! Je vais vous aider à identifier les idées essentielles, synthétiser l'information, et produire des résumés concis et fidèles. Quel type de texte souhaitez-vous apprendre à résumer ?</p>
+                      <button 
+                        onclick="speakChatAIResponse(this)"
+                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                        title="Lire le message de bienvenue"
+                      >
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
                 </div>
@@ -6780,6 +6931,9 @@
 
       window.currentDiscussion = 'techniques';
 
+      // Afficher le premier conteneur par défaut
+      document.getElementById('chatMessages-techniques').classList.remove('hidden');
+
       // ============ SÉLECTION DE DISCUSSION ============
       window.selectDiscussion = function(topic) {
         window.currentDiscussion = topic;
@@ -6806,41 +6960,21 @@
         // Mettre à jour le titre dans la colonne 3
         document.getElementById('chatTitle').textContent = data.title;
         
-        // Charger les messages sauvegardés ou afficher le message de bienvenue
-        const chatMessages = document.getElementById('chatMessages');
-        const savedMessages = loadChatHistory(topic);
+        // Mettre à jour la description
+        const descriptionEl = document.getElementById('discussionDescription');
+        if (descriptionEl) {
+          descriptionEl.textContent = data.description || '';
+        }
         
-        if (savedMessages && savedMessages.length > 0) {
-          // Restaurer les messages sauvegardés
-          chatMessages.innerHTML = savedMessages.map(msg => createMessageHTML(msg)).join('');
-        } else {
-          // Afficher le message de bienvenue par défaut
-          chatMessages.innerHTML = `
-            <div class="flex gap-3">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
-                <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-              </div>
-              <div class="flex-1">
-                <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-                  <div class="flex justify-between items-start">
-                    <p class="text-sm flex-1" style="color: var(--bs-white);">${data.welcomeMessage}</p>
-                    <button 
-                      onclick="speakChatAIResponse(this)"
-                      class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                      title="Lire le message de bienvenue"
-                    >
-                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
-              </div>
-            </div>
-          `;
+        // Cacher tous les conteneurs de chat
+        document.querySelectorAll('[id^="chatMessages-"]').forEach(container => {
+          container.classList.add('hidden');
+        });
+        
+        // Afficher le conteneur de chat correspondant
+        const targetChatContainer = document.getElementById(`chatMessages-${topic}`);
+        if (targetChatContainer) {
+          targetChatContainer.classList.remove('hidden');
         }
         
         // Mettre à jour la colonne 4
