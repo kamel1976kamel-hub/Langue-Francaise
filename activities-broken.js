@@ -1,15 +1,104 @@
-// Fonction pour récupérer le contexte depuis les fichiers Markdown
-async function fetchMarkdownContext(topic) {
-  const fallbackContexts = {
-    'techniques': "Tu es un expert en français et en pédagogie. Tu aides les élèves à maîtriser les techniques et pratiques de l'écrit. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la production écrite, la planification, la révision, l'analyse de consignes, la recherche documentaire, la cohérence textuelle et la correction.",
-    'narratif': "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes narratifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la structure du récit (situation initiale, élément perturbateur, péripéties, dénouement), les types de narrateurs, les temps verbaux, la création de personnages et les dialogues.",
-    'descriptif': "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes descriptifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur l'organisation spatiale et temporelle, les procédés descriptifs (comparaisons, métaphores), les figures de style, les champs lexicaux et les registres de description.",
-    'explicatif': "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes explicatifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la définition du sujet, l'organisation logique des idées, les connecteurs et marqueurs de relation, les causes et conséquences, les exemples et analogies.",
-    'argumentatif': "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des textes argumentatifs de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la formulation d'une thèse, la construction d'arguments solides, les preuves et exemples, la réfutation des objections, et les techniques de persuasion.",
-    'resume': "Tu es un expert en français et en pédagogie. Tu aides les élèves à produire des résumés de qualité. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur l'identification des idées essentielles, la hiérarchisation des informations, la reformulation, la condensation et la neutralité du point de vue."
-  };
+// Gestion des activités pédagogiques
+
+// Fonction pour générer les entrées de tableau selon le type
+window.generateTableInput = function(chapterId, activityId, tableType) {
+  let tableRows = 3;
+  let tableCols = 2;
+  let headers = ['Colonne 1', 'Colonne 2'];
+  let placeholders = ['Saisissez votre réponse...', 'Saisissez votre réponse...'];
   
-  return fallbackContexts[topic] || "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
+  // Adaptation selon le type de tableau
+  if (tableType === 'tri-inductif') {
+    tableRows = 4;
+    tableCols = 4;
+    headers = ['Texte', 'Question principale', 'Intention de l\'auteur', 'Indices linguistiques'];
+    placeholders = ['A (Récit), B (Description), C (Explicatif)...', 'Que s\'est-il passé ?', 'Raconter, Décrire, Expliquer...', 'Passé simple, adjectifs, connecteurs...'];
+  } else if (tableType === 'definir-sujet') {
+    tableRows = 4;
+    tableCols = 2;
+    headers = ['Élément', 'Détail'];
+    placeholders = ['Sujet principal...', 'Phénomène, concept, objet...'];
+  } else if (tableType === 'causes-consequences') {
+    tableRows = 4;
+    tableCols = 2;
+    headers = ['Catégorie', 'Détail'];
+    placeholders = ['Cause(s) principales...', 'Conséquence(s) directes...'];
+  } else if (tableType === 'exemples-analogies') {
+    tableRows = 4;
+    tableCols = 2;
+    headers = ['Type', 'Exemple / Analogie'];
+    placeholders = ['Exemple concret...', 'Faites une analogie...'];
+  } else if (tableType === 'synthese-claire') {
+    tableRows = 4;
+    tableCols = 2;
+    headers = ['Élément', 'Contenu'];
+    placeholders = ['Idée principale...', 'Points clés...'];
+  }
+  
+  let html = '<div class="overflow-x-auto">';
+  html += '<table class="min-w-full divide-y divide-slate-200">';
+  
+  // En-tête du tableau
+  html += '<thead class="bg-slate-50">';
+  html += '<tr>';
+  for (let j = 0; j < tableCols; j++) {
+    html += `<th scope="col" class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">${headers[j]}</th>`;
+  }
+  html += '</tr>';
+  html += '</thead>';
+  
+  // Corps du tableau
+  html += '<tbody class="bg-white divide-y divide-slate-200">';
+  for (let i = 0; i < tableRows; i++) {
+    html += '<tr>';
+    for (let j = 0; j < tableCols; j++) {
+      html += `<td class="px-3 py-2 whitespace-nowrap">
+        <input 
+          type="text" 
+          class="table-input-${chapterId}-${activityId} w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-slate-500 focus:border-slate-500" 
+          data-row="${i}" 
+          data-col="${j}"
+          placeholder="${placeholders[j]}"
+        />
+      </td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  
+  html += '</table>';
+  html += '</div>';
+  
+  return html;
+};
+
+// Fonction pour récupérer le contenu du tableau ou du textarea est définie dans index.html
+
+// Fonction pour charger le contexte Markdown depuis GitHub Pages
+async function fetchMarkdownContext(topic) {
+  try {
+    // Utiliser directement le chemin absolu qui fonctionne
+    const response = await fetch(`https://kamel1976kamel-hub.github.io/Langue-Francaise/contexts/${topic}.md`);
+    
+    if (!response.ok) throw new Error(`Fichier ${topic}.md non trouvé (status: ${response.status})`);
+    
+    const mdText = await response.text();
+    console.log(`✅ Contexte Markdown ${topic}.md chargé pour activité (${mdText.length} caractères)`);
+    return mdText;
+  } catch (error) {
+    console.error('❌ Impossible de charger le contexte Markdown:', error);
+    // Fallback contextuel silencieux
+    const fallbackContexts = {
+      techniques: "Tu es un expert en didactique du français. Aide l'étudiant à progresser dans la production écrite sans lui donner directement les réponses. Domaine : planification, structuration, connecteurs logiques, adaptation au destinataire, révision, analyse de consignes.",
+      narratif: "Tu es un expert en littérature spécialisé dans le texte narratif. Aide l'étudiant à maîtriser la structure du récit, les personnages, les temps verbaux, le narrateur et l'intrigue. Guide-le dans la création d'histoires captivantes.",
+      descriptif: "Tu es un expert en littérature spécialisé dans le texte descriptif. Aide l'étudiant à développer son regard descriptif, l'organisation spatiale, les perceptions sensorielles, les champs lexicaux et la création d'atmosphère.",
+      explicatif: "Tu es un expert en littérature spécialisé dans le texte explicatif. Aide l'étudiant à structurer ses explications de manière logique, utiliser les connecteurs logiques, et répondre aux questions 'Pourquoi?' et 'Comment?'.",
+      argumentatif: "Tu es un expert en littérature spécialisé dans le texte argumentatif. Aide l'étudiant à développer sa thèse, construire des arguments solides, utiliser des preuves et réfuter les contre-arguments.",
+      resume: "Tu es un expert en littérature spécialisé dans l'art du résumé. Aide l'étudiant à identifier les idées essentielles, éliminer les superflu, reformuler avec ses propres mots et respecter la fidélité au texte."
+    };
+    
+    return fallbackContexts[topic] || "Tu es un tuteur expert en français. Aide l'étudiant sans faire le travail à sa place.";
+  }
 }
 
 // Fonction pour soumettre une activité à l'IA
@@ -205,6 +294,13 @@ window.submitActivity = async function(chapterId, activityId) {
         feedbackTextEl.textContent = reponse || 'Aucun retour de l\'IA.';
       }
     }
+  } catch (e) {
+    console.error('❌ DIAGNOSTIC ACTIVITÉS - Erreur dans appel IA');
+    console.error('📍 Erreur:', e);
+    console.error('📍 Stack trace:', e.stack);
+    console.error('📍 Message erreur:', e.message);
+    
+    feedbackTextEl.textContent = 'Désolé, une erreur technique est survenue. Veuillez réessayer.';
   }).catch(e => {
     console.error('❌ DIAGNOSTIC ACTIVITÉS - Erreur dans appel IA');
     console.error('📍 Erreur:', e);
@@ -246,120 +342,114 @@ window.createSmartTextarea = function(chapterId, activityId, placeholder = "Votr
 
 // Fonction pour formater la réponse de l'IA en tableau si elle contient des données tabulaires
 function formatFeedbackAsTable(response) {
-  // Simple formatting pour les réponses de type tableau
-  if (!response) return 'Aucune réponse disponible.';
-  
-  // Si la réponse contient des éléments qui ressemblent à un tableau
-  if (response.includes('|') && response.includes('-')) {
-    const lines = response.split('\n');
-    let tableHtml = '<table class="w-full border-collapse border border-gray-300">';
-    
-    lines.forEach(line => {
-      if (line.trim()) {
-        const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
-        if (cells.length > 0) {
-          tableHtml += '<tr>';
-          cells.forEach(cell => {
-            tableHtml += `<td class="border border-gray-300 px-2 py-1 text-sm">${cell}</td>`;
-          });
-          tableHtml += '</tr>';
-        }
-      }
-    });
-    
-    tableHtml += '</table>';
-    return tableHtml;
+  // Si la réponse contient déjà des balises HTML, on les garde
+  if (response.includes('<table') || response.includes('<h')) {
+    return response;
   }
   
-  return response;
+  // Convertir le markdown en HTML
+  let html = response;
+  
+  // Convertir les titres markdown **titre** en <h4>
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<h4 style="color:#4f46e5;margin:15px 0 10px 0;font-size:14px;">$1</h4>');
+  
+  // Convertir les tableaux markdown en HTML
+  // Détecter les lignes de tableau (| ... | ... |)
+  const lines = html.split('\n');
+  let inTable = false;
+  let tableHtml = '';
+  let resultHtml = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Détecter une ligne de tableau
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (!inTable) {
+        inTable = true;
+        tableHtml = '<table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:12px;background:white;"><thead>';
+      }
+      
+      // Séparer les cellules
+      const cells = line.split('|').filter(c => c.trim() !== '');
+      
+      // Ignorer la ligne de séparation (---)
+      if (cells.some(c => c.includes('---'))) {
+        tableHtml += '</thead><tbody>';
+        continue;
+      }
+      
+      // Déterminer si c'est l'en-tête ou le corps
+      const isHeader = tableHtml.includes('<thead>') && !tableHtml.includes('</thead>');
+      const tag = isHeader ? 'th' : 'td';
+      const bgStyle = isHeader ? 'background:#f8fafc;font-weight:bold;' : '';
+      
+      tableHtml += '<tr>';
+      cells.forEach(cell => {
+        tableHtml += `<${tag} style="padding:8px 12px;border:1px solid #e5e7eb;${bgStyle}">${cell.trim()}</${tag}>`;
+      });
+      tableHtml += '</tr>';
+    } else {
+      // Fermer le tableau s'il est ouvert
+      if (inTable) {
+        inTable = false;
+        tableHtml += '</tbody></table>';
+        resultHtml += tableHtml;
+        tableHtml = '';
+      }
+      
+      if (line) {
+        resultHtml += `<p style="margin:5px 0;">${line}</p>`;
+      }
+    }
+  }
+  
+  // Fermer le tableau s'il est encore ouvert
+  if (inTable) {
+    tableHtml += '</tbody></table>';
+    resultHtml += tableHtml;
+  }
+  
+  return resultHtml || response;
 }
 
-// Fonction pour obtenir la réponse de l'élève (tableau ou textarea)
-window.getActivityAnswer = function(chapterId, activityId, hasTable) {
-  if (hasTable) {
-    // Récupérer les données du tableau
-    const tableData = {};
-    const tableRows = document.querySelectorAll(`#activity-table-${chapterId}-${activityId} tbody tr`);
-    
-    tableRows.forEach((row, index) => {
-      const cells = row.querySelectorAll('td');
-      if (cells.length >= 3) {
-        const textType = cells[0].textContent.trim();
-        const question = cells[1].textContent.trim();
-        const answer = cells[2].querySelector('input, textarea')?.value?.trim() || '';
-        
-        tableData[`row_${index}`] = {
-          textType,
-          question,
-          answer
-        };
-      }
-    });
-    
-    return JSON.stringify(tableData);
-  } else {
-    // Récupérer le contenu du textarea
-    const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-    return textarea ? textarea.value.trim() : '';
+// Fonction pour simuler l'effet de frappe (comme dans un document Word)
+function simulateTypingEffect(element, text, hasTable) {
+  if (!text) {
+    element.textContent = 'Aucun retour de l\'IA.';
+    return;
   }
-};
 
-// Fonction pour générer les inputs de tableau
-function generateTableInput(chapterId, activityId, tableType) {
-  const tableData = {
-    'tri-inductif': [
-      { textType: 'A (Récit)', question: 'Que s\'est-il passé ?', intention: 'Raconter', indices: 'Passé simple, temps du récit' },
-      { textType: 'B (Description)', question: 'Que s\'est-il passé ?', intention: 'Décrire', indices: 'Adjectifs, temps descriptifs' },
-      { textType: 'C (Explicatif)', question: 'Que s\'est-il passé ?', intention: 'Expliquer', indices: 'Connecteurs logiques' }
-    ],
-    'definir-sujet': [
-      { element: 'Thème', description: 'Domaine général du sujet' },
-      { element: 'Domaine', description: 'Zone spécifique étudiée' },
-      { element: 'Objectif', description: 'But de l\'explication' }
-    ],
-    'causes-consequences': [
-      { element: 'Cause principale', description: 'Origine du phénomène' },
-      { element: 'Conséquence directe', description: 'Résultat immédiat' },
-      { element: 'Conséquence indirecte', description: 'Effet secondaire' }
-    ],
-    'exemples-analogies': [
-      { element: 'Exemple 1', description: 'Premier cas concret' },
-      { element: 'Exemple 2', description: 'Deuxième cas concret' },
-      { element: 'Analogie', description: 'Comparaison éclairante' }
-    ],
-    'synthese-claire': [
-      { element: 'Idée principale', description: 'Message central' },
-      { element: 'Arguments clés', description: 'Points essentiels' },
-      { element: 'Conclusion', description: 'Synthèse finale' }
-    ]
+  // Effacer le contenu existant
+  element.textContent = '';
+  
+  // Formater le texte en fonction du type d'activité
+  let contentToType = text;
+  if (hasTable) {
+    contentToType = formatFeedbackAsTable(text);
+  }
+
+  // Vérifier si le contenu contient du HTML
+  const containsHTML = contentToType.includes('<') && contentToType.includes('>');
+
+  let charIndex = 0;
+  const typingSpeed = 30; // ms entre chaque caractère
+
+  const typeCharacter = () => {
+    if (charIndex < contentToType.length) {
+      if (containsHTML) {
+        // Si le contenu contient du HTML, on l'ajoute progressivement
+        element.innerHTML = contentToType.substring(0, charIndex + 1);
+      } else {
+        // Sinon, on ajoute simplement le texte
+        element.textContent = contentToType.substring(0, charIndex + 1);
+      }
+      
+      charIndex++;
+      setTimeout(typeCharacter, typingSpeed);
+    }
   };
 
-  const data = tableData[tableType] || tableData['tri-inductif'];
-  
-  return `
-    <table id="activity-table-${chapterId}-${activityId}" class="w-full border-collapse border border-gray-300">
-      <thead>
-        <tr class="bg-gray-50">
-          ${Object.keys(data[0]).map(key => `<th class="border border-gray-300 px-2 py-1 text-left text-xs font-medium">${key}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        ${data.map((row, index) => `
-          <tr>
-            ${Object.values(row).map((value, cellIndex) => `
-              <td class="border border-gray-300 px-2 py-1">
-                ${cellIndex === 0 ? value : `
-                  <input type="text" 
-                    class="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="${value}">
-                `}
-              </td>
-            `).join('')}
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  typeCharacter();
 }
 
-console.log('✅ Activities système chargé');
