@@ -257,14 +257,14 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
     
     try {
         // Appel API OpenAI RÉELLE
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer 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'
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini',
+                model: 'llama-3.1-70b-versatile',
                 messages: [
                     {
                         role: 'system',
@@ -287,7 +287,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const data = await response.json();
         const aiResponse = data.choices[0].message.content;
         
-        console.log('✅ Réponse API OpenAI reçue:', aiResponse);
+        console.log('✅ Réponse API Groq reçue:', aiResponse);
         
         // Tenter de parser le JSON
         try {
@@ -309,7 +309,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         }
         
     } catch (error) {
-        console.error('❌ Erreur API OpenAI:', error);
+        console.error('❌ Erreur API Groq:', error);
         
         // Fallback pédagogique
         return JSON.stringify({
