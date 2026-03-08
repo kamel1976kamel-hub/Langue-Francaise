@@ -31,8 +31,8 @@ window.APP_CONFIG = window.APP_CONFIG || {
     }
 };
 
-// État de l'application
-const appState = {
+// État de l'application (protection globale)
+window.appState = window.appState || {
     modulesReady: false,
     iaReady: false,
     currentStatus: 'initialization',
@@ -393,7 +393,7 @@ window.CacheManager = {
             return;
         }
         
-        console.log('�🔄 CacheManager - Initialisation du système de détection de modifications (MODE DÉVELOPPEMENT)');
+        console.log('�� CacheManager - Initialisation du système de détection de modifications (MODE DÉVELOPPEMENT)');
         
         // Observer les modifications du DOM
         this.setupMutationObserver();
