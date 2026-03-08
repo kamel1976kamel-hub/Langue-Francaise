@@ -357,8 +357,13 @@ window.addChatMessage = function(message, sender, timestamp = null) {
 };
 
 window.displayChatPedagogicalResponse = function(response, originalMessage) {
+  console.log('🔍 CHAT - displayChatPedagogicalResponse appelé');
+  console.log('📝 Type de réponse:', typeof response);
+  console.log('📝 Contenu réponse:', response);
+  
   if (!response || typeof response !== 'object') {
     // Si c'est une simple chaîne, l'afficher directement
+    console.log('📝 Réponse simple chaîne, affichage direct');
     addChatMessage(response, 'ai');
     return;
   }
@@ -389,10 +394,17 @@ window.displayChatPedagogicalResponse = function(response, originalMessage) {
     });
   }
   
+  // Gérer le cas où la réponse vient de l'IA (format JSON avec analysis)
+  if (response.analysis) {
+    messageContent = response.analysis;
+    console.log('📝 Utilisation du champ analysis:', messageContent.substring(0, 100) + '...');
+  }
+  
   if (!messageContent) {
     messageContent = response.analysis || "Message reçu. Je vais vous aider avec ça.";
   }
   
+  console.log('📝 Message final à afficher:', messageContent.substring(0, 100) + '...');
   addChatMessage(messageContent, 'ai');
 };
 
