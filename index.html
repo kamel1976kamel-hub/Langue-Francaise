@@ -10,14 +10,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Scripts essentiels -->
-    <script src="activities.js?v=32"></script>
-    <script src="activities-optimized.js?v=32"></script>
-    <script src="chat-system-unified.js?v=32"></script>
+    <script src="activities.js?v=34"></script>
+    <script src="activities-optimized.js?v=34"></script>
+    <script src="chat-system-unified.js?v=34"></script>
     <!-- Modules pédagogiques -->
-    <script src="services/ai-pedagogical-service.js?v=32"></script>
-    <script src="nlp/spacy-analyzer.js?v=32"></script>
-    <script src="memory/student-profile-unified.js?v=32"></script>
-    <script src="main.js?v=32"></script>
+    <script src="services/ai-pedagogical-service.js?v=34"></script>
+    <script src="nlp/spacy-analyzer.js?v=34"></script>
+    <script src="memory/student-profile-unified.js?v=34"></script>
+    <script src="main.js?v=34"></script>
     
     <style>
       /* ============================================
@@ -4739,6 +4739,7 @@
               rows="4" 
               placeholder="Votre réponse..."
               oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
+              onload="setupRealTimeCorrection('${chapterId}', '${activityId}')"
             ></textarea>
             <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
               <span>💡 L'assistant d'écriture vous aide en temps réel</span>
@@ -4822,6 +4823,7 @@
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500" 
                     rows="4" 
                     placeholder="Votre réponse..."
+                    onload="setupRealTimeCorrection('${chapterId}', '${id}')"
                   ></textarea>
                   `}
                   <div class="flex gap-2">
@@ -8112,9 +8114,17 @@
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function() {
           console.log("Application chargée avec le pipeline à 4 modèles");
+          // Configurer l'analyse en temps réel pour les chats
+          if (typeof setupRealTimeCorrectionForChat === 'function') {
+            setupRealTimeCorrectionForChat();
+          }
         });
       } else {
         console.log("Application chargée avec le pipeline à 4 modèles");
+        // Configurer l'analyse en temps réel pour les chats
+        if (typeof setupRealTimeCorrectionForChat === 'function') {
+          setupRealTimeCorrectionForChat();
+        }
       }
     </script>
     

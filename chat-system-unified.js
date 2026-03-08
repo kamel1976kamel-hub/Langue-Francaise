@@ -1,6 +1,77 @@
 // SYSTÈME DE CHAT UNIFIÉ ET OPTIMISÉ
 // =====================================
 
+// ============ ANALYSE EN TEMPS RÉEL POUR CHATS ============
+window.setupRealTimeCorrectionForChat = function() {
+  const chatInput = document.getElementById('chatInput');
+  if (!chatInput) return;
+  
+  let typingTimer;
+  const typingDelay = 1000; // Délai de 1 seconde après la fin de frappe
+  
+  // Fonction d'analyse en temps réel pour les chats
+  const analyzeChatText = async function() {
+    const currentText = chatInput.value || '';
+    
+    // Ne pas analyser si le texte est trop court ou vide
+    if (currentText.trim().length < 3) {
+      // Supprimer le nuage existant si le texte est trop court
+      const existingCloud = document.querySelector('.correction-cloud');
+      if (existingCloud) existingCloud.remove();
+      return;
+    }
+    
+    console.log('🔍 Analyse en temps réel du chat:', currentText.substring(0, 50) + '...');
+    
+    try {
+      // Analyser le texte avec le service local
+      if (window.analyzeTextLocal) {
+        const analysis = window.analyzeTextLocal(currentText);
+        
+        // Créer le nuage de correction si des erreurs sont détectées
+        if (analysis && (analysis.errors.length > 0 || analysis.suggestions.length > 0)) {
+          const correctionsData = {
+            corrections: analysis.errors.map(err => ({
+              text: err.text,
+              correction: err.correction,
+              type: err.type
+            })),
+            explanations: analysis.explanations || [],
+            suggestions: analysis.suggestions || []
+          };
+          
+          createCorrectionCloud(correctionsData, currentText);
+        } else {
+          // Supprimer le nuage si aucune erreur
+          const existingCloud = document.querySelector('.correction-cloud');
+          if (existingCloud) existingCloud.remove();
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'analyse en temps réel du chat:', error);
+    }
+  };
+  
+  // Ajouter l'événement de saisie
+  chatInput.addEventListener('input', function() {
+    // Annuler le timer précédent
+    clearTimeout(typingTimer);
+    
+    // Démarrer un nouveau timer
+    typingTimer = setTimeout(analyzeChatText, typingDelay);
+  });
+  
+  // Analyser également lors du focus si le texte n'est pas vide
+  chatInput.addEventListener('focus', function() {
+    const currentText = chatInput.value || '';
+    if (currentText.trim().length >= 3) {
+      analyzeChatText();
+    }
+  });
+  
+  console.log('✅ Analyse en temps réel configurée pour les chats');
+};
+
 // ============ SÉLECTION DE DISCUSSION ============
 window.selectDiscussion = function(topic) {
   console.log('🔄 SÉLECTION DE DISCUSSION - DÉBUT');

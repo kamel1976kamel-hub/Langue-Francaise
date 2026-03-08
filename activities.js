@@ -222,6 +222,78 @@ window.speakActivityCorrection = function(button) {
   }
 };
 
+// Fonction pour analyser en temps réel le texte saisi
+window.setupRealTimeCorrection = function(chapterId, activityId) {
+  // Récupérer l'élément de réponse (textarea ou tableau)
+  const answerElement = window.getActivityAnswerElement(chapterId, activityId);
+  if (!answerElement) return;
+  
+  let typingTimer;
+  const typingDelay = 1000; // Délai de 1 seconde après la fin de frappe
+  
+  // Fonction d'analyse en temps réel
+  const analyzeText = async function() {
+    const currentText = answerElement.value || answerElement.textContent || '';
+    
+    // Ne pas analyser si le texte est trop court ou vide
+    if (currentText.trim().length < 3) {
+      // Supprimer le nuage existant si le texte est trop court
+      const existingCloud = document.querySelector('.activity-correction-cloud');
+      if (existingCloud) existingCloud.remove();
+      return;
+    }
+    
+    console.log('🔍 Analyse en temps réel du texte:', currentText.substring(0, 50) + '...');
+    
+    try {
+      // Analyser le texte avec le service local
+      if (window.analyzeTextLocal) {
+        const analysis = window.analyzeTextLocal(currentText);
+        
+        // Créer le nuage de correction si des erreurs sont détectées
+        if (analysis && (analysis.errors.length > 0 || analysis.suggestions.length > 0)) {
+          const correctionsData = {
+            corrections: analysis.errors.map(err => ({
+              text: err.text,
+              correction: err.correction,
+              type: err.type
+            })),
+            explanations: analysis.explanations || [],
+            suggestions: analysis.suggestions || []
+          };
+          
+          createActivityCorrectionCloud(correctionsData, currentText, chapterId, activityId);
+        } else {
+          // Supprimer le nuage si aucune erreur
+          const existingCloud = document.querySelector('.activity-correction-cloud');
+          if (existingCloud) existingCloud.remove();
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'analyse en temps réel:', error);
+    }
+  };
+  
+  // Ajouter l'événement de saisie
+  answerElement.addEventListener('input', function() {
+    // Annuler le timer précédent
+    clearTimeout(typingTimer);
+    
+    // Démarrer un nouveau timer
+    typingTimer = setTimeout(analyzeText, typingDelay);
+  });
+  
+  // Analyser également lors du focus si le texte n'est pas vide
+  answerElement.addEventListener('focus', function() {
+    const currentText = answerElement.value || answerElement.textContent || '';
+    if (currentText.trim().length >= 3) {
+      analyzeText();
+    }
+  });
+  
+  console.log('✅ Analyse en temps réel configurée pour l\'activité', chapterId, activityId);
+};
+
 // Fonction pour récupérer l'élément de réponse d'activité
 window.getActivityAnswerElement = function(chapterId, activityId) {
   // Essayer les différents types de champs
@@ -255,6 +327,9 @@ window.submitActivity = async function(chapterId, activityId) {
 
   const feedbackEl = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
   const feedbackTextEl = document.getElementById(`activity-feedback-text-${chapterId}-${activityId}`);
+  
+  // Configurer l'analyse en temps réel pour cette activité
+  setupRealTimeCorrection(chapterId, activityId);
   
   // Récupérer la réponse (tableau ou textarea)
   const answer = window.getActivityAnswer(chapterId, activityId, activity.hasTable);
