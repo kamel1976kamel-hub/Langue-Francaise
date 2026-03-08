@@ -256,15 +256,23 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
     console.log('📝 Contexte activité:', activityContext);
     
     try {
-        // Appel API Groq RÉELLE avec timeout
+        // Appel API Groq RÉELLE avec timeout et vérification de clé
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        
+        // Vérifier si la clé API est valide
+        const apiKey = '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';
+        if (!apiKey || apiKey.trim() === '') {
+            throw new Error('Clé API Groq manquante ou vide');
+        }
+        
+        console.log('🔑 Clé API Groq:', apiKey.substring(0, 10) + '...');
         
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer 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'
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: 'llama-3.1-8b-instant', // Modèle plus rapide et stable
