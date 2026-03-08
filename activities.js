@@ -132,7 +132,7 @@ Instructions pour l'IA :
                 '<p class="text-sm flex-1" style="color: var(--bs-white);"></p>' +
                 '<button onclick="window.readText && window.readText(this)" class="ml-3 p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors" title="Lire à voix haute">' +
                   '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">' +
-                    '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>' +
+                    '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>' +
                   '</svg>' +
                 '</button>' +
               '</div>' +
