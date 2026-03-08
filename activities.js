@@ -160,6 +160,13 @@ Instructions pour l'IA :
       console.log('📝 feedbackTextEl children:', feedbackTextEl.children.length);
       console.log('📝 tempChatContainer HTML:', tempChatContainer.innerHTML.substring(0, 100) + '...');
       
+      // Rendre le conteneur parent visible
+      const feedbackContainer = feedbackTextEl.closest('.hidden');
+      if (feedbackContainer) {
+        feedbackContainer.classList.remove('hidden');
+        console.log('✅ Conteneur de feedback rendu visible');
+      }
+      
       // Vérifier si le contenu est bien affiché
       setTimeout(() => {
         const displayedText = tempChatContainer.querySelector('p.text-gray-700');
