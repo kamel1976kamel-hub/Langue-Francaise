@@ -167,15 +167,29 @@ Instructions pour l'IA :
         console.log('✅ Conteneur de feedback rendu visible');
       }
       
-      // Vérifier si le contenu est bien affiché
-      setTimeout(() => {
-        const displayedText = tempChatContainer.querySelector('p.text-gray-700');
-        if (displayedText) {
-          console.log('✅ Texte affiché dans l\'interface:', displayedText.textContent.substring(0, 100) + '...');
-        } else {
-          console.log('❌ Élément de texte non trouvé dans le conteneur');
+      // Effet de frappe caractère par caractère
+      const textElement = tempChatContainer.querySelector('p.text-gray-700');
+      if (textElement && feedbackContent) {
+        // Vider d'abord le texte
+        textElement.textContent = '';
+        
+        // Effet de frappe
+        let currentIndex = 0;
+        const typingSpeed = 30; // ms par caractère
+        
+        function typeNextChar() {
+          if (currentIndex < feedbackContent.length) {
+            textElement.textContent += feedbackContent[currentIndex];
+            currentIndex++;
+            setTimeout(typeNextChar, typingSpeed);
+          } else {
+            console.log('✅ Effet de frappe terminé');
+          }
         }
-      }, 100);
+        
+        // Démarrer l'effet de frappe
+        setTimeout(typeNextChar, 100);
+      }
       
     } else {
       console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 4: Conditions non remplies');

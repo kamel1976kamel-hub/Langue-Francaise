@@ -294,6 +294,82 @@ window.sendAIChatMessage = async function() {
 };
 
 // ============ UTILITAIRES DE CHAT ============
+window.addChatMessageWithTyping = function(message, sender) {
+  const chatMessages = document.getElementById('chatMessages');
+  if (!chatMessages) return;
+  
+  // Créer le conteneur de message
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message mb-4 text-${sender === 'user' ? 'end' : 'start'}`;
+  
+  if (sender === 'ai') {
+    messageDiv.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+            <div class="flex justify-between items-start">
+              <p class="text-sm flex-1 typing-text" style="color: var(--bs-white);"></p>
+              <button 
+                onclick="speakChatAIResponse(this)"
+                class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                title="Lire la réponse de l'IA"
+              >
+                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date().toLocaleTimeString()}</p>
+        </div>
+      </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Effet de frappe
+    const textElement = messageDiv.querySelector('.typing-text');
+    if (textElement && message) {
+      let currentIndex = 0;
+      const typingSpeed = 30; // ms par caractère
+      
+      function typeNextChar() {
+        if (currentIndex < message.length) {
+          textElement.textContent += message[currentIndex];
+          currentIndex++;
+          setTimeout(typeNextChar, typingSpeed);
+        } else {
+          console.log('✅ Effet de frappe terminé dans le chat');
+        }
+      }
+      
+      // Démarrer l'effet de frappe
+      setTimeout(typeNextChar, 100);
+    }
+  } else {
+    // Pour les messages utilisateur, affichage normal
+    messageDiv.innerHTML = `
+      <div class="flex items-start gap-3 justify-end">
+        <div class="flex-1 max-w-xs lg:max-w-md">
+          <div class="rounded-lg p-4" style="background-color: var(--bs-primary);">
+            <p class="text-sm" style="color: white;">${message}</p>
+          </div>
+          <p class="text-xs mt-1 text-end" style="color: var(--bs-text-muted);">Vous • ${new Date().toLocaleTimeString()}</p>
+        </div>
+      </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+};
+
 window.addChatMessage = function(message, sender, timestamp = null) {
   // Récupérer le topic actuel pour déterminer quel conteneur utiliser
   const currentTopic = window.currentDiscussion || 'techniques';
@@ -405,7 +481,9 @@ window.displayChatPedagogicalResponse = function(response, originalMessage) {
   }
   
   console.log('📝 Message final à afficher:', messageContent.substring(0, 100) + '...');
-  addChatMessage(messageContent, 'ai');
+  
+  // Créer le message avec effet de frappe
+  addChatMessageWithTyping(messageContent, 'ai');
 };
 
 window.showTypingIndicator = function() {
