@@ -1,4 +1,240 @@
-// Fonction pour recuperer le contexte depuis les fichiers Markdown
+// Fonction pour créer un nuage de correction pour les activités
+window.createActivityCorrectionCloud = function(response, originalAnswer, chapterId, activityId) {
+  // Supprimer les nuages existants
+  const existingClouds = document.querySelectorAll('.activity-correction-cloud');
+  existingClouds.forEach(cloud => cloud.remove());
+  
+  // Créer le nuage de correction
+  const cloud = document.createElement('div');
+  cloud.className = 'activity-correction-cloud fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 max-w-sm';
+  cloud.style.cssText = `
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 300px;
+    max-width: 400px;
+  `;
+  
+  // Construire le contenu du nuage
+  let cloudContent = '';
+  
+  // Erreurs détectées
+  if (response.corrections && response.corrections.length > 0) {
+    cloudContent += `
+      <div class="mb-3">
+        <h4 class="text-sm font-semibold text-red-600 mb-2">🔍 Erreurs détectées :</h4>
+        <div class="space-y-1">
+    `;
+    response.corrections.forEach((correction, index) => {
+      cloudContent += `
+        <div class="flex items-center justify-between bg-red-50 p-2 rounded">
+          <span class="text-sm text-gray-700">
+            "<span class="line-through text-red-500">${correction.text}</span>" → 
+            "<span class="text-green-600 font-medium">${correction.correction}</span>"
+          </span>
+          <button 
+            onclick="applyActivityCorrection('${correction.text}', '${correction.correction}', '${chapterId}', '${activityId}')"
+            class="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            title="Appliquer cette correction"
+          >
+            Appliquer
+          </button>
+        </div>
+      `;
+    });
+    cloudContent += `</div></div>`;
+  }
+  
+  // Explications linguistiques
+  if (response.explanations && response.explanations.length > 0) {
+    cloudContent += `
+      <div class="mb-3">
+        <h4 class="text-sm font-semibold text-blue-600 mb-2">💡 Explications :</h4>
+        <div class="space-y-1">
+    `;
+    response.explanations.forEach(exp => {
+      cloudContent += `
+        <div class="text-sm text-gray-600 bg-blue-50 p-2 rounded">
+          ${exp}
+        </div>
+      `;
+    });
+    cloudContent += `</div></div>`;
+  }
+  
+  // Suggestions de correction
+  if (response.suggestions && response.suggestions.length > 0) {
+    cloudContent += `
+      <div class="mb-3">
+        <h4 class="text-sm font-semibold text-green-600 mb-2">🎯 Suggestions :</h4>
+        <div class="space-y-1">
+    `;
+    response.suggestions.forEach((suggestion, index) => {
+      cloudContent += `
+        <div class="flex items-center justify-between bg-green-50 p-2 rounded">
+          <span class="text-sm text-gray-700">${suggestion}</span>
+          <button 
+            onclick="applyActivitySuggestion('${suggestion}', '${chapterId}', '${activityId}')"
+            class="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            title="Appliquer cette suggestion"
+          >
+            Appliquer
+          </button>
+        </div>
+      `;
+    });
+    cloudContent += `</div></div>`;
+  }
+  
+  // Ajouter les boutons de contrôle
+  cloudContent += `
+    <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
+      <button 
+        onclick="speakActivityCorrection(this)"
+        class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+        title="Écouter les corrections"
+      >
+        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+      </button>
+      <button 
+        onclick="closeActivityCorrectionCloud(this)"
+        class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+        title="Fermer"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  
+  cloud.innerHTML = cloudContent;
+  document.body.appendChild(cloud);
+  
+  // Rendre le nuage déplaçable
+  makeActivityDraggable(cloud);
+  
+  console.log('✅ Nuage de correction d\'activité créé');
+};
+
+// ============ FONCTIONS DU NUAGE D'ACTIVITÉ ============
+window.makeActivityDraggable = function(element) {
+  let isDragging = false;
+  let currentX;
+  let currentY;
+  let initialX;
+  let initialY;
+  let xOffset = 0;
+  let yOffset = 0;
+
+  const dragStart = (e) => {
+    if (e.target.closest('button')) return;
+    
+    if (e.type === "touchstart") {
+      initialX = e.touches[0].clientX - xOffset;
+      initialY = e.touches[0].clientY - yOffset;
+    } else {
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+    }
+
+    if (e.target === element || e.target.closest('.activity-correction-cloud')) {
+      isDragging = true;
+    }
+  };
+
+  const dragEnd = (e) => {
+    initialX = currentX;
+    initialY = currentY;
+    isDragging = false;
+  };
+
+  const drag = (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      
+      if (e.type === "touchmove") {
+        currentX = e.touches[0].clientX - initialX;
+        currentY = e.touches[0].clientY - initialY;
+      } else {
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+      }
+
+      xOffset = currentX;
+      yOffset = currentY;
+
+      element.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+  };
+
+  element.addEventListener('touchstart', dragStart, false);
+  element.addEventListener('touchend', dragEnd, false);
+  element.addEventListener('touchmove', drag, false);
+  element.addEventListener('mousedown', dragStart, false);
+  element.addEventListener('mouseup', dragEnd, false);
+  element.addEventListener('mousemove', drag, false);
+};
+
+window.closeActivityCorrectionCloud = function(button) {
+  const cloud = button.closest('.activity-correction-cloud');
+  if (cloud) {
+    cloud.remove();
+    console.log('🗑️ Nuage de correction d\'activité fermé');
+  }
+};
+
+window.applyActivityCorrection = function(originalText, correctedText, chapterId, activityId) {
+  const answerElement = window.getActivityAnswerElement(chapterId, activityId);
+  if (answerElement) {
+    const currentAnswer = answerElement.value || answerElement.textContent;
+    answerElement.value = currentAnswer.replace(originalText, correctedText);
+    answerElement.focus();
+    console.log('✅ Correction d\'activité appliquée:', originalText, '→', correctedText);
+  }
+};
+
+window.applyActivitySuggestion = function(suggestion, chapterId, activityId) {
+  const answerElement = window.getActivityAnswerElement(chapterId, activityId);
+  if (answerElement) {
+    answerElement.value = suggestion;
+    answerElement.focus();
+    console.log('✅ Suggestion d\'activité appliquée:', suggestion);
+  }
+};
+
+window.speakActivityCorrection = function(button) {
+  const cloud = button.closest('.activity-correction-cloud');
+  if (cloud) {
+    const textContent = cloud.textContent.replace(/Appliquer|Fermer|Écouter les corrections/g, '').trim();
+    
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(textContent);
+      utterance.lang = 'fr-FR';
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+      console.log('🔊 Lecture des corrections d\'activité en cours');
+    } else {
+      console.log('❌ Synthèse vocale non supportée');
+    }
+  }
+};
+
+// Fonction pour récupérer l'élément de réponse d'activité
+window.getActivityAnswerElement = function(chapterId, activityId) {
+  // Essayer les différents types de champs
+  const textareaId = `activity-answer-${chapterId}-${activityId}`;
+  const tableId = `activity-table-${chapterId}-${activityId}`;
+  
+  let element = document.getElementById(textareaId);
+  if (!element) {
+    element = document.getElementById(tableId);
+  }
+  
+  return element;
+};
 async function fetchMarkdownContext(topic) {
   const fallbackContexts = {
     'techniques': "Tu es un expert en français et en pédagogie. Tu aides les élèves à maîtriser les techniques et pratiques de l'écrit. Réponds en français correct, sans fautes grammaticales ou orthographiques. Sois pédagogue, encourageant et professionnel. Aide l'étudiant sur la production écrite, la planification, la révision, l'analyse de consignes, la recherche documentaire, la cohérence textuelle et la correction.",
@@ -122,15 +358,30 @@ Instructions pour l'IA :
 
     // Afficher la réponse dans un conteneur de chat
     if (feedbackTextEl && reponse) {
-      // Parser la réponse JSON pour extraire le contenu
+      // Parser la réponse JSON pour extraire le contenu et les corrections
       let feedbackContent = reponse;
+      let correctionsData = null;
+      
       try {
         const parsedResponse = JSON.parse(reponse);
         if (parsedResponse.analysis) {
           feedbackContent = parsedResponse.analysis;
         }
+        // Extraire les données de correction pour le nuage
+        if (parsedResponse.corrections || parsedResponse.explanations || parsedResponse.suggestions) {
+          correctionsData = {
+            corrections: parsedResponse.corrections || [],
+            explanations: parsedResponse.explanations || [],
+            suggestions: parsedResponse.suggestions || []
+          };
+        }
       } catch (parseError) {
         console.log('⚠️ Réponse non-JSON, utilisation du contenu brut');
+      }
+      
+      // Créer le nuage de correction s'il y a des corrections linguistiques
+      if (correctionsData) {
+        createActivityCorrectionCloud(correctionsData, answer, chapterId, activityId);
       }
       
       console.log('📝 Contenu à afficher:', feedbackContent);

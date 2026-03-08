@@ -465,46 +465,255 @@ window.displayChatPedagogicalResponse = function(response, originalMessage) {
     return;
   }
   
-  // Construire un message pédagogique structuré
+  // Séparer les corrections linguistiques de la réponse principale
+  const hasCorrections = response.corrections && response.corrections.length > 0;
+  const hasExplanations = response.explanations && response.explanations.length > 0;
+  const hasSuggestions = response.suggestions && response.suggestions.length > 0;
+  
+  // Afficher le nuage de corrections si nécessaire
+  if (hasCorrections || hasExplanations || hasSuggestions) {
+    createCorrectionCloud(response, originalMessage);
+  }
+  
+  // Afficher uniquement la réponse de l'IA sans métalinguistique
   let messageContent = '';
   
-  if (response.corrections && response.corrections.length > 0) {
-    messageContent += '🔍 **Corrections suggérées :**\n';
-    response.corrections.forEach((correction, index) => {
-      messageContent += `${index + 1}. "${correction.text}" → "${correction.correction}"\n`;
-    });
-    messageContent += '\n';
-  }
-  
-  if (response.explanations && response.explanations.length > 0) {
-    messageContent += '💡 **Explications :**\n';
-    response.explanations.forEach(exp => {
-      messageContent += `• ${exp}\n`;
-    });
-    messageContent += '\n';
-  }
-  
-  if (response.suggestions && response.suggestions.length > 0) {
-    messageContent += '🎯 **Suggestions :**\n';
-    response.suggestions.forEach(suggestion => {
-      messageContent += `• ${suggestion}\n`;
-    });
-  }
-  
-  // Gérer le cas où la réponse vient de l'IA (format JSON avec analysis)
+  // Utiliser le champ analysis si disponible (réponse directe de l'IA)
   if (response.analysis) {
     messageContent = response.analysis;
     console.log('📝 Utilisation du champ analysis:', messageContent.substring(0, 100) + '...');
-  }
-  
-  if (!messageContent) {
-    messageContent = response.analysis || "Message reçu. Je vais vous aider avec ça.";
+  } else {
+    // Sinon, créer une réponse simple sans métalinguistique
+    messageContent = "Message reçu. Je vais vous aider avec ça.";
   }
   
   console.log('📝 Message final à afficher:', messageContent.substring(0, 100) + '...');
   
   // Créer le message avec effet de frappe
   addChatMessageWithTyping(messageContent, 'ai');
+};
+
+// ============ NUAGE DE CORRECTION DYNAMIQUE ============
+window.createCorrectionCloud = function(response, originalMessage) {
+  // Supprimer les nuages existants
+  const existingClouds = document.querySelectorAll('.correction-cloud');
+  existingClouds.forEach(cloud => cloud.remove());
+  
+  // Créer le nuage de correction
+  const cloud = document.createElement('div');
+  cloud.className = 'correction-cloud fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 max-w-sm';
+  cloud.style.cssText = `
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 300px;
+    max-width: 400px;
+  `;
+  
+  // Construire le contenu du nuage
+  let cloudContent = '';
+  
+  // Erreurs détectées
+  if (response.corrections && response.corrections.length > 0) {
+    cloudContent += `
+      <div class="mb-3">
+        <h4 class="text-sm font-semibold text-red-600 mb-2">🔍 Erreurs détectées :</h4>
+        <div class="space-y-1">
+    `;
+    response.corrections.forEach((correction, index) => {
+      cloudContent += `
+        <div class="flex items-center justify-between bg-red-50 p-2 rounded">
+          <span class="text-sm text-gray-700">
+            "<span class="line-through text-red-500">${correction.text}</span>" → 
+            "<span class="text-green-600 font-medium">${correction.correction}</span>"
+          </span>
+          <button 
+            onclick="applyCorrection('${correction.text}', '${correction.correction}')"
+            class="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            title="Appliquer cette correction"
+          >
+            Appliquer
+          </button>
+        </div>
+      `;
+    });
+    cloudContent += `</div></div>`;
+  }
+  
+  // Explications linguistiques
+  if (response.explanations && response.explanations.length > 0) {
+    cloudContent += `
+      <div class="mb-3">
+        <h4 class="text-sm font-semibold text-blue-600 mb-2">💡 Explications :</h4>
+        <div class="space-y-1">
+    `;
+    response.explanations.forEach(exp => {
+      cloudContent += `
+        <div class="text-sm text-gray-600 bg-blue-50 p-2 rounded">
+          ${exp}
+        </div>
+      `;
+    });
+    cloudContent += `</div></div>`;
+  }
+  
+  // Suggestions de correction
+  if (response.suggestions && response.suggestions.length > 0) {
+    cloudContent += `
+      <div class="mb-3">
+        <h4 class="text-sm font-semibold text-green-600 mb-2">🎯 Suggestions :</h4>
+        <div class="space-y-1">
+    `;
+    response.suggestions.forEach((suggestion, index) => {
+      cloudContent += `
+        <div class="flex items-center justify-between bg-green-50 p-2 rounded">
+          <span class="text-sm text-gray-700">${suggestion}</span>
+          <button 
+            onclick="applySuggestion('${suggestion}')"
+            class="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            title="Appliquer cette suggestion"
+          >
+            Appliquer
+          </button>
+        </div>
+      `;
+    });
+    cloudContent += `</div></div>`;
+  }
+  
+  // Ajouter les boutons de contrôle
+  cloudContent += `
+    <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
+      <button 
+        onclick="speakCorrection(this)"
+        class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+        title="Écouter les corrections"
+      >
+        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+      </button>
+      <button 
+        onclick="closeCorrectionCloud(this)"
+        class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+        title="Fermer"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  
+  cloud.innerHTML = cloudContent;
+  document.body.appendChild(cloud);
+  
+  // Rendre le nuage déplaçable
+  makeDraggable(cloud);
+  
+  console.log('✅ Nuage de correction créé');
+};
+
+// ============ FONCTIONS DU NUAGE ============
+window.makeDraggable = function(element) {
+  let isDragging = false;
+  let currentX;
+  let currentY;
+  let initialX;
+  let initialY;
+  let xOffset = 0;
+  let yOffset = 0;
+
+  const dragStart = (e) => {
+    if (e.target.closest('button')) return;
+    
+    if (e.type === "touchstart") {
+      initialX = e.touches[0].clientX - xOffset;
+      initialY = e.touches[0].clientY - yOffset;
+    } else {
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+    }
+
+    if (e.target === element || e.target.closest('.correction-cloud')) {
+      isDragging = true;
+    }
+  };
+
+  const dragEnd = (e) => {
+    initialX = currentX;
+    initialY = currentY;
+    isDragging = false;
+  };
+
+  const drag = (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      
+      if (e.type === "touchmove") {
+        currentX = e.touches[0].clientX - initialX;
+        currentY = e.touches[0].clientY - initialY;
+      } else {
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+      }
+
+      xOffset = currentX;
+      yOffset = currentY;
+
+      element.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+  };
+
+  element.addEventListener('touchstart', dragStart, false);
+  element.addEventListener('touchend', dragEnd, false);
+  element.addEventListener('touchmove', drag, false);
+  element.addEventListener('mousedown', dragStart, false);
+  element.addEventListener('mouseup', dragEnd, false);
+  element.addEventListener('mousemove', drag, false);
+};
+
+window.closeCorrectionCloud = function(button) {
+  const cloud = button.closest('.correction-cloud');
+  if (cloud) {
+    cloud.remove();
+    console.log('�️ Nuage de correction fermé');
+  }
+};
+
+window.applyCorrection = function(originalText, correctedText) {
+  const chatInput = document.getElementById('chatInput');
+  if (chatInput) {
+    chatInput.value = chatInput.value.replace(originalText, correctedText);
+    chatInput.focus();
+    console.log('✅ Correction appliquée:', originalText, '→', correctedText);
+  }
+};
+
+window.applySuggestion = function(suggestion) {
+  const chatInput = document.getElementById('chatInput');
+  if (chatInput) {
+    chatInput.value = suggestion;
+    chatInput.focus();
+    console.log('✅ Suggestion appliquée:', suggestion);
+  }
+};
+
+window.speakCorrection = function(button) {
+  const cloud = button.closest('.correction-cloud');
+  if (cloud) {
+    const textContent = cloud.textContent.replace(/Appliquer|Fermer|Écouter les corrections/g, '').trim();
+    
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(textContent);
+      utterance.lang = 'fr-FR';
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+      console.log('🔊 Lecture des corrections en cours');
+    } else {
+      console.log('❌ Synthèse vocale non supportée');
+    }
+  }
 };
 
 window.showTypingIndicator = function() {
