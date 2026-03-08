@@ -7,7 +7,7 @@ window.setupRealTimeCorrectionForChat = function() {
   if (!chatInput) return;
   
   let typingTimer;
-  const typingDelay = 1000; // Délai de 1 seconde après la fin de frappe
+  const typingDelay = 500; // RÉDUIT à 500ms pour plus de réactivité
   
   // Fonction d'analyse en temps réel pour les chats
   const analyzeChatText = async function() {
@@ -38,7 +38,7 @@ window.setupRealTimeCorrectionForChat = function() {
           suggestions: [...(analysis.suggestions || []), ...(duplicateAnalysis.suggestions || [])]
         };
         
-        // Créer le nuage de correction si des erreurs sont détectées
+        // Créer le nuage de correction IMMÉDIATEMENT si des erreurs sont détectées
         if (mergedAnalysis && (mergedAnalysis.errors.length > 0 || mergedAnalysis.suggestions.length > 0)) {
           const correctionsData = {
             corrections: mergedAnalysis.errors.map(err => ({
@@ -50,6 +50,11 @@ window.setupRealTimeCorrectionForChat = function() {
             suggestions: mergedAnalysis.suggestions || []
           };
           
+          // Supprimer l'ancien nuage avant d'en créer un nouveau
+          const existingCloud = document.querySelector('.correction-cloud');
+          if (existingCloud) existingCloud.remove();
+          
+          // Créer le nouveau nuage IMMÉDIATEMENT
           createCorrectionCloud(correctionsData, currentText);
         } else {
           // Supprimer le nuage si aucune erreur
@@ -62,12 +67,12 @@ window.setupRealTimeCorrectionForChat = function() {
     }
   };
   
-  // Ajouter l'événement de saisie
+  // Ajouter l'événement de saisie - PLUS RÉACTIF
   chatInput.addEventListener('input', function() {
     // Annuler le timer précédent
     clearTimeout(typingTimer);
     
-    // Démarrer un nouveau timer
+    // Démarrer un nouveau timer PLUS RAPIDE
     typingTimer = setTimeout(analyzeChatText, typingDelay);
   });
   

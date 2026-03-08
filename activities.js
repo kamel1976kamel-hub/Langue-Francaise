@@ -229,7 +229,7 @@ window.setupRealTimeCorrection = function(chapterId, activityId) {
   if (!answerElement) return;
   
   let typingTimer;
-  const typingDelay = 1000; // Délai de 1 seconde après la fin de frappe
+  const typingDelay = 500; // RÉDUIT à 500ms pour plus de réactivité
   
   // Fonction d'analyse en temps réel
   const analyzeText = async function() {
@@ -260,7 +260,7 @@ window.setupRealTimeCorrection = function(chapterId, activityId) {
           suggestions: [...(analysis.suggestions || []), ...(duplicateAnalysis.suggestions || [])]
         };
         
-        // Créer le nuage de correction si des erreurs sont détectées
+        // Créer le nuage de correction IMMÉDIATEMENT si des erreurs sont détectées
         if (mergedAnalysis && (mergedAnalysis.errors.length > 0 || mergedAnalysis.suggestions.length > 0)) {
           const correctionsData = {
             corrections: mergedAnalysis.errors.map(err => ({
@@ -272,6 +272,11 @@ window.setupRealTimeCorrection = function(chapterId, activityId) {
             suggestions: mergedAnalysis.suggestions || []
           };
           
+          // Supprimer l'ancien nuage avant d'en créer un nouveau
+          const existingCloud = document.querySelector('.activity-correction-cloud');
+          if (existingCloud) existingCloud.remove();
+          
+          // Créer le nouveau nuage IMMÉDIATEMENT
           createActivityCorrectionCloud(correctionsData, currentText, chapterId, activityId);
         } else {
           // Supprimer le nuage si aucune erreur
@@ -284,12 +289,12 @@ window.setupRealTimeCorrection = function(chapterId, activityId) {
     }
   };
   
-  // Ajouter l'événement de saisie
+  // Ajouter l'événement de saisie - PLUS RÉACTIF
   answerElement.addEventListener('input', function() {
     // Annuler le timer précédent
     clearTimeout(typingTimer);
     
-    // Démarrer un nouveau timer
+    // Démarrer un nouveau timer PLUS RAPIDE
     typingTimer = setTimeout(analyzeText, typingDelay);
   });
   
