@@ -10,14 +10,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Scripts essentiels -->
-    <script src="activities.js?v=28"></script>
-    <script src="activities-optimized.js?v=28"></script>
-    <script src="chat-system-unified.js?v=28"></script>
+    <script src="activities.js?v=30"></script>
+    <script src="activities-optimized.js?v=30"></script>
+    <script src="chat-system-unified.js?v=30"></script>
     <!-- Modules pédagogiques -->
-    <script src="services/ai-pedagogical-service.js?v=28"></script>
-    <script src="nlp/spacy-analyzer.js?v=28"></script>
-    <script src="memory/student-profile-unified.js?v=28"></script>
-    <script src="main.js?v=28"></script>
+    <script src="services/ai-pedagogical-service.js?v=30"></script>
+    <script src="nlp/spacy-analyzer.js?v=30"></script>
+    <script src="memory/student-profile-unified.js?v=30"></script>
+    <script src="main.js?v=30"></script>
     
     <style>
       /* ============================================
@@ -5311,34 +5311,21 @@
         }
       };
       
-      // ============ PANEL ANNONCES ============
-      window.toggleAnnouncementsPanel = function() {
-        const panel = document.getElementById('announcementsPanel');
+      // ============ PANEL BASE DE DONNÉES ============
+      window.toggleDatabasePanel = function() {
+        const panel = document.getElementById('databasePanel');
         const homeworkPanel = document.getElementById('homeworkPanel');
         const accessibilityPanel = document.getElementById('accessibilityPanel');
         const settingsPanel = document.getElementById('settingsPanel');
         const progressionPanel = document.getElementById('progressionPanel');
-        const databasePanel = document.getElementById('databasePanel');
+        const announcementsPanel = document.getElementById('announcementsPanel');
         
         homeworkPanel.classList.add('hidden');
         accessibilityPanel.classList.add('hidden');
         settingsPanel.classList.add('hidden');
         progressionPanel.classList.add('hidden');
-        databasePanel.classList.add('hidden');
+        announcementsPanel.classList.add('hidden');
         panel.classList.toggle('hidden');
-        
-        // Adapter le contenu selon le rôle
-        const teacherSection = document.getElementById('teacherAnnouncementsSection');
-        if (currentUser && currentUser.role === 'teacher') {
-          teacherSection.classList.remove('hidden');
-        } else {
-          teacherSection.classList.add('hidden');
-          // Marquer les annonces comme lues quand l'étudiant ouvre le panel
-          markAllAsRead();
-        }
-        
-        // Charger les annonces
-        loadAnnouncements();
       };
       
       // ============ GESTION DES ANNONCES ============
@@ -5714,29 +5701,34 @@
           return;
         }
         
-        // Données des étudiants
+        // Données des étudiants - correspondance avec les vrais IDs
         const studentsData = {
-          ahmed: { name: 'Ahmed Benali', progress: 85, activities: '17/20', score: '16.5/20', status: 'success', warning: false },
-          sara: { name: 'Sara Moussaoui', progress: 90, activities: '18/20', score: '17.5/20', status: 'success', warning: false },
-          karim: { name: 'Karim Hadj', progress: 45, activities: '9/20', score: '9/20', status: 'warning', warning: true },
-          lina: { name: 'Lina Boudiaf', progress: 25, activities: '5/20', score: '5/20', status: 'danger', warning: true },
-          youssef: { name: 'Youssef Kader', progress: 72, activities: '14/20', score: '14/20', status: 'success', warning: false },
-          amina: { name: 'Amina Zeroual', progress: 88, activities: '17/20', score: '17/20', status: 'success', warning: false },
-          omar: { name: 'Omar Farouk', progress: 55, activities: '11/20', score: '11/20', status: 'warning', warning: false },
-          nadia: { name: 'Nadia Belkacem', progress: 92, activities: '18/20', score: '18/20', status: 'success', warning: false },
-          hassan: { name: 'Hassan Meziane', progress: 38, activities: '7/20', score: '7/20', status: 'danger', warning: true },
-          fatima: { name: 'Fatima Zohra', progress: 67, activities: '13/20', score: '13/20', status: 'success', warning: false },
-          rachid: { name: 'Rachid Boudiaf', progress: 78, activities: '15/20', score: '15/20', status: 'success', warning: false },
-          samira: { name: 'Samira Taleb', progress: 83, activities: '16/20', score: '16/20', status: 'success', warning: false },
-          khaled: { name: 'Khaled Benyoucef', progress: 41, activities: '8/20', score: '8/20', status: 'warning', warning: true },
-          meriem: { name: 'Meriem Hadjazi', progress: 95, activities: '19/20', score: '19/20', status: 'success', warning: false },
-          tarek: { name: 'Tarek Lounis', progress: 59, activities: '11/20', score: '12/20', status: 'warning', warning: false },
-          souad: { name: 'Souad Mansouri', progress: 74, activities: '14/20', score: '15/20', status: 'success', warning: false },
-          brahim: { name: 'Brahim Khelifi', progress: 63, activities: '12/20', score: '13/20', status: 'success', warning: false },
-          lydia: { name: 'Lydia Amrani', progress: 81, activities: '16/20', score: '16/20', status: 'success', warning: false }
+          'student_001': { name: 'AMIRA CHAHD HAMDAOUI', progress: 85, activities: '17/20', score: '16.5/20', status: 'success', warning: false },
+          'student_002': { name: 'WISSAL HAMZA', progress: 90, activities: '18/20', score: '17.5/20', status: 'success', warning: false },
+          'student_003': { name: 'ISRA HERZALLAH', progress: 45, activities: '9/20', score: '9/20', status: 'warning', warning: true },
+          'student_004': { name: 'RYM KABOUCHE', progress: 25, activities: '5/20', score: '5/20', status: 'danger', warning: true },
+          'student_005': { name: 'LOUBNA HIBATERRAHMANE LAIB', progress: 72, activities: '14/20', score: '14/20', status: 'success', warning: false },
+          'student_006': { name: 'HIBAT ERRAHMANE MAGHNI', progress: 88, activities: '17/20', score: '17/20', status: 'success', warning: false },
+          'student_007': { name: 'CHOUROUK METLOUG', progress: 55, activities: '11/20', score: '11/20', status: 'warning', warning: false },
+          'student_008': { name: 'ALAIE OUAMANE', progress: 92, activities: '18/20', score: '18/20', status: 'success', warning: false },
+          'student_009': { name: 'CHAHD REHOUMA', progress: 38, activities: '7/20', score: '7/20', status: 'danger', warning: true },
+          'student_010': { name: 'SALSABIL SAADI', progress: 67, activities: '13/20', score: '13/20', status: 'success', warning: false },
+          'student_011': { name: 'FATMA ZOHRA AROUA SASSOUI', progress: 78, activities: '15/20', score: '15/20', status: 'success', warning: false },
+          'student_012': { name: 'DJAMILA SEID', progress: 83, activities: '16/20', score: '16/20', status: 'success', warning: false },
+          'student_013': { name: 'AYAT ERRAHMANE SERRAOUI', progress: 41, activities: '8/20', score: '8/20', status: 'warning', warning: true },
+          'student_014': { name: 'CHAIMA TAGHZOUT', progress: 95, activities: '19/20', score: '19/20', status: 'success', warning: false },
+          'student_015': { name: 'SERINE LEILA TOUAMI', progress: 59, activities: '11/20', score: '12/20', status: 'warning', warning: false },
+          'student_016': { name: 'SARA ZEGAR', progress: 74, activities: '14/20', score: '15/20', status: 'success', warning: false },
+          'student_017': { name: 'SAFAA NOUR ELYAKINE ZERROUAK', progress: 63, activities: '12/20', score: '13/20', status: 'success', warning: false },
+          'student_018': { name: 'FATIMA ZIOUCHI', progress: 81, activities: '16/20', score: '16/20', status: 'success', warning: false }
         };
         
         const student = studentsData[studentId];
+        
+        if (!student) {
+          alert('Données non disponibles pour cet étudiant');
+          return;
+        }
         const statusColor = student.status === 'success' ? '#10b981' : student.status === 'warning' ? '#f59e0b' : '#ef4444';
         const statusBg = student.status === 'success' ? 'rgba(16, 185, 129, 0.1)' : student.status === 'warning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)';
         

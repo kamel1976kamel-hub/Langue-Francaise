@@ -295,8 +295,14 @@ window.sendAIChatMessage = async function() {
 
 // ============ UTILITAIRES DE CHAT ============
 window.addChatMessageWithTyping = function(message, sender) {
-  const chatMessages = document.getElementById('chatMessages');
-  if (!chatMessages) return;
+  // Récupérer le topic actuel pour déterminer quel conteneur utiliser
+  const currentTopic = window.currentDiscussion || 'techniques';
+  const chatMessages = document.getElementById(`chatMessages-${currentTopic}`);
+  
+  if (!chatMessages) {
+    console.error(`Conteneur chatMessages-${currentTopic} non trouvé`);
+    return;
+  }
   
   // Créer le conteneur de message
   const messageDiv = document.createElement('div');
@@ -354,7 +360,6 @@ window.addChatMessageWithTyping = function(message, sender) {
     }
     
     // Sauvegarder le message dans l'historique
-    const currentTopic = window.currentDiscussion || 'techniques';
     if (window.addMessageToHistory) {
       window.addMessageToHistory(currentTopic, message, sender);
     }
@@ -375,7 +380,6 @@ window.addChatMessageWithTyping = function(message, sender) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
     // Sauvegarder le message dans l'historique
-    const currentTopic = window.currentDiscussion || 'techniques';
     if (window.addMessageToHistory) {
       window.addMessageToHistory(currentTopic, message, sender);
     }
