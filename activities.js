@@ -94,6 +94,7 @@ Instructions pour l'IA :
   }
 
   // Combiner le contexte de base avec le contexte de l'activité
+  const baseContexte = await fetchMarkdownContext(window.currentDiscussion || 'techniques');
   const contexteFinal = baseContexte + '\n\n' + contexte;
 
   try {
