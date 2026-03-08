@@ -7,8 +7,8 @@
 
 'use strict';
 
-// Configuration de l'application
-const APP_CONFIG = {
+// Configuration de l'application (protection globale)
+window.APP_CONFIG = window.APP_CONFIG || {
     name: 'Langue Française',
     version: '2.0',
     debug: location.hostname === 'localhost' || location.protocol === 'file:',
@@ -61,7 +61,7 @@ function setIaStatus(statusText, bgColorClass, progressPercent) {
             progressBar.className = `h-1 rounded-full transition-all duration-300 ${bgColorClass}`;
         }
         
-        if (APP_CONFIG.debug) {
+        if (window.APP_CONFIG.debug) {
             console.log(`🤖 IA Status: ${statusText} (${progressPercent}%)`);
         }
     } catch (error) {
@@ -74,7 +74,7 @@ function setIaStatus(statusText, bgColorClass, progressPercent) {
  * @returns {boolean} True si tous les modules sont prêts
  */
 function areAllModulesReady() {
-    return APP_CONFIG.modules.required.every(moduleName => 
+    return window.APP_CONFIG.modules.required.every(moduleName => 
         typeof window[moduleName] === 'function'
     );
 }
@@ -94,7 +94,7 @@ function addError(error, context = 'general') {
     
     appState.errors.push(errorObj);
     
-    if (APP_CONFIG.debug) {
+    if (window.APP_CONFIG.debug) {
         console.error(`❌ Error [${context}]:`, error);
     }
     
@@ -203,9 +203,9 @@ Veuillez vérifier votre connexion et réessayer.`;
  */
 window.debugPipelineStatus = function() {
     console.log('=== ÉTAT DE L\'APPLICATION ===');
-    console.log('Nom:', APP_CONFIG.name);
-    console.log('Version:', APP_CONFIG.version);
-    console.log('Mode debug:', APP_CONFIG.debug);
+    console.log('Nom:', window.APP_CONFIG.name);
+    console.log('Version:', window.APP_CONFIG.version);
+    console.log('Mode debug:', window.APP_CONFIG.debug);
     console.log('Modules prêts:', areAllModulesReady());
     console.log('IA prête:', appState.iaReady);
     console.log('Statut actuel:', appState.currentStatus);
@@ -225,7 +225,7 @@ window.debugPipelineStatus = function() {
  */
 async function initializeApp() {
     try {
-        console.log(`🚀 Démarrage de ${APP_CONFIG.name} v${APP_CONFIG.version}`);
+        console.log(`🚀 Démarrage de ${window.APP_CONFIG.name} v${window.APP_CONFIG.version}`);
         
         appState.currentStatus = 'initialization';
         
