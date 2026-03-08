@@ -10,14 +10,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Scripts essentiels -->
-    <script src="activities.js?v=3"></script>
-    <script src="activities-optimized.js?v=3"></script>
-    <script src="chat-system-unified.js?v=3"></script>
+    <script src="activities.js?v=4"></script>
+    <script src="activities-optimized.js?v=4"></script>
+    <script src="chat-system-unified.js?v=4"></script>
     <!-- Modules pédagogiques -->
-    <script src="services/ai-pedagogical-service.js?v=3"></script>
-    <script src="nlp/spacy-analyzer.js?v=3"></script>
-    <script src="memory/student-profile-unified.js?v=3"></script>
-    <script src="main.js?v=3"></script>
+    <script src="services/ai-pedagogical-service.js?v=4"></script>
+    <script src="nlp/spacy-analyzer.js?v=4"></script>
+    <script src="memory/student-profile-unified.js?v=4"></script>
+    <script src="main.js?v=4"></script>
     
     <style>
       /* ============================================
@@ -7012,6 +7012,139 @@
         });
         saveChatHistory(topic, messages);
       }
+      
+      // ============ AFFICHAGE DES MESSAGES ============
+      function displayChatHistory(topic) {
+        const messages = loadChatHistory(topic);
+        const targetChatContainer = document.getElementById(`chatMessages-${topic}`);
+        
+        if (!targetChatContainer) return;
+        
+        // Garder seulement le message de bienvenue
+        const welcomeMessage = targetChatContainer.querySelector('.flex.gap-3');
+        targetChatContainer.innerHTML = '';
+        if (welcomeMessage) {
+          targetChatContainer.appendChild(welcomeMessage);
+        }
+        
+        // Ajouter les messages de l'historique
+        messages.forEach(msg => {
+          // Créer le HTML du message manuellement
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'flex gap-3';
+          
+          if (msg.sender === 'student') {
+            messageDiv.innerHTML = `
+              <div class="flex-1">
+                <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05); max-width: 80%; margin-left: auto;">
+                  <div class="flex justify-between items-start">
+                    <p class="text-sm flex-1" style="color: var(--bs-white);">${escapeHtml(msg.text)}</p>
+                  </div>
+                </div>
+                <p class="text-xs mt-1" style="color: var(--bs-text-muted);">Vous • ${new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
+                <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+              </div>
+            `;
+          } else {
+            messageDiv.innerHTML = `
+              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05); max-width: 80%;">
+                  <div class="flex justify-between items-start">
+                    <p class="text-sm flex-1" style="color: var(--bs-white);">${escapeHtml(msg.text)}</p>
+                    <button 
+                      onclick="speakChatAIResponse(this)"
+                      class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                      title="Lire la réponse de l'IA"
+                    >
+                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+            `;
+          }
+          
+          targetChatContainer.appendChild(messageDiv);
+        });
+      }
+      
+      // ============ MODIFICATION DE LA SÉLECTION ============
+      window.selectDiscussion = function(topic) {
+        console.log('🔄 SÉLECTION DE DISCUSSION - DÉBUT');
+        console.log('📝 Topic sélectionné:', topic);
+        
+        window.currentDiscussion = topic;
+        const data = window.discussionData[topic];
+        console.log('📊 Données de discussion:', data);
+        
+        // Mettre à jour l'apparence des boutons
+        console.log('🎨 MISE À JOUR APPARENCE BOUTONS');
+        document.querySelectorAll('.discussion-item').forEach((btn, index) => {
+          console.log(`  🔘 Bouton ${index + 1}:`, btn.dataset.topic);
+          btn.classList.remove('active');
+          btn.style.backgroundColor = '';
+          btn.style.color = 'var(--bs-text-muted)';
+          const indicator = btn.querySelector('.indicator');
+          indicator.style.backgroundColor = '';
+          indicator.classList.add('bg-gray-500');
+        });
+        
+        const activeBtn = document.querySelector(`[data-topic="${topic}"]`);
+        console.log('✅ Bouton activé:', activeBtn);
+        activeBtn.classList.add('active');
+        activeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+        activeBtn.style.color = 'var(--bs-white)';
+        const activeIndicator = activeBtn.querySelector('.indicator');
+        activeIndicator.classList.remove('bg-gray-500');
+        activeIndicator.style.backgroundColor = 'var(--bs-primary)';
+        
+        // Mettre à jour le titre dans la colonne 3
+        console.log('📝 MISE À JOUR TITRE');
+        const titleElement = document.getElementById('chatTitle');
+        if (titleElement) {
+          titleElement.textContent = data.title;
+          console.log('  📝 Titre mis à jour:', data.title);
+        }
+        
+        // Mettre à jour la description
+        console.log('📝 MISE À JOUR DESCRIPTION');
+        const descriptionEl = document.getElementById('discussionDescription');
+        if (descriptionEl) {
+          descriptionEl.textContent = data.description || '';
+          console.log('  📝 Description mise à jour:', data.description || 'vide');
+        }
+        
+        // Cacher tous les conteneurs de chat
+        document.querySelectorAll('[id^="chatMessages-"]').forEach(container => {
+          container.classList.add('hidden');
+        });
+        
+        // Afficher le conteneur de chat correspondant
+        const targetChatContainer = document.getElementById(`chatMessages-${topic}`);
+        if (targetChatContainer) {
+          targetChatContainer.classList.remove('hidden');
+          // Afficher l'historique des messages
+          displayChatHistory(topic);
+        }
+        
+        // Mettre à jour la colonne 4
+        updateColumn4(data.column4);
+        
+        console.log('✅ SÉLECTION DE DISCUSSION - FIN');
+        console.log('📝 Discussion sélectionnée:', topic);
+      };
       
       // ============ RÉINITIALISER LA CONVERSATION ============
       window.resetCurrentDiscussion = function() {
