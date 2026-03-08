@@ -28,16 +28,26 @@ window.setupRealTimeCorrectionForChat = function() {
       if (window.analyzeTextLocal) {
         const analysis = window.analyzeTextLocal(currentText);
         
+        // Analyser les doublons
+        const duplicateAnalysis = analyzeDuplicatesForChat(currentText);
+        
+        // Fusionner les analyses
+        const mergedAnalysis = {
+          errors: [...(analysis.errors || []), ...(duplicateAnalysis.errors || [])],
+          explanations: [...(analysis.explanations || []), ...(duplicateAnalysis.explanations || [])],
+          suggestions: [...(analysis.suggestions || []), ...(duplicateAnalysis.suggestions || [])]
+        };
+        
         // Créer le nuage de correction si des erreurs sont détectées
-        if (analysis && (analysis.errors.length > 0 || analysis.suggestions.length > 0)) {
+        if (mergedAnalysis && (mergedAnalysis.errors.length > 0 || mergedAnalysis.suggestions.length > 0)) {
           const correctionsData = {
-            corrections: analysis.errors.map(err => ({
+            corrections: mergedAnalysis.errors.map(err => ({
               text: err.text,
               correction: err.correction,
               type: err.type
             })),
-            explanations: analysis.explanations || [],
-            suggestions: analysis.suggestions || []
+            explanations: mergedAnalysis.explanations || [],
+            suggestions: mergedAnalysis.suggestions || []
           };
           
           createCorrectionCloud(correctionsData, currentText);
@@ -70,6 +80,40 @@ window.setupRealTimeCorrectionForChat = function() {
   });
   
   console.log('✅ Analyse en temps réel configurée pour les chats');
+};
+
+// Fonction pour analyser les doublons dans le texte des chats
+window.analyzeDuplicatesForChat = function(text) {
+  const words = text.toLowerCase().split(/\s+/);
+  const seen = new Set();
+  const duplicates = new Set();
+  const errors = [];
+  const explanations = [];
+  const suggestions = [];
+  
+  words.forEach((word, index) => {
+    const cleanWord = word.replace(/[.,!?;:]/g, '');
+    if (cleanWord.length > 3 && seen.has(cleanWord)) {
+      if (!duplicates.has(cleanWord)) {
+        duplicates.add(cleanWord);
+        errors.push({
+          text: cleanWord,
+          correction: cleanWord + ' (supprimer la répétition)',
+          type: 'duplicate'
+        });
+        explanations.push(`Le mot "${cleanWord}" est répété plusieurs fois dans votre message.`);
+        suggestions.push(`Évitez de répéter "${cleanWord}" trop souvent.`);
+      }
+    } else {
+      seen.add(cleanWord);
+    }
+  });
+  
+  return {
+    errors: errors,
+    explanations: explanations,
+    suggestions: suggestions
+  };
 };
 
 // ============ SÉLECTION DE DISCUSSION ============
