@@ -115,6 +115,10 @@ Instructions pour l'IA :
     console.log('📝 Type de réponse:', typeof reponse);
     console.log('📝 feedbackTextEl existe:', !!feedbackTextEl);
     console.log('📝 feedbackTextEl ID:', feedbackTextEl ? feedbackTextEl.id : 'N/A');
+    console.log('📝 CONTENU COMPLET DE LA RÉPONSE IA:');
+    console.log('─'.repeat(80));
+    console.log(reponse);
+    console.log('─'.repeat(80));
 
     // Afficher la réponse dans un conteneur de chat
     if (feedbackTextEl && reponse) {
