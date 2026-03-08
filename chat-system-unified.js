@@ -352,6 +352,12 @@ window.addChatMessageWithTyping = function(message, sender) {
       // Démarrer l'effet de frappe
       setTimeout(typeNextChar, 100);
     }
+    
+    // Sauvegarder le message dans l'historique
+    const currentTopic = window.currentDiscussion || 'techniques';
+    if (window.addMessageToHistory) {
+      window.addMessageToHistory(currentTopic, message, sender);
+    }
   } else {
     // Pour les messages utilisateur, affichage normal
     messageDiv.innerHTML = `
@@ -367,6 +373,12 @@ window.addChatMessageWithTyping = function(message, sender) {
     
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Sauvegarder le message dans l'historique
+    const currentTopic = window.currentDiscussion || 'techniques';
+    if (window.addMessageToHistory) {
+      window.addMessageToHistory(currentTopic, message, sender);
+    }
   }
 };
 
@@ -401,7 +413,7 @@ window.addChatMessage = function(message, sender, timestamp = null) {
       </div>
     `;
   } else {
-    // Message de l'IA avec icône audio
+    // Message de l'IA
     messageDiv.innerHTML = `
       <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
         <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,6 +442,11 @@ window.addChatMessage = function(message, sender, timestamp = null) {
   
   chatMessages.appendChild(messageDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  // Sauvegarder le message dans l'historique
+  if (window.addMessageToHistory) {
+    window.addMessageToHistory(currentTopic, message, sender);
+  }
 };
 
 window.displayChatPedagogicalResponse = function(response, originalMessage) {
