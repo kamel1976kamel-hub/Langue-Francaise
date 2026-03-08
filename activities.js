@@ -122,6 +122,19 @@ Instructions pour l'IA :
 
     // Afficher la réponse dans un conteneur de chat
     if (feedbackTextEl && reponse) {
+      // Parser la réponse JSON pour extraire le contenu
+      let feedbackContent = reponse;
+      try {
+        const parsedResponse = JSON.parse(reponse);
+        if (parsedResponse.analysis) {
+          feedbackContent = parsedResponse.analysis;
+        }
+      } catch (parseError) {
+        console.log('⚠️ Réponse non-JSON, utilisation du contenu brut');
+      }
+      
+      console.log('📝 Contenu à afficher:', feedbackContent);
+      
       // Créer un conteneur temporaire pour le message de chat
       const tempChatContainer = document.createElement('div');
       tempChatContainer.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4';
@@ -129,21 +142,13 @@ Instructions pour l'IA :
         '<div class="flex items-start gap-3">' +
           '<div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">' +
             '<svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>' +
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>' +
             '</svg>' +
           '</div>' +
           '<div class="flex-1">' +
-            '<div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">' +
-              '<div class="flex items-start justify-between">' +
-                '<p class="text-sm flex-1" style="color: var(--bs-white);"></p>' +
-                '<button onclick="window.readText && window.readText(this)" class="ml-3 p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors" title="Lire à voix haute">' +
-                  '<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">' +
-                    '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>' +
-                  '</svg>' +
-                '</button>' +
-              '</div>' +
-              '<p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ' + new Date().toLocaleTimeString() + '</p>' +
-            '</div>' +
+            '<p class="text-sm font-medium text-gray-900 mb-1">Assistant IA</p>' +
+            '<p class="text-sm text-gray-700">' + feedbackContent + '</p>' +
+            '<p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ' + new Date().toLocaleTimeString() + '</p>' +
           '</div>' +
         '</div>';
       
@@ -155,13 +160,16 @@ Instructions pour l'IA :
       console.log('📝 feedbackTextEl children:', feedbackTextEl.children.length);
       console.log('📝 tempChatContainer HTML:', tempChatContainer.innerHTML.substring(0, 100) + '...');
       
-      // Appliquer l'effet de frappe sur le texte
-      const textElement = tempChatContainer.querySelector('p.text-sm');
-      if (typeof window.typeText === 'function') {
-        window.typeText(textElement, reponse);
-      } else {
-        textElement.textContent = reponse || 'Aucun retour de l\'IA.';
-      }
+      // Vérifier si le contenu est bien affiché
+      setTimeout(() => {
+        const displayedText = tempChatContainer.querySelector('p.text-gray-700');
+        if (displayedText) {
+          console.log('✅ Texte affiché dans l\'interface:', displayedText.textContent.substring(0, 100) + '...');
+        } else {
+          console.log('❌ Élément de texte non trouvé dans le conteneur');
+        }
+      }, 100);
+      
     } else {
       console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 4: Conditions non remplies');
       console.log('📝 feedbackTextEl existe:', !!feedbackTextEl);
