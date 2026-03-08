@@ -113,6 +113,8 @@ Instructions pour l'IA :
     console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 3: Réponse IA reçue');
     console.log('📝 Longueur réponse:', reponse ? reponse.length : 0);
     console.log('📝 Type de réponse:', typeof reponse);
+    console.log('📝 feedbackTextEl existe:', !!feedbackTextEl);
+    console.log('📝 feedbackTextEl ID:', feedbackTextEl ? feedbackTextEl.id : 'N/A');
 
     // Afficher la réponse dans un conteneur de chat
     if (feedbackTextEl && reponse) {
@@ -145,6 +147,10 @@ Instructions pour l'IA :
       feedbackTextEl.innerHTML = '';
       feedbackTextEl.appendChild(tempChatContainer);
       
+      console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 3.1: Conteneur ajouté');
+      console.log('📝 feedbackTextEl children:', feedbackTextEl.children.length);
+      console.log('📝 tempChatContainer HTML:', tempChatContainer.innerHTML.substring(0, 100) + '...');
+      
       // Appliquer l'effet de frappe sur le texte
       const textElement = tempChatContainer.querySelector('p.text-sm');
       if (typeof window.typeText === 'function') {
@@ -153,6 +159,11 @@ Instructions pour l'IA :
         textElement.textContent = reponse || 'Aucun retour de l\'IA.';
       }
     } else {
+      console.log('🔍 DIAGNOSTIC ACTIVITÉS - Étape 4: Conditions non remplies');
+      console.log('📝 feedbackTextEl existe:', !!feedbackTextEl);
+      console.log('📝 reponse existe:', !!reponse);
+      console.log('📝 reponse vide:', !reponse);
+      
       // Fallback : afficher directement
       if (activity.hasTable) {
         feedbackTextEl.innerHTML = formatFeedbackAsTable(reponse);
