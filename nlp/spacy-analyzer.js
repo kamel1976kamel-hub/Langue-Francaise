@@ -251,9 +251,49 @@ window.SpacyAnalyzer = {
     }
 };
 
-// FONCTION D'ANALYSE EN TEMPS RÉEL
-window.analyzeTextLocal = function(text) {
-    console.log('🔍 Analyse locale du texte:', text.substring(0, 50) + '...');
+// FONCTION D'ANALYSE EN TEMPS RÉEL (AVEC PIPELINE AVANCÉ)
+window.analyzeTextLocal = async function(text, options = {}) {
+    // Si le pipeline avancé est disponible, l'utiliser
+    if (typeof window.advancedTextAnalysis === 'function') {
+        try {
+            const advancedResult = await window.advancedTextAnalysis(text, options);
+            
+            // Convertir au format attendu par l'interface existante
+            const legacyFormat = {
+                errors: (advancedResult.corrections || []).map(c => ({
+                    text: c.matched_text || '',
+                    correction: c.suggestion || '',
+                    type: c.category || 'unknown',
+                    rule: c.rule_id || 'unknown',
+                    confidence: (c.priority || 50) / 100,
+                    explanation: c.explanation || '',
+                    example: c.example || ''
+                })),
+                explanations: (advancedResult.corrections || []).map(c => c.explanation || ''),
+                suggestions: (advancedResult.corrections || []).map(c => ({
+                    text: `Utilisez "${c.suggestion}" au lieu de "${c.matched_text}"`,
+                    explanation: c.explanation || '',
+                    example: c.example || ''
+                }))
+            };
+            
+            console.log(`✅ Analyse avancée: ${legacyFormat.errors.length} corrections, ${advancedResult.confidence}% confiance (${advancedResult.analysis_time}ms)`);
+            
+            return legacyFormat;
+            
+        } catch (error) {
+            console.warn('⚠️ Erreur avec le pipeline avancé, utilisation du mode fallback:', error.message);
+            // Continuer avec le mode fallback
+        }
+    }
+    
+    // Mode fallback (ancienne méthode)
+    return analyzeTextLocalFallback(text, options);
+};
+
+// Fonction fallback originale
+window.analyzeTextLocalFallback = function(text, options = {}) {
+    console.log('🔍 Analyse locale du texte (fallback):', text.substring(0, 50) + '...');
     
     if (!text || text.trim().length < 3) {
         return {
@@ -268,29 +308,36 @@ window.analyzeTextLocal = function(text) {
     const suggestions = [];
     
     // Analyser avec les patterns de SpacyAnalyzer
-    Object.keys(window.SpacyAnalyzer.patterns).forEach(category => {
-        window.SpacyAnalyzer.patterns[category].forEach(rule => {
-            const matches = text.match(rule.pattern);
-            if (matches) {
-                errors.push({
-                    text: matches[0],
-                    correction: rule.correction,
-                    type: rule.type,
-                    rule: rule.rule,
-                    confidence: rule.confidence || 0.9,
-                    explanation: rule.explanation || `Erreur de ${rule.type}: "${matches[0]}" → "${rule.correction}"`,
-                    example: rule.example || `❌ "${matches[0]}" → ✅ "${rule.correction}"`
-                });
-                
-                explanations.push(rule.explanation || `Erreur de ${rule.type}: "${matches[0]}" → "${rule.correction}"`);
-                suggestions.push({
-                    text: `Utilisez "${rule.correction}" au lieu de "${matches[0]}"`,
-                    explanation: rule.explanation || '',
-                    example: rule.example || ''
+    if (window.SpacyAnalyzer && window.SpacyAnalyzer.patterns) {
+        Object.keys(window.SpacyAnalyzer.patterns).forEach(category => {
+            const categoryRules = window.SpacyAnalyzer.patterns[category];
+            if (Array.isArray(categoryRules)) {
+                categoryRules.forEach(rule => {
+                    if (rule && rule.pattern) {
+                        const matches = text.match(rule.pattern);
+                        if (matches) {
+                            errors.push({
+                                text: matches[0],
+                                correction: rule.correction || rule.replacement || '',
+                                type: rule.type || category,
+                                rule: rule.rule || rule.id || 'unknown',
+                                confidence: rule.confidence || 0.9,
+                                explanation: rule.explanation || `Erreur de ${category}: "${matches[0]}" → "${rule.correction || rule.replacement}"`,
+                                example: rule.example || `❌ "${matches[0]}" → ✅ "${rule.correction || rule.replacement}"`
+                            });
+                            
+                            explanations.push(rule.explanation || `Erreur de ${category}: "${matches[0]}" → "${rule.correction || rule.replacement}"`);
+                            suggestions.push({
+                                text: `Utilisez "${rule.correction || rule.replacement}" au lieu de "${matches[0]}"`,
+                                explanation: rule.explanation || '',
+                                example: rule.example || ''
+                            });
+                        }
+                    }
                 });
             }
         });
-    });
+    }
     
     // Vérifier les majuscules en début de phrase
     const sentences = text.split(/[.!?]+/);
@@ -318,7 +365,7 @@ window.analyzeTextLocal = function(text) {
         }
     });
     
-    console.log('✅ Analyse terminée:', errors.length, 'erreurs trouvées');
+    console.log('✅ Analyse fallback terminée:', errors.length, 'erreurs trouvées');
     
     return {
         errors: errors,
