@@ -22,8 +22,8 @@ const confusions = {
     // A
     'abjurer': { correction: 'adjurer', explanation: 'Abjurer = renier sa foi ; adjurer = exhorter, supplier.' },
     'adjurer': { correction: 'abjurer', explanation: 'Abjurer = renier sa foi ; adjurer = exhorter, supplier.' },
-    'acception': { correction: 'acceptation', explanation: 'Acception = sens d'un mot ; acceptation = fait d'accepter.' },
-    'acceptation': { correction: 'acception', explanation: 'Acception = sens d'un mot ; acceptation = fait d'accepter.' },
+    'acception': { correction: 'acceptation', explanation: 'Acception = sens d\'un mot ; acceptation = fait d\'accepter.' },
+    'acceptation': { correction: 'acception', explanation: 'Acception = sens d\'un mot ; acceptation = fait d\'accepter.' },
     'achalandé': { correction: 'bien fourni', explanation: 'Achalandé = qui a beaucoup de clients (chalands), pas qui est bien approvisionné.' },
     'acmé': { correction: 'point culminant', explanation: 'L'acmé (masculin) = point culminant ; l'acné (féminin) = maladie de peau.' },
     'acné': { correction: 'acmé', explanation: 'L'acmé (masculin) = point culminant ; l'acné (féminin) = maladie de peau.' },

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test des Règles spaCy Stabilisées</title>
+</head>
+<body>
+    <h1>Test des Règles spaCy Stabilisées</h1>
+    <div id="results"></div>
+
+    <script>
+        console.log('🚀 Début du test des règles stabilisées...');
+        
+        // Charger uniquement les fichiers fiables
+        const scripts = [
+            'spacy-rules-orthographe.js',
+            'spacy-rules-style.js',
+            'spacy-rules-vocabulaire-simple.js',
+            'spacy-rules-conjugaison-simple.js',
+            'spacy-analyzer.js'
+        ];
+
+        let loadedScripts = 0;
+        const results = document.getElementById('results');
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    console.log(`✅ ${src} chargé`);
+                    loadedScripts++;
+                    resolve();
+                };
+                script.onerror = (error) => {
+                    console.error(`❌ Erreur lors du chargement de ${src}:`, error);
+                    reject(error);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        async function loadAllScripts() {
+            try {
+                for (const script of scripts) {
+                    await loadScript(script);
+                }
+                
+                // Tester l'analyse
+                if (typeof window.analyzeTextLocal === 'function') {
+                    console.log('🔍 Test d\'analyse du texte...');
+                    const testText = "C'est quoi écrire";
+                    const result = window.analyzeTextLocal(testText);
+                    
+                    results.innerHTML = `
+                        <h2>✅ Système stabilisé avec succès</h2>
+                        <p><strong>Texte test:</strong> "${testText}"</p>
+                        <p><strong>Erreurs détectées:</strong> ${result.errors ? result.errors.length : 0}</p>
+                        <p><strong>Suggestions:</strong> ${result.suggestions ? result.suggestions.length : 0}</p>
+                        <p><strong>Confiance:</strong> ${result.confidence || 'N/A'}%</p>
+                        <h3>Détails:</h3>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                } else {
+                    results.innerHTML = '<h2>❌ Fonction analyzeTextLocal non disponible</h2>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du chargement:', error);
+                results.innerHTML = `<h2>❌ Erreur: ${error.message}</h2>`;
+            }
+        }
+
+        // Démarrer le chargement
+        loadAllScripts();
+    </script>
+</body>
+</html>

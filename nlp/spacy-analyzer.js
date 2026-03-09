@@ -338,29 +338,36 @@ console.log('✅ Fonction analyzeTextLocal disponible pour l\'analyse en temps r
 window.initializeAdvancedRules = function() {
     let rulesIntegrated = 0;
     
-    // Intégrer les règles de style (ponctuation, syntaxe)
-    if (window.styleRules && window.styleRules.length > 0) {
-        console.log(`🎨 Intégration de ${window.styleRules.length} règles de style...`);
-        window.SpacyAnalyzer.patterns.style = window.styleRules;
-        rulesIntegrated += window.styleRules.length;
+    // Intégrer les règles de style (ponctuation, syntaxe) - avec validation
+    if (window.styleRules && Array.isArray(window.styleRules) && window.styleRules.length > 0) {
+        const validStyleRules = window.styleRules.filter(rule => 
+            rule && rule.pattern && typeof rule.pattern !== 'undefined' && rule.name
+        );
+        if (validStyleRules.length > 0) {
+            console.log(`🎨 Intégration de ${validStyleRules.length} règles de style valides...`);
+            window.SpacyAnalyzer.patterns.style = validStyleRules;
+            rulesIntegrated += validStyleRules.length;
+        } else {
+            console.log('⚠️ Aucune règle de style valide trouvée');
+        }
     }
     
-    // Intégrer les règles de vocabulaire
-    if (window.vocabulaireRules && window.vocabulaireRules.length > 0) {
+    // Intégrer les règles de vocabulaire simplifiées
+    if (window.vocabulaireRules && Array.isArray(window.vocabulaireRules) && window.vocabulaireRules.length > 0) {
         console.log(`📚 Intégration de ${window.vocabulaireRules.length} règles de vocabulaire...`);
         window.SpacyAnalyzer.patterns.vocabulaire = window.vocabulaireRules;
         rulesIntegrated += window.vocabulaireRules.length;
     }
     
     // Intégrer les règles d'orthographe
-    if (window.orthographeRules && window.orthographeRules.length > 0) {
+    if (window.orthographeRules && Array.isArray(window.orthographeRules) && window.orthographeRules.length > 0) {
         console.log(`📝 Intégration de ${window.orthographeRules.length} règles d'orthographe...`);
         window.SpacyAnalyzer.patterns.orthographe = window.orthographeRules;
         rulesIntegrated += window.orthographeRules.length;
     }
     
-    // Intégrer les règles de conjugaison
-    if (window.conjugaisonRules && window.conjugaisonRules.length > 0) {
+    // Intégrer les règles de conjugaison simplifiées
+    if (window.conjugaisonRules && Array.isArray(window.conjugaisonRules) && window.conjugaisonRules.length > 0) {
         console.log(`🔤 Intégration de ${window.conjugaisonRules.length} règles de conjugaison...`);
         window.SpacyAnalyzer.patterns.conjugaison = window.conjugaisonRules;
         rulesIntegrated += window.conjugaisonRules.length;
