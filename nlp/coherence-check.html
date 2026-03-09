@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification de Cohérence - Système NLP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-good { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+        
+        .score-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .issue-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .issue {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        
+        .issue.error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+        
+        .issue.warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+        
+        .issue.recommendation {
+            background: #f0fdf4;
+            border-left-color: #10b981;
+        }
+        
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .btn.secondary {
+            background: #6b7280;
+        }
+        
+        .btn.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            text-align: center;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e293b;
+            display: block;
+        }
+        
+        .metric-label {
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .file-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8fafc;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .file-name {
+            font-weight: 500;
+        }
+        
+        .file-rules {
+            color: #6b7280;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Vérification de Cohérence</h1>
+        <p>Analyse complète du système NLP pour détecter les incohérences</p>
+    </div>
+
+    <div class="card">
+        <h2>📊 État du Système</h2>
+        <div id="system-status">
+            <div class="loading">
+                <div class="spinner"></div>
+                Chargement du système...
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🎯 Score de Santé</h2>
+        <div class="score-bar">
+            <div id="score-fill" class="score-fill" style="width: 0%">
+                <span id="score-text">--</span>
+            </div>
+        </div>
+        <p id="score-description">Analyse en cours...</p>
+    </div>
+
+    <div class="grid">
+        <div class="metric">
+            <span id="errors-count" class="metric-value">-</span>
+            <span class="metric-label">Erreurs Critiques</span>
+        </div>
+        <div class="metric">
+            <span id="warnings-count" class="metric-value">-</span>
+            <span class="metric-label">Avertissements</span>
+        </div>
+        <div class="metric">
+            <span id="recommendations-count" class="metric-value">-</span>
+            <span class="metric-label">Recommandations</span>
+        </div>
+        <div class="metric">
+            <span id="rules-count" class="metric-value">-</span>
+            <span class="metric-label">Règles Totales</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📁 État des Fichiers</h2>
+        <div id="files-status">
+            <div class="loading">
+                <div class="spinner"></div>
+                Vérification des fichiers...
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>❌ Erreurs Critiques</h2>
+        <div id="errors-list" class="issue-list">
+            <p style="color: #6b7280; text-align: center;">Aucune erreur détectée</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>⚠️ Avertissements</h2>
+        <div id="warnings-list" class="issue-list">
+            <p style="color: #6b7280; text-align: center;">Aucun avertissement détecté</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>💡 Recommandations</h2>
+        <div id="recommendations-list" class="issue-list">
+            <p style="color: #6b7280; text-align: center;">Aucune recommandation</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🔧 Actions</h2>
+        <div style="text-align: center;">
+            <button onclick="runFullValidation()" class="btn">🔍 Validation Complète</button>
+            <button onclick="runQuickValidation()" class="btn secondary">⚡ Validation Rapide</button>
+            <button onclick="exportReport()" class="btn secondary">📄 Exporter Rapport</button>
+            <button onclick="clearResults()" class="btn secondary">🗑️ Effacer</button>
+        </div>
+    </div>
+
+    <!-- Scripts dans le bon ordre -->
+    <script src="spacy-rules-vocabulaire-simple.js"></script>
+    <script src="spacy-rules-conjugaison-simple.js"></script>
+    <script src="spacy-rules-style.js"></script>
+    <script src="spacy-rules-orthographe.js"></script>
+    <script src="rules-validator.js"></script>
+    <script src="groq-ai-analyzer.js"></script>
+    <script src="advanced-text-corrector.js"></script>
+    <script src="spacy-analyzer.js"></script>
+    <script src="system-validator.js"></script>
+
+    <script>
+        let validationResults = null;
+        
+        // Afficher l'état du système
+        function displaySystemStatus() {
+            const statusDiv = document.getElementById('system-status');
+            const filesDiv = document.getElementById('files-status');
+            
+            // Vérification rapide d'abord
+            const quickCheck = window.quickValidateNLP ? window.quickValidateNLP() : { isHealthy: false, issues: ['Système non initialisé'] };
+            
+            let statusHTML = '';
+            if (quickCheck.isHealthy) {
+                statusHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <span class="status-indicator status-good"></span>
+                        <strong>Système opérationnel</strong>
+                        <p style="color: #10b981; margin-top: 10px;">Tous les composants essentiels sont chargés et fonctionnels.</p>
+                    </div>
+                `;
+            } else {
+                statusHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <span class="status-indicator status-error"></span>
+                        <strong>Problèmes détectés</strong>
+                        <p style="color: #ef4444; margin-top: 10px;">${quickCheck.issues.length} problème(s) à résoudre.</p>
+                    </div>
+                `;
+            }
+            
+            statusDiv.innerHTML = statusHTML;
+            
+            // État des fichiers
+            const ruleFiles = [
+                { name: 'spacy-rules-style.js', variable: 'styleRules', label: 'Style' },
+                { name: 'spacy-rules-vocabulaire-simple.js', variable: 'vocabulaireRules', label: 'Vocabulaire' },
+                { name: 'spacy-rules-conjugaison-simple.js', variable: 'conjugaisonRules', label: 'Conjugaison' },
+                { name: 'spacy-rules-orthographe.js', variable: 'orthographeRules', label: 'Orthographe' }
+            ];
+            
+            let filesHTML = '';
+            let totalRules = 0;
+            
+            ruleFiles.forEach(file => {
+                const rules = window[file.variable];
+                const status = rules ? 'status-good' : 'status-error';
+                const count = rules ? rules.length : 0;
+                totalRules += count;
+                
+                filesHTML += `
+                    <div class="file-status">
+                        <div>
+                            <span class="status-indicator ${status}"></span>
+                            <span class="file-name">${file.label}</span>
+                        </div>
+                        <span class="file-rules">${count} règles</span>
+                    </div>
+                `;
+            });
+            
+            filesDiv.innerHTML = filesHTML;
+            document.getElementById('rules-count').textContent = totalRules;
+        }
+        
+        // Validation complète
+        function runFullValidation() {
+            if (!window.validateNLPSystem) {
+                alert('Module de validation non disponible');
+                return;
+            }
+            
+            // Afficher le chargement
+            document.getElementById('score-fill').style.width = '0%';
+            document.getElementById('score-text').textContent = '...';
+            document.getElementById('score-description').textContent = 'Validation en cours...';
+            
+            setTimeout(() => {
+                validationResults = window.validateNLPSystem();
+                displayValidationResults();
+            }, 500);
+        }
+        
+        // Validation rapide
+        function runQuickValidation() {
+            if (!window.quickValidateNLP) {
+                alert('Module de validation rapide non disponible');
+                return;
+            }
+            
+            const quickResults = window.quickValidateNLP();
+            
+            // Mettre à jour les métriques
+            document.getElementById('errors-count').textContent = quickResults.issues.length;
+            document.getElementById('warnings-count').textContent = '0';
+            document.getElementById('recommendations-count').textContent = '0';
+            
+            // Score basé sur les problèmes
+            const score = Math.max(0, 100 - (quickResults.issues.length * 20));
+            updateScoreBar(score, quickResults.isHealthy ? 'Système fonctionnel' : 'Problèmes détectés');
+            
+            // Afficher les problèmes
+            if (quickResults.issues.length > 0) {
+                const errorsHTML = quickResults.issues.map(issue => 
+                    `<div class="issue error">• ${issue}</div>`
+                ).join('');
+                document.getElementById('errors-list').innerHTML = errorsHTML;
+            }
+        }
+        
+        // Afficher les résultats de validation
+        function displayValidationResults() {
+            if (!validationResults) return;
+            
+            // Mettre à jour le score
+            updateScoreBar(validationResults.healthScore, getScoreDescription(validationResults.healthScore));
+            
+            // Mettre à jour les métriques
+            document.getElementById('errors-count').textContent = validationResults.errors.length;
+            document.getElementById('warnings-count').textContent = validationResults.warnings.length;
+            document.getElementById('recommendations-count').textContent = validationResults.recommendations.length;
+            
+            // Afficher les erreurs
+            if (validationResults.errors.length > 0) {
+                const errorsHTML = validationResults.errors.map(error => 
+                    `<div class="issue error">• ${error}</div>`
+                ).join('');
+                document.getElementById('errors-list').innerHTML = errorsHTML;
+            } else {
+                document.getElementById('errors-list').innerHTML = '<p style="color: #6b7280; text-align: center;">✅ Aucune erreur critique détectée</p>';
+            }
+            
+            // Afficher les avertissements
+            if (validationResults.warnings.length > 0) {
+                const warningsHTML = validationResults.warnings.map(warning => 
+                    `<div class="issue warning">• ${warning}</div>`
+                ).join('');
+                document.getElementById('warnings-list').innerHTML = warningsHTML;
+            } else {
+                document.getElementById('warnings-list').innerHTML = '<p style="color: #6b7280; text-align: center;">✅ Aucun avertissement</p>';
+            }
+            
+            // Afficher les recommandations
+            if (validationResults.recommendations.length > 0) {
+                const recommendationsHTML = validationResults.recommendations.map(rec => 
+                    `<div class="issue recommendation">• ${rec}</div>`
+                ).join('');
+                document.getElementById('recommendations-list').innerHTML = recommendationsHTML;
+            } else {
+                document.getElementById('recommendations-list').innerHTML = '<p style="color: #6b7280; text-align: center;">✅ Aucune recommandation</p>';
+            }
+        }
+        
+        // Mettre à jour la barre de score
+        function updateScoreBar(score, description) {
+            const scoreFill = document.getElementById('score-fill');
+            const scoreText = document.getElementById('score-text');
+            const scoreDesc = document.getElementById('score-description');
+            
+            setTimeout(() => {
+                scoreFill.style.width = score + '%';
+                scoreText.textContent = score + '/100';
+                scoreDesc.textContent = description;
+                
+                // Couleur du texte
+                if (score >= 90) {
+                    scoreText.style.color = 'white';
+                } else if (score >= 50) {
+                    scoreText.style.color = 'white';
+                } else {
+                    scoreText.style.color = 'white';
+                }
+            }, 100);
+        }
+        
+        // Description du score
+        function getScoreDescription(score) {
+            if (score >= 90) return '✅ Système en excellente état!';
+            if (score >= 70) return '🟡 Système en bon état avec quelques améliorations possibles';
+            if (score >= 50) return '🟠 Système nécessite des corrections';
+            return '🔴 Système nécessite des corrections critiques';
+        }
+        
+        // Exporter le rapport
+        function exportReport() {
+            if (!validationResults) {
+                alert('Veuillez d\'abord exécuter une validation complète');
+                return;
+            }
+            
+            const report = `Rapport de Validation - Système NLP
+=====================================
+Date: ${new Date().toLocaleString()}
+Score de santé: ${validationResults.healthScore}/100
+
+ERREURS CRITIQUES (${validationResults.errors.length}):
+${validationResults.errors.map(e => `- ${e}`).join('\n')}
+
+AVERTISSEMENTS (${validationResults.warnings.length}):
+${validationResults.warnings.map(w => `- ${w}`).join('\n')}
+
+RECOMMANDATIONS (${validationResults.recommendations.length}):
+${validationResults.recommendations.map(r => `- ${r}`).join('\n')}
+
+État: ${getScoreDescription(validationResults.healthScore)}
+`;
+            
+            // Télécharger le fichier
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nlp-validation-report-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Effacer les résultats
+        function clearResults() {
+            validationResults = null;
+            document.getElementById('score-fill').style.width = '0%';
+            document.getElementById('score-text').textContent = '--';
+            document.getElementById('score-description').textContent = 'Analyse en cours...';
+            document.getElementById('errors-list').innerHTML = '<p style="color: #6b7280; text-align: center;">Aucune erreur détectée</p>';
+            document.getElementById('warnings-list').innerHTML = '<p style="color: #6b7280; text-align: center;">Aucun avertissement détecté</p>';
+            document.getElementById('recommendations-list').innerHTML = '<p style="color: #6b7280; text-align: center;">Aucune recommandation</p>';
+            document.getElementById('errors-count').textContent = '-';
+            document.getElementById('warnings-count').textContent = '-';
+            document.getElementById('recommendations-count').textContent = '-';
+        }
+        
+        // Initialisation au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                displaySystemStatus();
+                setTimeout(() => {
+                    runQuickValidation();
+                }, 1000);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
