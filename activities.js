@@ -22,27 +22,49 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
   // Construire le contenu du nuage
   let cloudContent = '';
   
-  // Erreurs détectées
+  // Erreurs détectées avec structure complète
   if (response.corrections && response.corrections.length > 0) {
     cloudContent += `
       <div class="mb-3">
         <h4 class="text-sm font-semibold text-white mb-2">🔍 Erreurs détectées :</h4>
-        <div class="space-y-1">
+        <div class="space-y-2">
     `;
     response.corrections.forEach((correction, index) => {
       cloudContent += `
-        <div class="flex items-center justify-between bg-white/20 backdrop-blur-sm p-2 rounded">
-          <span class="text-sm text-white">
-            "<span class="line-through text-yellow-300">${correction.text}</span>" → 
-            "<span class="text-green-300 font-medium">${correction.correction}</span>"
-          </span>
-          <button 
-            onclick="applyActivityCorrection('${correction.text}', '${correction.correction}', '${chapterId}', '${activityId}')"
-            class="ml-2 px-2 py-1 bg-white/30 backdrop-blur-sm text-white text-xs rounded hover:bg-white/40 transition-colors border border-white/50"
-            title="Appliquer cette correction"
-          >
-            Appliquer
-          </button>
+        <div class="bg-white/20 backdrop-blur-sm p-3 rounded">
+          <div class="mb-2">
+            <span class="text-xs font-semibold text-yellow-300">❌ Erreur :</span>
+            <span class="text-sm text-white ml-1">
+              "<span class="line-through text-yellow-300">${correction.text}</span>"
+            </span>
+          </div>
+          <div class="mb-2">
+            <span class="text-xs font-semibold text-green-300">✅ Correction :</span>
+            <span class="text-sm text-white ml-1">
+              "<span class="text-green-300 font-medium">${correction.correction}</span>"
+            </span>
+          </div>
+          ${correction.explanation ? `
+            <div class="mb-2">
+              <span class="text-xs font-semibold text-blue-300">💡 Explication :</span>
+              <span class="text-sm text-white ml-1">${correction.explanation}</span>
+            </div>
+          ` : ''}
+          ${correction.example ? `
+            <div class="mb-2">
+              <span class="text-xs font-semibold text-purple-300">📝 Exemple :</span>
+              <span class="text-sm text-white ml-1">${correction.example}</span>
+            </div>
+          ` : ''}
+          <div class="flex justify-end mt-2">
+            <button 
+              onclick="applyActivityCorrection('${correction.text}', '${correction.correction}', '${chapterId}', '${activityId}')"
+              class="px-3 py-1 bg-white/30 backdrop-blur-sm text-white text-xs rounded hover:bg-white/40 transition-colors border border-white/50"
+              title="Appliquer cette correction"
+            >
+              Appliquer
+            </button>
+          </div>
         </div>
       `;
     });
@@ -66,24 +88,52 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
     cloudContent += `</div></div>`;
   }
   
-  // Suggestions de correction
+  // Suggestions de correction avec structure complète
   if (response.suggestions && response.suggestions.length > 0) {
     cloudContent += `
       <div class="mb-3">
-        <h4 class="text-sm font-semibold text-white mb-2">🎯 Suggestions :</h4>
-        <div class="space-y-1">
+        <h4 class="text-sm font-semibold text-white mb-2">🎯 Suggestions d'amélioration :</h4>
+        <div class="space-y-2">
     `;
     response.suggestions.forEach((suggestion, index) => {
+      // Gérer les suggestions qui peuvent être des objets avec des propriétés ou des chaînes simples
+      let suggestionText = suggestion;
+      let suggestionExplanation = '';
+      let suggestionExample = '';
+      
+      if (typeof suggestion === 'object' && suggestion !== null) {
+        suggestionText = suggestion.text || suggestion.suggestion || 'Suggestion sans texte';
+        suggestionExplanation = suggestion.explanation || '';
+        suggestionExample = suggestion.example || '';
+      }
+      
       cloudContent += `
-        <div class="flex items-center justify-between bg-white/20 backdrop-blur-sm p-2 rounded">
-          <span class="text-sm text-white">${suggestion}</span>
-          <button 
-            onclick="applyActivitySuggestion('${suggestion}', '${chapterId}', '${activityId}')"
-            class="ml-2 px-2 py-1 bg-white/30 backdrop-blur-sm text-white text-xs rounded hover:bg-white/40 transition-colors border border-white/50"
-            title="Appliquer cette suggestion"
-          >
-            Appliquer
-          </button>
+        <div class="bg-white/20 backdrop-blur-sm p-3 rounded">
+          <div class="mb-2">
+            <span class="text-xs font-semibold text-orange-300">💡 Suggestion :</span>
+            <span class="text-sm text-white ml-1">${suggestionText}</span>
+          </div>
+          ${suggestionExplanation ? `
+            <div class="mb-2">
+              <span class="text-xs font-semibold text-blue-300">📚 Explication :</span>
+              <span class="text-sm text-white ml-1">${suggestionExplanation}</span>
+            </div>
+          ` : ''}
+          ${suggestionExample ? `
+            <div class="mb-2">
+              <span class="text-xs font-semibold text-purple-300">📝 Exemple :</span>
+              <span class="text-sm text-white ml-1">${suggestionExample}</span>
+            </div>
+          ` : ''}
+          <div class="flex justify-end mt-2">
+            <button 
+              onclick="applyActivitySuggestion('${suggestionText}', '${chapterId}', '${activityId}')"
+              class="px-3 py-1 bg-white/30 backdrop-blur-sm text-white text-xs rounded hover:bg-white/40 transition-colors border border-white/50"
+              title="Appliquer cette suggestion"
+            >
+              Appliquer
+            </button>
+          </div>
         </div>
       `;
     });

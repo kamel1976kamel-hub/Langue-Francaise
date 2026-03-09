@@ -277,11 +277,17 @@ window.analyzeTextLocal = function(text) {
                     correction: rule.correction,
                     type: rule.type,
                     rule: rule.rule,
-                    confidence: rule.confidence || 0.9
+                    confidence: rule.confidence || 0.9,
+                    explanation: rule.explanation || `Erreur de ${rule.type}: "${matches[0]}" → "${rule.correction}"`,
+                    example: rule.example || `❌ "${matches[0]}" → ✅ "${rule.correction}"`
                 });
                 
-                explanations.push(`Erreur de ${rule.type}: "${matches[0]}" → "${rule.correction}"`);
-                suggestions.push(`Utilisez "${rule.correction}" au lieu de "${matches[0]}"`);
+                explanations.push(rule.explanation || `Erreur de ${rule.type}: "${matches[0]}" → "${rule.correction}"`);
+                suggestions.push({
+                    text: `Utilisez "${rule.correction}" au lieu de "${matches[0]}"`,
+                    explanation: rule.explanation || '',
+                    example: rule.example || ''
+                });
             }
         });
     });
@@ -298,10 +304,16 @@ window.analyzeTextLocal = function(text) {
                     correction: trimmed[0].toUpperCase(),
                     type: 'majuscule',
                     rule: 'debut_phrase',
-                    confidence: 0.95
+                    confidence: 0.95,
+                    explanation: 'La phrase doit commencer par une majuscule.',
+                    example: `❌ "${trimmed[0]}..." → ✅ "${trimmed[0].toUpperCase()}..."`
                 });
                 explanations.push('La phrase doit commencer par une majuscule.');
-                suggestions.push(`Mettez "${trimmed[0].toUpperCase()}" au début de la phrase.`);
+                suggestions.push({
+                    text: `Mettez "${trimmed[0].toUpperCase()}" au début de la phrase.`,
+                    explanation: 'En français, toute phrase commence par une majuscule.',
+                    example: `❌ "${trimmed[0]}..." → ✅ "${trimmed[0].toUpperCase()}..."`
+                });
             }
         }
     });
