@@ -251,4 +251,69 @@ window.SpacyAnalyzer = {
     }
 };
 
+// FONCTION D'ANALYSE EN TEMPS RÉEL
+window.analyzeTextLocal = function(text) {
+    console.log('🔍 Analyse locale du texte:', text.substring(0, 50) + '...');
+    
+    if (!text || text.trim().length < 3) {
+        return {
+            errors: [],
+            explanations: [],
+            suggestions: []
+        };
+    }
+    
+    const errors = [];
+    const explanations = [];
+    const suggestions = [];
+    
+    // Analyser avec les patterns de SpacyAnalyzer
+    Object.keys(window.SpacyAnalyzer.patterns).forEach(category => {
+        window.SpacyAnalyzer.patterns[category].forEach(rule => {
+            const matches = text.match(rule.pattern);
+            if (matches) {
+                errors.push({
+                    text: matches[0],
+                    correction: rule.correction,
+                    type: rule.type,
+                    rule: rule.rule,
+                    confidence: rule.confidence || 0.9
+                });
+                
+                explanations.push(`Erreur de ${rule.type}: "${matches[0]}" → "${rule.correction}"`);
+                suggestions.push(`Utilisez "${rule.correction}" au lieu de "${matches[0]}"`);
+            }
+        });
+    });
+    
+    // Vérifier les majuscules en début de phrase
+    const sentences = text.split(/[.!?]+/);
+    sentences.forEach((sentence, index) => {
+        const trimmed = sentence.trim();
+        if (trimmed.length > 0 && index === 0) {
+            // Première phrase doit commencer par majuscule
+            if (trimmed[0] !== trimmed[0].toUpperCase()) {
+                errors.push({
+                    text: trimmed[0],
+                    correction: trimmed[0].toUpperCase(),
+                    type: 'majuscule',
+                    rule: 'debut_phrase',
+                    confidence: 0.95
+                });
+                explanations.push('La phrase doit commencer par une majuscule.');
+                suggestions.push(`Mettez "${trimmed[0].toUpperCase()}" au début de la phrase.`);
+            }
+        }
+    });
+    
+    console.log('✅ Analyse terminée:', errors.length, 'erreurs trouvées');
+    
+    return {
+        errors: errors,
+        explanations: explanations,
+        suggestions: suggestions
+    };
+};
+
 console.log('✅ SpacyAnalyzer chargé - Analyse linguistique française');
+console.log('✅ Fonction analyzeTextLocal disponible pour l\'analyse en temps réel');
