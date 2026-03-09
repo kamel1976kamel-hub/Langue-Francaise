@@ -455,7 +455,15 @@ class TextCorrectorUI {
         correctBtn.disabled = true;
 
         try {
-            const result = await window.correctText(text);
+            // Utiliser la nouvelle fonction de base de données si disponible, sinon fallback
+            let result;
+            if (window.correctTextWithDatabase) {
+                result = await window.correctTextWithDatabase(text);
+            } else if (window.correctText) {
+                result = await window.correctText(text);
+            } else {
+                throw new Error('Aucune fonction de correction disponible');
+            }
             this.displayResult(result);
         } catch (error) {
             console.error('Erreur de correction:', error);
@@ -469,23 +477,30 @@ class TextCorrectorUI {
     displayResult(result) {
         this.currentResult = result;
 
+        // Adapter le résultat au format attendu
+        const corrections = result.corrections || [];
+        const suggestions = result.suggestions || [];
+        const confidence = result.confidence || 95;
+        const processingTime = result.processingTime || 0;
+        const correctedText = result.correctedText || result.originalText || '';
+
         // Mettre à jour les statistiques
-        document.getElementById('corrections-count').textContent = result.corrections.length;
-        document.getElementById('confidence-score').textContent = result.confidence + '%';
-        document.getElementById('suggestions-count').textContent = result.suggestions.length;
-        document.getElementById('processing-time').textContent = result.processingTime + 'ms';
+        document.getElementById('corrections-count').textContent = corrections.length;
+        document.getElementById('confidence-score').textContent = confidence + '%';
+        document.getElementById('suggestions-count').textContent = suggestions.length;
+        document.getElementById('processing-time').textContent = processingTime + 'ms';
         document.getElementById('stats-section').style.display = 'block';
 
         // Afficher le texte corrigé
-        document.getElementById('text-output').value = result.correctedText;
+        document.getElementById('text-output').value = correctedText;
         document.getElementById('result-section').style.display = 'block';
 
         // Afficher les corrections
-        this.displayCorrections(result.corrections);
+        this.displayCorrections(corrections);
 
         // Afficher les suggestions
         if (this.options.showSuggestions) {
-            this.displaySuggestions(result.suggestions);
+            this.displaySuggestions(suggestions);
         }
     }
 
@@ -612,7 +627,14 @@ class TextCorrectorUI {
         const element = document.getElementById(elementId);
         if (element) {
             const text = element.value || element.textContent;
-            const result = await window.correctText(text);
+            let result;
+            if (window.correctTextWithDatabase) {
+                result = await window.correctTextWithDatabase(text);
+            } else if (window.correctText) {
+                result = await window.correctText(text);
+            } else {
+                throw new Error('Aucune fonction de correction disponible');
+            }
             this.displayResult(result);
             return result;
         }

@@ -250,20 +250,355 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\bil font\\b',
-                correction: 'ils font',
+                correction: 'il fait',
                 explanation: 'Le verbe faire: il fait, ils font.',
-                example: 'Il font beau → Ils font beau',
+                example: 'Il font beau → Il fait beau',
                 priority: 90
             },
             {
-                rule_id: 'faire_present_elles_font',
-                name: 'faire_present_elles_font',
+                rule_id: 'accord_enfant_joue',
+                name: 'accord_enfant_joue',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\bel font\\b',
-                correction: 'elles font',
-                explanation: 'Le verbe faire au féminin pluriel: elles font.',
-                example: 'Elles font',
+                pattern: '\\bles enfant\\s+joue\\b',
+                correction: 'les enfants jouent',
+                explanation: 'Accord sujet-verbe: les enfants + verbe au pluriel.',
+                example: 'Les enfant joue → Les enfants jouent',
+                priority: 95
+            },
+            
+            // ===== RÈGLES PERSONNALISÉES SPACY – LA CONJUGAISON ET SES PIÈGES =====
+            
+            // CHAPITRE 1 : SAVOIRS DE BASE
+            {
+                rule_id: 'groupe_verbe_terminaison',
+                name: 'groupe_verbe_terminaison',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+er)\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const verb = match[2];
+                    let ending = '';
+                    if (subject === 'je' || subject === 'j\'') ending = 'e';
+                    else if (subject === 'tu') ending = 'es';
+                    else if (subject === 'il' || subject === 'elle' || subject === 'on') ending = 'e';
+                    else if (subject === 'nous') ending = 'ons';
+                    else if (subject === 'vous') ending = 'ez';
+                    else if (subject === 'ils' || subject === 'elles') ending = 'ent';
+                    return subject + ' ' + verb.replace(/er$/, ending);
+                },
+                explanation: 'Le verbe du 1er groupe doit être conjugué et non laissé à l\'infinitif après un sujet.',
+                example: 'je parler → je parle, tu parler → tu parles',
+                priority: 95
+            },
+            
+            // CHAPITRE 2 : LES DOUZE VERBES LES PLUS FRÉQUENTS
+            {
+                rule_id: 'auxiliaire_etre_avoir',
+                name: 'auxiliaire_etre_avoir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+(allé|venu|parti|arrivé|entré|sorti|monté|descendu|né|mort|resté|tombé|retourné|passé|devenu|revenu)\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    const ppe = match[3];
+                    return subject + ' suis ' + ppe;
+                },
+                explanation: 'Les verbes de mouvement se conjuguent avec l\'auxiliaire "être" aux temps composés.',
+                example: 'j\'ai parti → je suis parti',
+                priority: 90
+            },
+            {
+                rule_id: 'futur_conditionnel_confusion',
+                name: 'futur_conditionnel_confusion',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\bdemain\\s+(je|tu|il|elle|on)\\s+(\\w+ais)\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const verb = match[2];
+                    const ending = verb.replace(/ais$/, 'ai');
+                    return 'demain ' + subject + ' ' + ending;
+                },
+                explanation: 'Avec un indicateur de futur, on utilise le futur simple et non le conditionnel.',
+                example: 'demain je ferais → demain je ferai',
+                priority: 85
+            },
+            {
+                rule_id: 'subjonctif_apres_que',
+                name: 'subjonctif_apres_que',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(il\\s+faut|bien\\s+que|avant\\s+que|pour\\s+que|sans\\s+que|afin\\s+que)\\s+(tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+e[sz]?|\\w+ons|\\w+ez|\\w+ent)\\b',
+                correction: function(match) {
+                    const locution = match[1];
+                    const subject = match[2];
+                    const verb = match[3];
+                    return locution + ' ' + subject + ' ' + verb + ' (subjonctif requis)';
+                },
+                explanation: 'Après ces locutions, on emploie le subjonctif.',
+                example: 'il faut que tu viens → il faut que tu viennes',
+                priority: 90
+            },
+            {
+                rule_id: 'imperatif_va_vas',
+                name: 'imperatif_va_vas',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\bvas\\s+(?!y|en)(\\w+)\\b',
+                correction: 'va $1',
+                explanation: 'L\'impératif du verbe "aller" est "va" (sans s), sauf devant "y" ou "en".',
+                example: 'vas à l\'école → va à l\'école',
+                priority: 85
+            },
+            
+            // CHAPITRE 3 : PARTICIPES PASSÉS IRRÉGULIERS
+            {
+                rule_id: 'participe_passe_irregulier_ouvrir',
+                name: 'participe_passe_irregulier_ouvrir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+ouvris?\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' ouvert';
+                },
+                explanation: 'Le participe passé de "ouvrir" est "ouvert".',
+                example: 'j\'ai ouvré → j\'ai ouvert',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_prendre',
+                name: 'participe_passe_irregulier_prendre',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+pris\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' pris';
+                },
+                explanation: 'Le participe passé de "prendre" est "pris".',
+                example: 'j\'ai prendu → j\'ai pris',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_mettre',
+                name: 'participe_passe_irregulier_mettre',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+mis\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' mis';
+                },
+                explanation: 'Le participe passé de "mettre" est "mis".',
+                example: 'j\'ai met → j\'ai mis',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_dire',
+                name: 'participe_passe_irregulier_dire',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+dis\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' dit';
+                },
+                explanation: 'Le participe passé de "dire" est "dit".',
+                example: 'j\'ai di → j\'ai dit',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_ecrire',
+                name: 'participe_passe_irregulier_ecrire',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+écrits?\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' écrit';
+                },
+                explanation: 'Le participe passé de "écrire" est "écrit".',
+                example: 'j\'ai écris → j\'ai écrit',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_voir',
+                name: 'participe_passe_irregulier_voir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+vus\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' vu';
+                },
+                explanation: 'Le participe passé de "voir" est "vu".',
+                example: 'j\'ai vi → j\'ai vu',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_vouloir',
+                name: 'participe_passe_irregulier_vouloir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+voulus?\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' voulu';
+                },
+                explanation: 'Le participe passé de "vouloir" est "voulu".',
+                example: 'j\'ai voulus → j\'ai voulu',
+                priority: 95
+            },
+            {
+                rule_id: 'participe_passe_irregulier_pouvoir',
+                name: 'participe_passe_irregulier_pouvoir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+pus\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    return subject + ' ' + aux + ' pu';
+                },
+                explanation: 'Le participe passé de "pouvoir" est "pu".',
+                example: 'j\'ai pus → j\'ai pu',
+                priority: 95
+            },
+            
+            // CHAPITRE 4 : VERBES DÉFECTIFS
+            {
+                rule_id: 'defectif_falloir',
+                name: 'defectif_falloir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|nous|vous|ils|elles)\\s+(fau|fau|fau|fau|fau|fau)\\b',
+                correction: 'il faut',
+                explanation: 'Le verbe "falloir" ne se conjugue qu\'à la 3e personne du singulier.',
+                example: 'je faux → il faut',
+                priority: 90
+            },
+            {
+                rule_id: 'defectif_pleuvoir',
+                name: 'defectif_pleuvoir',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|nous|vous|ils|elles)\\s+(pleu|pleu|pleu|pleu|pleu|pleu)\\b',
+                correction: 'il pleut',
+                explanation: 'Le verbe "pleuvoir" ne se conjugue qu\'à la 3e personne du singulier.',
+                example: 'je pleus → il pleut',
+                priority: 90
+            },
+            
+            // CHAPITRE 5 : FORMES DIFFICILES
+            {
+                rule_id: 'verbe_eler_double_consonne',
+                name: 'verbe_eler_double_consonne',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(j\'|je|tu|il|elle)\\s+(appel|jett)\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const verb = match[2];
+                    if (verb === 'appel') return subject + ' appelle';
+                    if (verb === 'jett') return subject + ' jette';
+                    return match[0];
+                },
+                explanation: 'Les verbes "appeler" et "jeter" doublent la consonne devant une syllabe muette.',
+                example: 'j\'appelle → j\'appelle, il jette → il jette',
+                priority: 85
+            },
+            {
+                rule_id: 'verbe_ceder_accent',
+                name: 'verbe_ceder_accent',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(j\'|je|tu|il|elle)\\s+(céd|accéd|décéd|posséd)\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const verb = match[2];
+                    return subject + ' ' + verb.replace('é', 'è');
+                },
+                explanation: 'Les verbes comme "céder" changent l\'accent aigu en accent grave devant une syllabe muette.',
+                example: 'il cède → il cède',
+                priority: 85
+            },
+            {
+                rule_id: 'verbe_yer_y_i',
+                name: 'verbe_yer_y_i',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(j\'|je|tu|il|elle)\\s+(nettoy|envoy|employ)\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const verb = match[2];
+                    return subject + ' ' + verb.replace('y', 'i');
+                },
+                explanation: 'Les verbes comme "nettoyer" changent le y en i devant un e muet.',
+                example: 'il nettoye → il nettoie',
+                priority: 85
+            },
+            {
+                rule_id: 'futur_double_r',
+                name: 'futur_double_r',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(je|tu|il|elle|on)\\s+(cour|mour)\\ai\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const verb = match[2];
+                    return subject + ' ' + verb + 'rrai';
+                },
+                explanation: 'Les verbes "courir" et "mourir" doublent le r au futur.',
+                example: 'je courai → je courrai, je mourai → je mourrai',
+                priority: 90
+            },
+            
+            // CHAPITRE 6 : ACCORDS DES PARTICIPES PASSÉS
+            {
+                rule_id: 'accord_participe_etre',
+                name: 'accord_participe_etre',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(elles|ils)\\s+(sont|sont)\\s+(\\w+[^es])\\b',
+                correction: function(match) {
+                    const subject = match[1];
+                    const aux = match[2];
+                    const ppe = match[3];
+                    return subject + ' ' + aux + ' ' + ppe + 's';
+                },
+                explanation: 'Avec l\'auxiliaire "être", le participe passé s\'accorde en nombre avec le sujet.',
+                example: 'elles sont parti → elles sont parties',
+                priority: 95
+            },
+            {
+                rule_id: 'accord_participe_avoir_cod',
+                name: 'accord_participe_avoir_cod',
+                category: 'conjugaison',
+                pattern_type: 'regex',
+                pattern: '\\b(l\'|la|les)\\s+que\\s+(j\'|je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+(\\w+[^es])\\b',
+                correction: function(match) {
+                    const cod = match[1];
+                    const subject = match[3];
+                    const aux = match[4];
+                    const ppe = match[5];
+                    if (cod === 'les') return match[0].replace(ppe, ppe + 's');
+                    if (cod === 'la') return match[0].replace(ppe, ppe + 'e');
+                    if (cod === 'l\'') return match[0].replace(ppe, ppe + 'e');
+                    return match[0];
+                },
+                explanation: 'Avec l\'auxiliaire "avoir", le participe passé s\'accorde avec le COD placé avant.',
+                example: 'les pommes que j\'ai mangé → les pommes que j\'ai mangées',
                 priority: 90
             },
             {
