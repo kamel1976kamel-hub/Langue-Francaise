@@ -377,15 +377,167 @@ window.analyzeTextLocalFallback = function(text, options = {}) {
 console.log('✅ SpacyAnalyzer chargé - Analyse linguistique française');
 console.log('✅ Fonction analyzeTextLocal disponible pour l\'analyse en temps réel');
 
+// Fonction applyRules pour la compatibilité avec le système existant
+window.applyRules = function(text, options = {}) {
+    const errors = [];
+    const explanations = [];
+    const suggestions = [];
+    
+    try {
+        // Appliquer les règles de style
+        if (window.SpacyAnalyzer.patterns.style && window.SpacyAnalyzer.patterns.style.length > 0) {
+            window.SpacyAnalyzer.patterns.style.forEach(rule => {
+                try {
+                    if (rule.pattern && rule.correction) {
+                        let pattern;
+                        if (rule.pattern instanceof RegExp) {
+                            pattern = rule.pattern;
+                        } else if (typeof rule.pattern === 'string') {
+                            pattern = new RegExp(rule.pattern, 'g');
+                        } else {
+                            return; // Skip invalid patterns
+                        }
+                        
+                        const matches = text.match(pattern);
+                        if (matches) {
+                            matches.forEach(match => {
+                                let correction;
+                                if (typeof rule.correction === 'function') {
+                                    correction = rule.correction(match);
+                                } else {
+                                    correction = match.replace(pattern, rule.correction);
+                                }
+                                
+                                errors.push({
+                                    text: match,
+                                    correction: correction,
+                                    type: rule.type || 'style',
+                                    rule: rule.name || 'style_rule',
+                                    confidence: rule.confidence || 0.8,
+                                    explanation: rule.explanation || 'Règle de style',
+                                    example: rule.example || ''
+                                });
+                                
+                                if (rule.explanation) {
+                                    explanations.push(rule.explanation);
+                                }
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erreur dans la règle de style:', rule.name, error);
+                }
+            });
+        }
+        
+        // Appliquer les autres catégories de règles (vocabulaire, conjugaison, orthographe)
+        ['vocabulaire', 'conjugaison', 'orthographe'].forEach(category => {
+            if (window.SpacyAnalyzer.patterns[category] && window.SpacyAnalyzer.patterns[category].length > 0) {
+                window.SpacyAnalyzer.patterns[category].forEach(rule => {
+                    try {
+                        if (rule.pattern && rule.correction) {
+                            let pattern;
+                            if (rule.pattern instanceof RegExp) {
+                                pattern = rule.pattern;
+                            } else if (typeof rule.pattern === 'string') {
+                                pattern = new RegExp(rule.pattern, 'g');
+                            } else {
+                                return;
+                            }
+                            
+                            const matches = text.match(pattern);
+                            if (matches) {
+                                matches.forEach(match => {
+                                    let correction;
+                                    if (typeof rule.correction === 'function') {
+                                        correction = rule.correction(match);
+                                    } else {
+                                        correction = match.replace(pattern, rule.correction);
+                                    }
+                                    
+                                    errors.push({
+                                        text: match,
+                                        correction: correction,
+                                        type: rule.type || category,
+                                        rule: rule.name || category + '_rule',
+                                        confidence: rule.confidence || 0.8,
+                                        explanation: rule.explanation || `Règle de ${category}`,
+                                        example: rule.example || ''
+                                    });
+                                    
+                                    if (rule.explanation) {
+                                        explanations.push(rule.explanation);
+                                    }
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Erreur dans la règle de ${category}:`, rule.name, error);
+                    }
+                });
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'application des règles:', error);
+    }
+    
+    return {
+        errors: errors,
+        explanations: explanations,
+        suggestions: suggestions
+    };
+};
+
 // ---------------------------------------------------------------------
 // INTÉGRATION DES RÈGLES AVANCÉES
 // ---------------------------------------------------------------------
 
 // Fonction pour intégrer les règles avancées si disponibles
-window.initializeAdvancedRules = function() {
+window.initializeAdvancedRules = async function() {
     let rulesIntegrated = 0;
     
-    // Intégrer les règles de style (ponctuation, syntaxe) - avec validation
+    // Essayer de charger depuis la base de données d'abord
+    if (window.NLPDatabase && window.NLPDatabase.isReady) {
+        try {
+            console.log('📊 Chargement des règles depuis la base de données...');
+            const allRules = await window.NLPDatabase.getAllRules();
+            
+            // Intégrer les règles de chaque catégorie
+            if (allRules.style && allRules.style.length > 0) {
+                window.SpacyAnalyzer.patterns.style = allRules.style;
+                rulesIntegrated += allRules.style.length;
+                console.log(`✅ ${allRules.style.length} règles de style intégrées`);
+            }
+            
+            if (allRules.vocabulaire && allRules.vocabulaire.length > 0) {
+                window.SpacyAnalyzer.patterns.vocabulaire = allRules.vocabulaire;
+                rulesIntegrated += allRules.vocabulaire.length;
+                console.log(`✅ ${allRules.vocabulaire.length} règles de vocabulaire intégrées`);
+            }
+            
+            if (allRules.orthographe && allRules.orthographe.length > 0) {
+                window.SpacyAnalyzer.patterns.orthographe = allRules.orthographe;
+                rulesIntegrated += allRules.orthographe.length;
+                console.log(`✅ ${allRules.orthographe.length} règles d'orthographe intégrées`);
+            }
+            
+            if (allRules.conjugaison && allRules.conjugaison.length > 0) {
+                window.SpacyAnalyzer.patterns.conjugaison = allRules.conjugaison;
+                rulesIntegrated += allRules.conjugaison.length;
+                console.log(`✅ ${allRules.conjugaison.length} règles de conjugaison intégrées`);
+            }
+            
+            console.log(`✅ Total: ${rulesIntegrated} règles intégrées depuis la base de données`);
+            return rulesIntegrated;
+            
+        } catch (error) {
+            console.error('❌ Erreur lors du chargement depuis la base de données:', error);
+            // Continuer avec les règles fallback
+        }
+    }
+    
+    // Fallback vers les règles de style (ponctuation, syntaxe) - avec validation
     if (window.styleRules && Array.isArray(window.styleRules) && window.styleRules.length > 0) {
         const validStyleRules = window.styleRules.filter(rule => 
             rule && rule.pattern && typeof rule.pattern !== 'undefined' && rule.name

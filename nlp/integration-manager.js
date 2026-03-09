@@ -31,9 +31,15 @@ class NLPIntegrationManager {
                 console.log('✅ Pipeline avancé initialisé:', success);
             }
 
+            // Charger et intégrer les règles
+            if (window.initializeAdvancedRules) {
+                const rulesCount = await window.initializeAdvancedRules();
+                console.log('📚 Règles intégrées:', rulesCount);
+            }
+
             // Valider les règles
             if (window.loadAllRules) {
-                const rules = window.loadAllRules();
+                const rules = await window.loadAllRules();
                 console.log('📊 Règles chargées:', rules);
             }
 

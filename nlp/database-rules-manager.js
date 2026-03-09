@@ -429,6 +429,35 @@ class DatabaseRulesManager {
 
         return stats;
     }
+
+    // Méthode getStats pour la compatibilité
+    async getStats() {
+        if (!this.isReady) {
+            await this.initialize();
+        }
+
+        if (this.useJSONFallback) {
+            return this.getJSONStats();
+        }
+
+        try {
+            const allRules = await this.getAllRules();
+            const stats = {};
+
+            Object.keys(allRules).forEach(category => {
+                stats[category] = {
+                    total: allRules[category].length,
+                    active: allRules[category].length,
+                    avgPriority: allRules[category].reduce((sum, rule) => sum + (rule.priority || 50), 0) / allRules[category].length
+                };
+            });
+
+            return stats;
+        } catch (error) {
+            console.error('Erreur lors du chargement des statistiques:', error);
+            return this.getJSONStats();
+        }
+    }
 }
 
 // ============================================
