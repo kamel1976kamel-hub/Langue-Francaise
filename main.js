@@ -185,7 +185,22 @@ window.demanderIA = async function(prompt, contexte) {
         }
 
         const result = await runFourModelPipelineWithFallback(prompt, contexte);
-        return result;
+        
+        // Extraire le texte original de l'étudiant depuis le contexte
+        let originalText = '';
+        try {
+            const contextObj = typeof contexte === 'string' ? JSON.parse(contexte) : contexte;
+            if (contextObj && contextObj.student_message) {
+                originalText = contextObj.student_message;
+            }
+        } catch (e) {
+            console.log('⚠️ Impossible de parser le contexte pour extraire le texte original');
+        }
+        
+        // Améliorer la qualité de la réponse avec le texte original
+        const improvedResult = improveResponseQuality(result, originalText);
+        
+        return improvedResult;
 
     } catch (error) {
         addError(`IA request failed: ${error.message}`, 'ia_request');
@@ -197,6 +212,351 @@ Veuillez vérifier votre connexion et réessayer.`;
         return errorMsg;
     }
 };
+
+/**
+ * Améliore la qualité des réponses de l'IA
+ * @param {string} response - Réponse brute de l'IA
+ * @returns {string} Réponse améliorée
+ */
+function improveResponseQuality(response, originalText = '') {
+    if (!response || typeof response !== 'string') {
+        return response;
+    }
+    
+    let improved = response;
+    
+    // 0. Analyse du contexte et du texte original
+    const contextualImprovements = analyzeContextAndImprove(response, originalText);
+    if (contextualImprovements) {
+        improved = contextualImprovements;
+    }
+    
+    // 1. Corriger les fautes d'orthographe courantes
+    const corrections = {
+        'textes': 'textes',
+        'captivants': 'captivants',
+        'commencerons': 'commencerons',
+        'textes descriptif': 'texte descriptif',
+        'au moins entre': 'au moins entre',
+        'vont': 'vont',
+        'ça': 'cela',
+        'avec ça': 'avec cela'
+    };
+    
+    Object.keys(corrections).forEach(incorrect => {
+        const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
+        improved = improved.replace(regex, corrections[incorrect]);
+    });
+    
+    // 2. Améliorer la ponctuation et la grammaire
+    improved = improved
+        .replace(/\s*!\s*/g, '! ') // Espace avant les points d'exclamation
+        .replace(/\s*\?\s*/g, '? ') // Espace avant les points d'interrogation
+        .replace(/\s*\.\s*/g, '. ') // Espace après les points
+        .replace(/\s*,\s*/g, ', ') // Espace autour des virgules
+        .replace(/\s*:\s*/g, ': ') // Espace autour des deux-points
+        .replace(/\s*;\s*/g, '; ') // Espace autour des points-virgules
+        .replace(/\s+/g, ' ') // Éviter les espaces multiples
+        .trim();
+    
+    // 3. Corriger les formulations maladroites
+    const reformulations = {
+        'C\'est quoi un texte descriptif': 'Qu\'est-ce qu\'un texte descriptif',
+        'Par où commencerons-nous': 'Par où commencerons-nous',
+        'Je vais vous aider avec ça': 'Je vais vous aider avec cela',
+        'au moins entre 4 à 6 lignes': 'au moins 4 à 6 lignes'
+    };
+    
+    Object.keys(reformulations).forEach(maladroit => {
+        improved = improved.replace(new RegExp(maladroit, 'gi'), reformulations[maladroit]);
+    });
+    
+    // 4. Améliorer la structure des phrases
+    improved = improved
+        .replace(/([.!?])\s*([a-z])/g, '$1 $2') // Majuscule après ponctuation
+        .replace(/je vais vous aider([^.]*)/gi, (match, suite) => {
+            return match.includes('.') ? match : `Je vais vous aider${suite}.`;
+        })
+        .replace(/bienvenue dans le module([^.]*)/gi, (match, suite) => {
+            return match.includes('.') ? match : `Bienvenue dans le module${suite}.`;
+        });
+    
+    // 5. Vérifier la cohérence et la clarté
+    improved = improved
+        .replace(/texte descriptif([^s])/gi, 'texte descriptif$1') // Accord
+        .replace(/vivant([^s])/gi, 'vivant$1') // Accord
+        .replace(/détaillé([^s])/gi, 'détaillé$1'); // Accord
+    
+    // 6. Ajouter des transitions si nécessaire
+    if (improved.includes('aide') && !improved.includes('tout d\'abord') && !improved.includes('pour commencer')) {
+        improved = improved.replace(/je vais vous aider/i, 'Pour commencer, je vais vous aider');
+    }
+    
+    // 7. Finaliser avec une ponctuation appropriée
+    if (!improved.match(/[.!?]$/)) {
+        improved += '.';
+    }
+    
+    console.log('🔧 Réponse améliorée:', improved.substring(0, 100) + '...');
+    
+    return improved;
+}
+
+/**
+ * Analyse le contexte et améliore la réponse en fonction du contenu spécifique
+ * @param {string} response - Réponse brute de l'IA
+ * @param {string} originalText - Texte original de l'étudiant
+ * @returns {string|null} Réponse améliorée ou null si pas d'amélioration contextuelle
+ */
+function analyzeContextAndImprove(response, originalText) {
+    if (!originalText || originalText.length < 5) {
+        return null;
+    }
+    
+    const lowerOriginal = originalText.toLowerCase();
+    const lowerResponse = response.toLowerCase();
+    
+    // Détecter le type de question et améliorer la réponse
+    if (lowerOriginal.includes('texte descriptif') && lowerOriginal.includes('quoi') || lowerOriginal.includes('c\'est quoi')) {
+        return generateSpecificDefinitionResponse('texte descriptif', originalText);
+    }
+    
+    if (lowerOriginal.includes('texte narratif') && lowerOriginal.includes('quoi') || lowerOriginal.includes('c\'est quoi')) {
+        return generateSpecificDefinitionResponse('texte narratif', originalText);
+    }
+    
+    if (lowerOriginal.includes('texte explicatif') && lowerOriginal.includes('quoi') || lowerOriginal.includes('c\'est quoi')) {
+        return generateSpecificDefinitionResponse('texte explicatif', originalText);
+    }
+    
+    if (lowerOriginal.includes('texte argumentatif') && lowerOriginal.includes('quoi') || lowerOriginal.includes('c\'est quoi')) {
+        return generateSpecificDefinitionResponse('texte argumentatif', originalText);
+    }
+    
+    // Si l'étudiant demande de l'aide pour un texte spécifique
+    if (originalText.length > 20 && (lowerOriginal.includes('aide') || lowerOriginal.includes('corrige') || lowerOriginal.includes('améliore'))) {
+        return generateSpecificHelpResponse(originalText, response);
+    }
+    
+    return null;
+}
+
+/**
+ * Génère une réponse de définition spécifique et détaillée
+ * @param {string} textType - Type de texte à définir
+ * @param {string} originalQuestion - Question originale de l'étudiant
+ * @returns {string} Réponse personnalisée
+ */
+function generateSpecificDefinitionResponse(textType, originalQuestion) {
+    const definitions = {
+        'texte descriptif': {
+            definition: 'Un texte descriptif est un écrit qui vise à représenter une personne, un lieu, un objet ou une situation de manière détaillée et vivante.',
+            characteristics: [
+                'Utilise des adjectifs qualificatifs précis',
+                'Emploie des comparaisons et des métaphores',
+                'Organise l\'espace de manière logique (du général au particulier)',
+                'Fait appel aux cinq sens pour rendre la description immersive',
+                'Utilise un temps dominant (présent ou imparfait)'
+            ],
+            examples: [
+                'La vieille maison aux volets bleus se dressait fièrement au milieu du jardin verdoyant.',
+                'Sur la table en bois brut, une tasse fumante laissait échapper des volutes de vapeur parfumée.'
+            ],
+            tips: [
+                'Commencez par une vue d\'ensemble',
+                'Ajoutez progressivement les détails précis',
+                'Utilise des champs lexicaux riches',
+                'Variez les structures des phrases'
+            ]
+        },
+        'texte narratif': {
+            definition: 'Un texte narratif raconte une histoire, réelle ou imaginaire, en suivant une chronologie d\'événements.',
+            characteristics: [
+                'Suit une structure narrative (situation initiale, élément perturbateur, péripéties, dénouement)',
+                'Utilise des temps du récit (passé simple, imparfait, plus-que-parfait)',
+                'Intègre des dialogues pour faire vivre les personnages',
+                'Crée du suspense et du rythme',
+                'Respecte la cohérence temporelle'
+            ],
+            examples: [
+                'Il était une fois un jeune berger qui vivait paisiblement dans les montagnes jusqu\'au jour où...',
+                'La porte grinça soudain, révélant une silhouette inconnue sur le seuil.'
+            ],
+            tips: [
+                'Définissez clairement le narrateur',
+                'Utilise des connecteurs chronologiques',
+                'Créez des personnages mémorables',
+                'Variez les rythmes narratifs'
+            ]
+        },
+        'texte explicatif': {
+            definition: 'Un texte explicatif a pour but de rendre compréhensible un phénomène, un concept ou un processus.',
+            characteristics: [
+                'Présente des informations objectives et vérifiables',
+                'Utilise des connecteurs logiques (cause, conséquence, but)',
+                'Définit les termes techniques',
+                'Structure l\'information de manière claire',
+                'Évite les opinions personnelles'
+            ],
+            examples: [
+                'La photosynthèse est le processus par lequel les plantes transforment la lumière en énergie.',
+                'Pour comprendre le changement climatique, il faut analyser plusieurs facteurs interdépendants.'
+            ],
+            tips: [
+                'Commencez par une définition claire',
+                'Organisez les idées en paragraphes thématiques',
+                'Utilise des exemples concrets',
+                'Vérifiez la clarté de vos explications'
+            ]
+        },
+        'texte argumentatif': {
+            definition: 'Un texte argumentatif vise à convaincre le lecteur en présentant une thèse soutenue par des arguments.',
+            characteristics: [
+                'Présente une thèse claire',
+                'Développe des arguments structurés',
+                'Apporte des preuves et des exemples',
+                'Anticipe et réfute les objections',
+                'Conclut de manière percutante'
+            ],
+            examples: [
+                'Il faut interdire les voitures dans les centres-villes car cela réduirait la pollution et améliorerait la qualité de vie.',
+                'L\'usage des réseaux sociaux présente plus de dangers que de bénéfices pour les adolescents.'
+            ],
+            tips: [
+                'Formulez une thèse précise',
+                'Classez vos arguments par ordre d\'importance',
+                'Utilisez des connecteurs argumentatifs',
+                'Soyez objectif et factuel'
+            ]
+        }
+    };
+    
+    const typeInfo = definitions[textType];
+    if (!typeInfo) return response;
+    
+    return `${textType.charAt(0).toUpperCase() + textType.slice(1)}
+
+${typeInfo.definition}
+
+**Caractéristiques principales :**
+${typeInfo.characteristics.map((char, i) => `${i + 1}. ${char}`).join('\n')}
+
+**Exemples :**
+${typeInfo.examples.map((ex, i) => `${i + 1}. "${ex}"`).join('\n')}
+
+**Conseils pour bien écrire :**
+${typeInfo.tips.map((tip, i) => `• ${tip}`).join('\n')}
+
+Maintenant, montrez-moi votre texte et je vous aiderai à l'améliorer selon ces principes !`;
+}
+
+/**
+ * Génère une réponse d'aide spécifique pour un texte donné
+ * @param {string} originalText - Texte original de l'étudiant
+ * @param {string} currentResponse - Réponse actuelle de l'IA
+ * @returns {string} Réponse personnalisée
+ */
+function generateSpecificHelpResponse(originalText, currentResponse) {
+    // Analyser le texte original pour identifier les problèmes potentiels
+    const analysis = analyzeTextIssues(originalText);
+    
+    let response = `J'ai analysé votre texte et voici mes observations :\n\n`;
+    
+    if (analysis.grammar.length > 0) {
+        response += **🔍 Points de grammaire à améliorer :**\n`;
+        analysis.grammar.forEach((issue, i) => {
+            response += `${i + 1}. ${issue}\n`;
+        });
+        response += '\n';
+    }
+    
+    if (analysis.style.length > 0) {
+        response += **🎨 Suggestions d'amélioration stylistique :**\n`;
+        analysis.style.forEach((suggestion, i) => {
+            response += `${i + 1}. ${suggestion}\n`;
+        });
+        response += '\n';
+    }
+    
+    if (analysis.structure.length > 0) {
+        response += **📝 Organisation du texte :**\n`;
+        analysis.structure.forEach((point, i) => {
+            response += `${i + 1}. ${point}\n`;
+        });
+        response += '\n';
+    }
+    
+    response += **✅ Points forts de votre texte :**\n`;
+    analysis.strengths.forEach((strength, i) => {
+        response += `• ${strength}\n`;
+    });
+    
+    response += `\nSouhaitez-vous que je vous aide à corriger ces points spécifiquement ?`;
+    
+    return response;
+}
+
+/**
+ * Analyse les problèmes potentiels dans un texte
+ * @param {string} text - Texte à analyser
+ * @returns {Object} Analyse structurée des problèmes
+ */
+function analyzeTextIssues(text) {
+    const issues = {
+        grammar: [],
+        style: [],
+        structure: [],
+        strengths: []
+    };
+    
+    // Détection simple des problèmes (à améliorer avec des règles plus complexes)
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    // Vérifier la longueur des phrases
+    sentences.forEach((sentence, i) => {
+        if (sentence.length > 100) {
+            issues.structure.push(`La phrase ${i + 1} est très longue (${sentence.length} caractères). Considérez la couper.`);
+        }
+        if (sentence.length < 10) {
+            issues.structure.push(`La phrase ${i + 1} est très courte. Enrichissez-la.`);
+        }
+    });
+    
+    // Vérifier la ponctuation
+    if (!text.match(/[.!?]$/)) {
+        issues.grammar.push('Le texte ne se termine pas par une ponctuation finale.');
+    }
+    
+    // Vérifier les répétitions
+    const words = text.toLowerCase().split(/\s+/);
+    const wordCount = {};
+    words.forEach(word => {
+        if (word.length > 3) {
+            wordCount[word] = (wordCount[word] || 0) + 1;
+        }
+    });
+    
+    Object.keys(wordCount).forEach(word => {
+        if (wordCount[word] > 3) {
+            issues.style.push(`Le mot "${word}" est répété ${wordCount[word]} fois. Variez votre vocabulaire.`);
+        }
+    });
+    
+    // Identifier les points forts
+    if (sentences.length >= 3) {
+        issues.strengths.push('Texte bien structuré avec plusieurs phrases.');
+    }
+    
+    if (text.includes(',') || text.includes(';') || text.includes(':')) {
+        issues.strengths.push('Bonne utilisation de la ponctuation pour structurer les idées.');
+    }
+    
+    if (text.length > 50) {
+        issues.strengths.push('Texte suffisamment développé.');
+    }
+    
+    return issues;
+}
 
 /**
  * Fonction de débogage pour vérifier l'état de la pipeline
