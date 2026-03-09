@@ -330,8 +330,16 @@
                 {
                     id: 'accord_sujet_verbe_enfants',
                     name: 'accord_sujet_verbe_enfants',
-                    pattern: /\bles enfant\s+(\w+es?)\b/g,
-                    correction: 'les enfants $1ent',
+                    pattern: /\bles enfant(s?)\s+(joue|jouent|jouer|joues|jouez|mange|manges|mangent|aller|vont|vais|vas|va|sont|est|suis|es|sommes|êtes|sont)\b/g,
+                    correction: 'les enfants $2',
+                    explanation: 'Accord sujet-verbe: les enfants + verbe au pluriel.',
+                    example: 'Les enfant joue → Les enfants jouent'
+                },
+                {
+                    id: 'accord_enfant_joue',
+                    name: 'accord_enfant_joue',
+                    pattern: /\bles enfant\s+joue\b/g,
+                    correction: 'les enfants jouent',
                     explanation: 'Accord sujet-verbe: les enfants + verbe au pluriel.',
                     example: 'Les enfant joue → Les enfants jouent'
                 }
