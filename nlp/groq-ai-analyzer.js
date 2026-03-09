@@ -7,7 +7,7 @@ console.log('🧠 Initialisation du module IA Groq pour analyse linguistique');
 const GROQ_CONFIG = {
     apiKey: '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', // Clé API Groq de l'utilisateur
     baseURL: 'https://api.groq.com/openai/v1',
-    model: 'llama3-70b-8192', // ou 'mixtral-8x7b-32768'
+    model: 'llama3-70b-v2', // modèle valide (remplace llama3-70b-8192 déprécié)
     maxTokens: 500,
     temperature: 0.3
 };
