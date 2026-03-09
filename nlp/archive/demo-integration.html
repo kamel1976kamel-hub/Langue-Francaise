@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Démo Intégration NLP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #64748b;
+        }
+        
+        .input-section {
+            margin: 20px 0;
+        }
+        
+        .input-section h3 {
+            color: #374151;
+            margin-bottom: 10px;
+        }
+        
+        .text-input {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+        
+        .text-input:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .stats-section {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .result-section {
+            margin: 20px 0;
+        }
+        
+        .result-section h3 {
+            color: #374151;
+            margin-bottom: 10px;
+        }
+        
+        .text-output {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            background: #f8fafc;
+        }
+        
+        .corrections-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .correction-item {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .correction-item strong {
+            color: #92400e;
+        }
+        
+        .correction-item .rule-name {
+            background: #f59e0b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        
+        .correction-item .explanation {
+            color: #78350f;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-indicator {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .status-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Démo Intégration NLP</h1>
+            <p>Système de correction linguistique française intelligent</p>
+        </div>
+
+        <div id="system-status">
+            <div class="status-indicator status-info">
+                <div class="spinner"></div>
+                Initialisation du système NLP...
+            </div>
+        </div>
+
+        <div class="input-section">
+            <h3>📝 Texte à corriger</h3>
+            <textarea id="text-input" class="text-input" placeholder="Entrez votre texte ici...">L'enfant mange beaucoup et c'est quoi ce livre ? Les enfant joue dans le jardin. Il vas à l'école.</textarea>
+            
+            <div class="button-group">
+                <button id="correct-btn" class="btn btn-primary" disabled>
+                    🔍 Corriger le texte
+                </button>
+                <button id="clear-btn" class="btn btn-secondary">
+                    🗑️ Effacer
+                </button>
+                <button id="sample-btn" class="btn btn-secondary">
+                    📋 Exemple
+                </button>
+            </div>
+        </div>
+
+        <div id="stats-section" class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div id="corrections-count" class="stat-value">0</div>
+                    <div class="stat-label">CORRECTIONS</div>
+                </div>
+                <div class="stat-item">
+                    <div id="confidence-score" class="stat-value">0%</div>
+                    <div class="stat-label">CONFIANCE</div>
+                </div>
+                <div class="stat-item">
+                    <div id="suggestions-count" class="stat-value">0</div>
+                    <div class="stat-label">SUGGESTIONS</div>
+                </div>
+                <div class="stat-item">
+                    <div id="processing-time" class="stat-value">0ms</div>
+                    <div class="stat-label">TEMPS</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-section">
+            <h3>✅ Texte corrigé</h3>
+            <textarea id="text-output" class="text-output" readonly placeholder="Le texte corrigé apparaîtra ici..."></textarea>
+        </div>
+
+        <div class="result-section">
+            <h3>🔍 Corrections détectées</h3>
+            <div id="corrections-list" class="corrections-list">
+                <div class="loading">
+                    <p>Les corrections apparaîtront ici après analyse...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts NLP (ordre critique) -->
+    <script src="spacy-rules-style-simple.js"></script>
+    <script src="spacy-rules-vocabulaire-simple.js"></script>
+    <script src="spacy-rules-conjugaison-simple.js"></script>
+    <script src="spacy-rules-orthographe-simple.js"></script>
+    <script src="rules-validator.js"></script>
+    <script src="groq-ai-analyzer.js"></script>
+    <script src="advanced-text-corrector.js"></script>
+    <script src="spacy-analyzer.js"></script>
+
+    <script>
+        // Classe de gestion du correcteur
+        class TextCorrectorManager {
+            constructor() {
+                this.isReady = false;
+                this.initialize();
+            }
+            
+            async initialize() {
+                try {
+                    // Attendre que les scripts NLP soient chargés
+                    await this.waitForNLP();
+                    this.isReady = true;
+                    this.updateSystemStatus('✅ Système NLP prêt', 'success');
+                    document.getElementById('correct-btn').disabled = false;
+                    console.log('✅ Système NLP initialisé avec succès');
+                } catch (error) {
+                    console.error('❌ Erreur d\'initialisation:', error);
+                    this.updateSystemStatus('❌ Erreur d\'initialisation', 'error');
+                }
+            }
+            
+            waitForNLP() {
+                return new Promise((resolve) => {
+                    const checkInterval = setInterval(() => {
+                        if (typeof window.analyzeTextLocal !== 'undefined') {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                    
+                    // Timeout après 10 secondes
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        throw new Error('Timeout: Le système NLP n\'a pas pu être chargé');
+                    }, 10000);
+                });
+            }
+            
+            updateSystemStatus(message, type) {
+                const statusDiv = document.getElementById('system-status');
+                const className = `status-indicator status-${type}`;
+                statusDiv.innerHTML = `<div class="${className}">${message}</div>`;
+            }
+            
+            async corrigerTexte(texte) {
+                if (!this.isReady) {
+                    throw new Error('Système NLP non prêt');
+                }
+                
+                const startTime = performance.now();
+                
+                try {
+                    const resultat = await window.analyzeTextLocal(texte);
+                    const endTime = performance.now();
+                    
+                    return {
+                        texteOriginal: texte,
+                        texteCorrige: this.appliquerCorrections(texte, resultat.errors),
+                        corrections: resultat.errors,
+                        confiance: resultat.confidence || 0,
+                        suggestions: resultat.suggestions || [],
+                        tempsTraitement: Math.round(endTime - startTime)
+                    };
+                } catch (error) {
+                    throw new Error(`Erreur de correction: ${error.message}`);
+                }
+            }
+            
+            appliquerCorrections(texte, corrections) {
+                let texteCorrige = texte;
+                
+                // Appliquer les corrections dans l'ordre inverse pour éviter les décalages
+                corrections.sort((a, b) => (b.offset || 0) - (a.offset || 0));
+                
+                corrections.forEach(correction => {
+                    if (correction.text && correction.correction) {
+                        texteCorrige = texteCorrige.replace(correction.text, correction.correction);
+                    }
+                });
+                
+                return texteCorrige;
+            }
+            
+            afficherResultats(resultat) {
+                // Mettre à jour les statistiques
+                document.getElementById('corrections-count').textContent = resultat.corrections.length;
+                document.getElementById('confidence-score').textContent = resultat.confiance + '%';
+                document.getElementById('suggestions-count').textContent = resultat.suggestions.length;
+                document.getElementById('processing-time').textContent = resultat.tempsTraitement + 'ms';
+                document.getElementById('stats-section').style.display = 'block';
+                
+                // Afficher le texte corrigé
+                document.getElementById('text-output').value = resultat.texteCorrige;
+                
+                // Afficher les corrections
+                const correctionsHTML = resultat.corrections.map((correction, index) => `
+                    <div class="correction-item">
+                        <div>
+                            <span class="rule-name">${correction.rule || 'Règle ' + (index + 1)}</span>
+                            <strong>"${correction.text}"</strong> → <strong>"${correction.correction}"</strong>
+                        </div>
+                        ${correction.explanation ? `<div class="explanation">${correction.explanation}</div>` : ''}
+                    </div>
+                `).join('');
+                
+                const correctionsDiv = document.getElementById('corrections-list');
+                if (correctionsHTML) {
+                    correctionsDiv.innerHTML = correctionsHTML;
+                } else {
+                    correctionsDiv.innerHTML = '<div class="status-indicator status-success">✅ Aucune correction détectée</div>';
+                }
+            }
+        }
+        
+        // Initialisation du gestionnaire
+        const correcteur = new TextCorrectorManager();
+        
+        // Gestion des événements
+        document.getElementById('correct-btn').addEventListener('click', async () => {
+            const texteOriginal = document.getElementById('text-input').value.trim();
+            
+            if (!texteOriginal) {
+                alert('Veuillez entrer un texte à corriger');
+                return;
+            }
+            
+            // Indicateur de chargement
+            const btn = document.getElementById('correct-btn');
+            btn.textContent = '⏳ Analyse en cours...';
+            btn.disabled = true;
+            
+            try {
+                const resultat = await correcteur.corrigerTexte(texteOriginal);
+                correcteur.afficherResultats(resultat);
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('corrections-list').innerHTML = `
+                    <div class="status-indicator status-error">
+                        ❌ Erreur: ${error.message}
+                    </div>
+                `;
+            } finally {
+                btn.textContent = '🔍 Corriger le texte';
+                btn.disabled = false;
+            }
+        });
+        
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.getElementById('text-input').value = '';
+            document.getElementById('text-output').value = '';
+            document.getElementById('corrections-list').innerHTML = '<div class="loading"><p>Les corrections apparaîtront ici après analyse...</p></div>';
+            document.getElementById('stats-section').style.display = 'none';
+        });
+        
+        document.getElementById('sample-btn').addEventListener('click', () => {
+            const samples = [
+                "L'enfant mange beaucoup et c'est quoi ce livre ? Les enfant joue dans le jardin. Il vas à l'école.",
+                "Je suis aller au magasin pour acheter du pain. Il y a beaucoup de monde et j'ai vu un ami.",
+                "Les voiture sont garer dans le rue. Il faut faire attention quand on traverse.",
+                "Elle est très intelligent et elle réussi tout ces examens. Son travail est remarquable."
+            ];
+            const randomSample = samples[Math.floor(Math.random() * samples.length)];
+            document.getElementById('text-input').value = randomSample;
+        });
+    </script>
+</body>
+</html>
