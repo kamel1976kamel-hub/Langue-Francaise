@@ -375,9 +375,12 @@
                 displayStats();
                 displayRules();
                 
+                return Promise.resolve();
+                
             } catch (error) {
                 console.error('❌ Erreur d\'initialisation:', error);
                 updateSystemStatus('❌ Erreur d\'initialisation: ' + error.message, 'error');
+                return Promise.reject(error);
             }
         }
         
@@ -448,7 +451,7 @@
         }
         
         // Fonction de correction
-        async function testCorrection() {
+        function testCorrection() {
             if (!allRules) {
                 alert('Système pas encore prêt');
                 return;
