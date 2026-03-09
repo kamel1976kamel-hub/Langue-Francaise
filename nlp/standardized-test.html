@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Système Standardisé - NLP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .status-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        
+        .status-label {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        
+        .btn.secondary {
+            background: #6b7280;
+        }
+        
+        .btn.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .test-area {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin: 15px 0;
+        }
+        
+        .test-input {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        
+        .results {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .correction {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .rules-status {
+            background: #f0fdf4;
+            border: 1px solid #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .rule-category {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✅ Test Système Standardisé NLP</h1>
+        <p>Validation des règles simplifiées et cohérentes</p>
+    </div>
+
+    <div class="card">
+        <h2>📊 État des Règles Standardisées</h2>
+        <div id="rules-status">
+            <div class="loading">
+                <div class="spinner"></div>
+                Chargement des règles standardisées...
+            </div>
+        </div>
+        
+        <div class="status-grid" id="status-grid">
+            <!-- Statistiques insérées ici -->
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🧪 Test du Pipeline Standardisé</h2>
+        
+        <div class="test-area">
+            <h3>Texte à analyser</h3>
+            <textarea id="test-input" class="test-input" placeholder="Entrez un texte à tester...">L'enfant mange beaucoup et c'est quoi ce livre ? Les enfant joue dans le jardin. Il vas à l'école.</textarea>
+            
+            <div style="margin: 15px 0;">
+                <button onclick="testStandardizedRules()" class="btn">🔍 Tester Règles Standardisées</button>
+                <button onclick="testAdvancedPipeline()" class="btn secondary">🚀 Tester Pipeline Complet</button>
+                <button onclick="clearResults()" class="btn secondary">🗑️ Effacer</button>
+            </div>
+        </div>
+        
+        <div id="test-results">
+            <div class="loading">
+                <p>Cliquez sur "Tester" pour lancer l'analyse</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📋 Validation des Composants</h2>
+        <div id="components-validation">
+            <div class="loading">
+                <div class="spinner"></div>
+                Validation des composants...
+            </div>
+        </div>
+    </div>
+
+    <!-- UNIQUEMENT les fichiers standardisés -->
+    <script src="spacy-rules-style-simple.js"></script>
+    <script src="spacy-rules-vocabulaire-simple.js"></script>
+    <script src="spacy-rules-conjugaison-simple.js"></script>
+    <script src="spacy-rules-orthographe-simple.js"></script>
+    <script src="rules-validator.js"></script>
+    <script src="groq-ai-analyzer.js"></script>
+    <script src="advanced-text-corrector.js"></script>
+    <script src="spacy-analyzer.js"></script>
+
+    <script>
+        let systemStats = {};
+        
+        // Initialisation du système standardisé
+        function initializeStandardizedSystem() {
+            console.log('🚀 Initialisation du système NLP standardisé...');
+            
+            // Valider les règles standardisées
+            const validation = validateStandardizedRules();
+            displayRulesStatus(validation);
+            displayComponentsValidation();
+            
+            // Initialiser le pipeline
+            if (window.initializeAdvancedPipeline) {
+                window.initializeAdvancedPipeline().then(success => {
+                    console.log('Pipeline standardisé initialisé:', success);
+                });
+            }
+        }
+        
+        // Valider uniquement les règles standardisées
+        function validateStandardizedRules() {
+            const validation = {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                categories: {}
+            };
+            
+            const ruleCategories = [
+                { name: 'style', variable: 'styleRules' },
+                { name: 'vocabulaire', variable: 'vocabulaireRules' },
+                { name: 'conjugaison', variable: 'conjugaisonRules' },
+                { name: 'orthographe', variable: 'orthographeRules' }
+            ];
+            
+            ruleCategories.forEach(category => {
+                const rules = window[category.variable];
+                if (rules && Array.isArray(rules)) {
+                    validation.categories[category.name] = {
+                        total: rules.length,
+                        valid: 0,
+                        invalid: 0,
+                        rules: []
+                    };
+                    
+                    validation.total += rules.length;
+                    
+                    rules.forEach((rule, index) => {
+                        const ruleValidation = validateStandardizedRule(rule, `${category.name}_${index}`);
+                        if (ruleValidation.isValid) {
+                            validation.valid++;
+                            validation.categories[category.name].valid++;
+                        } else {
+                            validation.invalid++;
+                            validation.categories[category.name].invalid++;
+                        }
+                        validation.categories[category.name].rules.push({
+                            rule: rule,
+                            validation: ruleValidation
+                        });
+                    });
+                }
+            });
+            
+            return validation;
+        }
+        
+        // Valider une règle standardisée
+        function validateStandardizedRule(rule, ruleId) {
+            const errors = [];
+            
+            if (!rule.id) errors.push('Champ id manquant');
+            if (!rule.name) errors.push('Champ name manquant');
+            if (!rule.pattern) errors.push('Champ pattern manquant');
+            if (!rule.correction && !rule.replacement) errors.push('Champ correction/replacement manquant');
+            
+            // Valider le pattern (regex ou fonction)
+            if (rule.pattern) {
+                try {
+                    if (typeof rule.pattern === 'string') {
+                        new RegExp(rule.pattern);
+                    } else if (typeof rule.pattern === 'function') {
+                        // Fonction de correction - valide
+                    } else if (!(rule.pattern instanceof RegExp)) {
+                        errors.push('Pattern doit être une chaîne, RegExp ou fonction');
+                    }
+                } catch (e) {
+                    errors.push('Pattern regex invalide');
+                }
+            }
+            
+            return {
+                isValid: errors.length === 0,
+                errors: errors
+            };
+        }
+        
+        // Afficher l'état des règles
+        function displayRulesStatus(validation) {
+            const statusDiv = document.getElementById('rules-status');
+            const gridDiv = document.getElementById('status-grid');
+            
+            const healthScore = validation.total > 0 ? Math.round((validation.valid / validation.total) * 100) : 0;
+            
+            let statusHTML = `
+                <div class="success">
+                    <strong>✅ Système standardisé opérationnel</strong><br>
+                    Score de santé: ${healthScore}% | ${validation.valid}/${validation.total} règles valides
+                </div>
+            `;
+            
+            // Détails par catégorie
+            statusHTML += '<div class="rules-status">';
+            Object.keys(validation.categories).forEach(category => {
+                const cat = validation.categories[category];
+                statusHTML += `
+                    <div class="rule-category">
+                        <strong>${category.charAt(0).toUpperCase() + category.slice(1)}</strong>: 
+                        ${cat.valid}/${cat.total} règles valides
+                    </div>
+                `;
+            });
+            statusHTML += '</div>';
+            
+            statusDiv.innerHTML = statusHTML;
+            
+            let gridHTML = '';
+            Object.keys(validation.categories).forEach(category => {
+                const cat = validation.categories[category];
+                const catHealth = cat.total > 0 ? Math.round((cat.valid / cat.total) * 100) : 0;
+                
+                gridHTML += `
+                    <div class="status-item">
+                        <div class="status-value">${catHealth}%</div>
+                        <div class="status-label">${category.toUpperCase()} (${cat.valid}/${cat.total})</div>
+                    </div>
+                `;
+            });
+            
+            gridDiv.innerHTML = gridHTML;
+            
+            systemStats = validation;
+        }
+        
+        // Afficher la validation des composants
+        function displayComponentsValidation() {
+            const validationDiv = document.getElementById('components-validation');
+            
+            const components = [
+                { name: 'Règles de style', available: !!window.styleRules, count: window.styleRules ? window.styleRules.length : 0 },
+                { name: 'Règles de vocabulaire', available: !!window.vocabulaireRules, count: window.vocabulaireRules ? window.vocabulaireRules.length : 0 },
+                { name: 'Règles de conjugaison', available: !!window.conjugaisonRules, count: window.conjugaisonRules ? window.conjugaisonRules.length : 0 },
+                { name: 'Règles d\'orthographe', available: !!window.orthographeRules, count: window.orthographeRules ? window.orthographeRules.length : 0 },
+                { name: 'Validateur de règles', available: !!window.validateRule },
+                { name: 'Analyseur IA Groq', available: !!window.groqAIAnalysis },
+                { name: 'Pipeline avancé', available: !!window.advancedTextAnalysis },
+                { name: 'Analyseur principal', available: !!window.analyzeTextLocal }
+            ];
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+            
+            components.forEach(comp => {
+                const status = comp.available ? '✅' : '❌';
+                const count = comp.count ? ` (${comp.count})` : '';
+                html += `
+                    <div style="padding: 15px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <strong>${status} ${comp.name}${count}</strong>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            validationDiv.innerHTML = html;
+        }
+        
+        // Tester les règles standardisées uniquement
+        function testStandardizedRules() {
+            const text = document.getElementById('test-input').value;
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analyse avec règles standardisées...</div>';
+            
+            // Appliquer manuellement les règles standardisées
+            const corrections = applyStandardizedRules(text);
+            
+            setTimeout(() => {
+                displayTestResults(corrections, 'Règles Standardisées');
+            }, 500);
+        }
+        
+        // Appliquer les règles standardisées
+        function applyStandardizedRules(text) {
+            const corrections = [];
+            const categories = ['style', 'vocabulaire', 'conjugaison', 'orthographe'];
+            
+            categories.forEach(category => {
+                const rules = window[category + 'Rules'];
+                if (rules && Array.isArray(rules)) {
+                    rules.forEach(rule => {
+                        try {
+                            let matches = [];
+                            if (rule.pattern instanceof RegExp) {
+                                const regexMatches = text.matchAll(rule.pattern);
+                                matches = Array.from(regexMatches);
+                            } else if (typeof rule.pattern === 'string') {
+                                const regex = new RegExp(rule.pattern, 'g');
+                                const regexMatches = text.matchAll(regex);
+                                matches = Array.from(regexMatches);
+                            }
+                            
+                            matches.forEach(match => {
+                                corrections.push({
+                                    rule: rule.name || rule.id,
+                                    category: category,
+                                    text: match[0],
+                                    correction: typeof rule.correction === 'function' ? 
+                                        rule.correction(match, ...match.slice(1)) : 
+                                        rule.correction,
+                                    explanation: rule.explanation || 'Aucune explication',
+                                    priority: rule.priority || 50
+                                });
+                            });
+                        } catch (error) {
+                            console.warn('Erreur règle:', rule.name, error);
+                        }
+                    });
+                }
+            });
+            
+            return {
+                originalText: text,
+                corrections: corrections.sort((a, b) => (b.priority || 0) - (a.priority || 0)),
+                totalCorrections: corrections.length
+            };
+        }
+        
+        // Tester le pipeline complet
+        function testAdvancedPipeline() {
+            const text = document.getElementById('test-input').value;
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analyse avec pipeline complet...</div>';
+            
+            if (window.analyzeTextLocal) {
+                window.analyzeTextLocal(text).then(result => {
+                    displayTestResults(result, 'Pipeline Complet');
+                }).catch(error => {
+                    resultsDiv.innerHTML = `<div style="color: #ef4444;">❌ Erreur: ${error.message}</div>`;
+                });
+            } else {
+                resultsDiv.innerHTML = '<div style="color: #ef4444;">❌ Pipeline non disponible</div>';
+            }
+        }
+        
+        // Afficher les résultats de test
+        function displayTestResults(result, systemName) {
+            const resultsDiv = document.getElementById('test-results');
+            
+            let html = `<h3>${systemName}</h3>`;
+            
+            if (result.corrections && result.corrections.length > 0) {
+                html += `
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <div class="status-value">${result.corrections.length}</div>
+                            <div class="status-label">CORRECTIONS</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-value">${result.confidence || 'N/A'}</div>
+                            <div class="status-label">CONFIANCE</div>
+                        </div>
+                    </div>
+                    <h4>🔍 Corrections détectées:</h4>
+                `;
+                
+                result.corrections.forEach((correction, i) => {
+                    html += `
+                        <div class="correction">
+                            <strong>[${correction.rule || correction.category || 'Règle ' + (i+1)}]</strong><br>
+                            "${correction.text}" → "${correction.correction}"<br>
+                            <small>${correction.explanation || 'Aucune explication'}</small>
+                        </div>
+                    `;
+                });
+            } else if (result.errors && result.errors.length > 0) {
+                html += `
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <div class="status-value">${result.errors.length}</div>
+                            <div class="status-label">ERREURS</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-value">${result.confidence || 0}%</div>
+                            <div class="status-label">CONFIANCE</div>
+                        </div>
+                    </div>
+                    <h4>🔍 Corrections détectées:</h4>
+                `;
+                
+                result.errors.forEach((error, i) => {
+                    html += `
+                        <div class="correction">
+                            <strong>[${error.rule || error.type || 'Règle ' + (i+1)}]</strong><br>
+                            "${error.text}" → "${error.correction}"<br>
+                            <small>${error.explanation || 'Aucune explication'}</small>
+                        </div>
+                    `;
+                });
+            } else {
+                html += '<div style="color: #10b981; text-align: center; padding: 20px;">✅ Aucune correction détectée</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Effacer les résultats
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '<div class="loading"><p>Cliquez sur "Tester" pour lancer l\'analyse</p></div>';
+        }
+        
+        // Initialisation au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                initializeStandardizedSystem();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
