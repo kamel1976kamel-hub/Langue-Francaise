@@ -181,7 +181,12 @@ async function initIA() {
 window.demanderIA = async function(prompt, contexte) {
     try {
         if (!appState.iaReady) {
-            return "L'IA est en cours d'initialisation. Veuillez patienter...";
+            return {
+                analysis: "L'IA est en cours d'initialisation. Veuillez patienter...",
+                corrections: [],
+                explanations: [],
+                suggestions: []
+            };
         }
 
         const result = await runFourModelPipelineWithFallback(prompt, contexte);
@@ -200,7 +205,30 @@ window.demanderIA = async function(prompt, contexte) {
         // Améliorer la qualité de la réponse avec le texte original
         const improvedResult = improveResponseQuality(result, originalText);
         
-        return improvedResult;
+        // Analyser le texte original pour les corrections
+        let corrections = [];
+        let explanations = [];
+        let suggestions = [];
+        
+        if (originalText && originalText.length > 5) {
+            try {
+                const analysisResult = window.analyzeTextLocal && window.analyzeTextLocal(originalText);
+                if (analysisResult) {
+                    corrections = analysisResult.errors || [];
+                    explanations = analysisResult.explanations || [];
+                    suggestions = analysisResult.suggestions || [];
+                }
+            } catch (e) {
+                console.log('⚠️ Erreur lors de l\'analyse du texte original:', e.message);
+            }
+        }
+        
+        return {
+            analysis: improvedResult,
+            corrections: corrections,
+            explanations: explanations,
+            suggestions: suggestions
+        };
 
     } catch (error) {
         addError(`IA request failed: ${error.message}`, 'ia_request');
@@ -209,7 +237,12 @@ window.demanderIA = async function(prompt, contexte) {
 
 Veuillez vérifier votre connexion et réessayer.`;
         console.log('📄 Message d\'erreur généré:', errorMsg);
-        return errorMsg;
+        return {
+            analysis: errorMsg,
+            corrections: [],
+            explanations: [],
+            suggestions: []
+        };
     }
 };
 
@@ -463,7 +496,7 @@ function generateSpecificHelpResponse(originalText, currentResponse) {
     let response = `J'ai analysé votre texte et voici mes observations :\n\n`;
     
     if (analysis.grammar.length > 0) {
-        response += **🔍 Points de grammaire à améliorer :**\n`;
+        response += "**🔍 Points de grammaire à améliorer :**\n";
         analysis.grammar.forEach((issue, i) => {
             response += `${i + 1}. ${issue}\n`;
         });
@@ -471,7 +504,7 @@ function generateSpecificHelpResponse(originalText, currentResponse) {
     }
     
     if (analysis.style.length > 0) {
-        response += **🎨 Suggestions d'amélioration stylistique :**\n`;
+        response += "**🎨 Suggestions d'amélioration stylistique :**\n";
         analysis.style.forEach((suggestion, i) => {
             response += `${i + 1}. ${suggestion}\n`;
         });
@@ -479,14 +512,14 @@ function generateSpecificHelpResponse(originalText, currentResponse) {
     }
     
     if (analysis.structure.length > 0) {
-        response += **📝 Organisation du texte :**\n`;
+        response += "**📝 Organisation du texte :**\n";
         analysis.structure.forEach((point, i) => {
             response += `${i + 1}. ${point}\n`;
         });
         response += '\n';
     }
     
-    response += **✅ Points forts de votre texte :**\n`;
+    response += "**✅ Points forts de votre texte :**\n";
     analysis.strengths.forEach((strength, i) => {
         response += `• ${strength}\n`;
     });

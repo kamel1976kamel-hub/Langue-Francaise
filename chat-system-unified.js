@@ -273,6 +273,17 @@ window.ChatSystemUnified = {
                     )
                 ]);
                 
+                // S'assurer que result est un objet avec les champs attendus
+                if (typeof result === 'string') {
+                    // Compatibilité avec les anciennes retours
+                    return {
+                        analysis: result,
+                        corrections: [],
+                        explanations: [],
+                        suggestions: []
+                    };
+                }
+                
                 return result;
                 
             } catch (error) {
