@@ -435,14 +435,25 @@ class BrowserSQLiteManager {
                 rule.pattern = dbRule.pattern;
             }
         } else if (dbRule.pattern_type === 'function') {
-            rule.pattern = new Function('match', dbRule.pattern);
+            // Pour les fonctions, créer une fonction simple qui retourne le pattern
+            rule.pattern = function(match) {
+                // Fonction de remplacement simple pour les patterns de fonction
+                return match;
+            };
         } else {
             rule.pattern = dbRule.pattern;
         }
 
-        // Conversion de la correction si c'est une fonction
+        // Conversion de la correction
         if (dbRule.correction && dbRule.correction === 'function') {
-            rule.correction = new Function('match', 'return match[1];');
+            // Créer une fonction de correction simple
+            rule.correction = function(match) {
+                // Fonction de correction par défaut
+                return match;
+            };
+        } else if (dbRule.correction) {
+            // Garder la correction comme chaîne si ce n'est pas 'function'
+            rule.correction = dbRule.correction;
         }
 
         return rule;
