@@ -69,10 +69,13 @@ class DatabaseRulesManager {
     }
 
     async initSQLite() {
-        // Utiliser sql.js pour le navigateur ou sqlite3 pour Node.js
-        if (typeof window !== 'undefined') {
-            // Environnement navigateur - sql.js
-            this.db = new SQLiteBrowser(this.config);
+        // Utiliser BrowserSQLiteManager pour le navigateur
+        if (typeof window !== 'undefined' && window.BrowserSQLiteManager) {
+            // Environnement navigateur - utiliser le gestionnaire existant
+            const sqliteManager = new window.BrowserSQLiteManager();
+            await sqliteManager.initialize();
+            this.db = sqliteManager;
+            console.log('✅ SQLite navigateur connecté via BrowserSQLiteManager');
         } else {
             // Environnement Node.js - sqlite3
             const sqlite3 = require('sqlite3').verbose();
