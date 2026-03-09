@@ -199,17 +199,19 @@ class HybridNLPPipeline {
                 };
             },
             
-            tokenize: (text) => text.split(/\s+/).filter(t => t.length > 0),
-            analyzePOS: (text) => {
+            tokenize: function(text) {
+                return text.split(/\s+/).filter(t => t.length > 0);
+            },
+            analyzePOS: function(text) {
                 // Analyse simplifiée des parties du discours
                 const tokens = text.split(/\s+/);
-                return tokens.map(token => ({
+                return tokens.map((token, index) => ({
                     text: token,
                     pos: this.guessPOS(token),
-                    index: tokens.indexOf(token)
+                    index: index
                 }));
             },
-            guessPOS: (token) => {
+            guessPOS: function(token) {
                 // Deviner la partie du discours (simplifié)
                 if (token.match(/^[.!?]+$/)) return 'PUNCT';
                 if (token.match(/^(le|la|les|un|une|des)$/)) return 'DET';
@@ -219,7 +221,7 @@ class HybridNLPPipeline {
                 if (token.match(/^\d+$/)) return 'NUM';
                 return 'NOUN'; // Par défaut
             },
-            analyzeMorphology: (text) => {
+            analyzeMorphology: function(text) {
                 // Analyse morphologique simplifiée
                 return {
                     number: text.includes('(s|ont|ent)') ? 'Plur' : 'Sing',
@@ -227,7 +229,7 @@ class HybridNLPPipeline {
                     tense: 'Pres' // Simplification
                 };
             },
-            analyzeDependencies: (text) => {
+            analyzeDependencies: function(text) {
                 // Analyse des dépendances simplifiée
                 return {
                     subject: this.findSubject(text),
@@ -235,15 +237,15 @@ class HybridNLPPipeline {
                     object: this.findObject(text)
                 };
             },
-            findSubject: (text) => {
+            findSubject: function(text) {
                 const match = text.match(/\b(je|tu|il|elle|nous|vous|ils|elles|le|la|les|un|une|des)\b/i);
                 return match ? match[0] : null;
             },
-            findVerb: (text) => {
+            findVerb: function(text) {
                 const match = text.match(/\b(est|sont|ai|as|a|avons|avez|ont|vais|vas|vont|mange|manges|aient|parle|parles|parlent)\b/i);
                 return match ? match[0] : null;
             },
-            findObject: (text) => {
+            findObject: function(text) {
                 // Simplification - trouver le dernier nom
                 const words = text.split(/\s+/);
                 for (let i = words.length - 1; i >= 0; i--) {
@@ -253,7 +255,7 @@ class HybridNLPPipeline {
                 }
                 return null;
             },
-            extractEntities: (text) => {
+            extractEntities: function(text) {
                 // Extraction d'entités simplifiée
                 const entities = [];
                 

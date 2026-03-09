@@ -726,24 +726,38 @@ Exemples :
         }
 
         async function processWithAnimation(text) {
-            const result = await window.hybridPipeline.processText(text);
-            
-            // Animer chaque étape
-            await animateStep('spacy', result.pipeline.spacy);
-            await sleep(500);
-            
-            await animateStep('rules', result.pipeline.rules);
-            await sleep(500);
-            
-            await animateStep('groq', result.pipeline.groq);
-            await sleep(500);
-            
-            await animateStep('fusion', result.pipeline.fusion);
-            await sleep(500);
-            
-            await animateStep('interface', result.pipeline.interface);
-            
-            return result;
+            try {
+                const result = await window.hybridPipeline.processText(text);
+                
+                // Animer chaque étape
+                if (result.pipeline) {
+                    await animateStep('spacy', result.pipeline.spacy);
+                    await sleep(500);
+                    
+                    await animateStep('rules', result.pipeline.rules);
+                    await sleep(500);
+                    
+                    await animateStep('groq', result.pipeline.groq);
+                    await sleep(500);
+                    
+                    await animateStep('fusion', result.pipeline.fusion);
+                    await sleep(500);
+                    
+                    await animateStep('interface', result.pipeline.interface);
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Erreur dans processWithAnimation:', error);
+                // Retourner un résultat par défaut en cas d'erreur
+                return {
+                    original: text,
+                    corrected: text,
+                    suggestions: [],
+                    error: error.message,
+                    processingTime: 0
+                };
+            }
         }
 
         async function animateStep(stepName, stepResult) {
@@ -751,12 +765,19 @@ Exemples :
             const timeElement = document.getElementById(`time-${stepName}`);
             const outputElement = document.getElementById(`output-${stepName}`);
             
+            if (!stepElement || !timeElement || !outputElement) {
+                console.warn(`Élément manquant pour l'étape: ${stepName}`);
+                return;
+            }
+            
             // Activer l'étape
             stepElement.classList.add('active');
             
             // Afficher le temps
             if (stepResult && stepResult.processingTime) {
                 timeElement.textContent = `${stepResult.processingTime}ms`;
+            } else {
+                timeElement.textContent = 'Erreur';
             }
             
             // Afficher la sortie
@@ -786,6 +807,8 @@ Exemples :
                 }
                 
                 outputElement.textContent = output;
+            } else {
+                outputElement.textContent = 'Erreur de traitement';
             }
             
             await sleep(300);
