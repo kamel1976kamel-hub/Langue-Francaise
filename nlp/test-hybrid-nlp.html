@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Test NLP Hybride - Base de Données + IA Groq</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8fafc;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+
+        .test-section {
+            padding: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-section h2 {
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+
+        .text-input {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .results-section {
+            display: none;
+            padding: 30px;
+            background: #f8fafc;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .result-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .result-stat {
+            text-align: center;
+        }
+
+        .result-stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .result-stat-label {
+            font-size: 0.8em;
+            color: #64748b;
+        }
+
+        .text-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .text-box {
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .original-text {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+        }
+
+        .corrected-text {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+        }
+
+        .corrections-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .correction-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .correction-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .correction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .correction-category {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .category-conjugaison { background: #dbeafe; color: #1e40af; }
+        .category-orthographe { background: #fef3c7; color: #92400e; }
+        .category-vocabulaire { background: #f3e8ff; color: #6b21a8; }
+        .category-style { background: #e0f2fe; color: #0369a1; }
+        .category-ia { background: #dcfce7; color: #166534; }
+
+        .correction-priority {
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            color: #475569;
+        }
+
+        .correction-details {
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        .correction-change {
+            background: #fef2f2;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .correction-explanation {
+            color: #64748b;
+            font-size: 0.9em;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready { background: #10b981; }
+        .status-loading { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+        .status-disabled { background: #6b7280; }
+
+        @media (max-width: 768px) {
+            .text-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Test NLP Hybride</h1>
+            <p>Base de données SQLite + IA Groq pour analyse linguistique avancée</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-rules">-</div>
+                <div class="stat-label">Règles BDD</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="ai-status">-</div>
+                <div class="stat-label">IA Groq</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="cache-size">0</div>
+                <div class="stat-label">Cache</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avg-time">-</div>
+                <div class="stat-label">Temps moyen</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="input-section">
+                <h2>📝 Texte à analyser</h2>
+                <textarea id="text-input" class="text-input" placeholder="Entrez votre texte ici pour tester l'analyse NLP hybride...
+
+Exemples de textes à tester :
+- Il vas au cinéma hier soir pour voir un film.
+- Les chat sont beau et mange beaucoup.
+- Je pense que je suis compétent, je voudrais vous dire que j'ai de l'expérience.
+- Après qu'il ait mangé, il est parti.
+- C'est les enfants qui jouent dans le jardin."></textarea>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="analyzeText()">
+                        🧠 Analyser avec NLP Hybride
+                    </button>
+                    <button class="btn btn-secondary" onclick="testWithExamples()">
+                        📋 Tester avec exemples
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults()">
+                        🗑️ Effacer résultats
+                    </button>
+                    <button class="btn btn-secondary" onclick="refreshStats()">
+                        🔄 Actualiser stats
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-section" class="results-section">
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyse en cours...</p>
+            </div>
+
+            <div id="results-content" style="display: none;">
+                <!-- Résultats seront insérés ici -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="database/init-browser-sqlite.js"></script>
+    <script src="database-rules-manager.js"></script>
+    <script src="database-integration.js"></script>
+    <script src="groq-ai-analyzer.js"></script>
+    <script src="hybrid-nlp-analyzer.js"></script>
+
+    <script>
+        let systemReady = false;
+        let currentAnalysis = null;
+
+        // Initialisation du système
+        async function initializeSystem() {
+            try {
+                console.log('🚀 Initialisation du système NLP hybride...');
+                
+                // Attendre que tous les modules soient chargés
+                await waitForModules();
+                
+                // Initialiser l'analyseur hybride
+                if (window.hybridAnalyzer) {
+                    await window.hybridAnalyzer.initialize();
+                    systemReady = true;
+                    console.log('✅ Système NLP hybride prêt');
+                    updateStats();
+                } else {
+                    throw new Error('Analyseur hybride non disponible');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur d\'initialisation:', error);
+                showError('Erreur lors de l\'initialisation du système: ' + error.message);
+            }
+        }
+
+        // Attendre que les modules soient chargés
+        function waitForModules() {
+            return new Promise((resolve) => {
+                const checkModules = () => {
+                    if (window.hybridAnalyzer && window.hybridAnalyzer.isReady) {
+                        resolve();
+                    } else {
+                        setTimeout(checkModules, 100);
+                    }
+                };
+                checkModules();
+            });
+        }
+
+        // Analyser le texte
+        async function analyzeText() {
+            if (!systemReady) {
+                showError('Le système n\'est pas encore initialisé');
+                return;
+            }
+
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) {
+                showError('Veuillez entrer un texte à analyser');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const result = await window.hybridAnalyzer.analyzeText(text);
+                displayResults(result);
+                currentAnalysis = result;
+            } catch (error) {
+                console.error('❌ Erreur d\'analyse:', error);
+                showError('Erreur lors de l\'analyse: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Afficher les résultats
+        function displayResults(result) {
+            const resultsSection = document.getElementById('results-section');
+            const resultsContent = document.getElementById('results-content');
+            
+            resultsContent.innerHTML = `
+                <div class="result-card">
+                    <div class="result-header">
+                        <div class="result-title">📊 Résultats de l'analyse</div>
+                        <div class="result-stats">
+                            <div class="result-stat">
+                                <div class="result-stat-value">${result.corrections.length}</div>
+                                <div class="result-stat-label">Corrections</div>
+                            </div>
+                            <div class="result-stat">
+                                <div class="result-stat-value">${result.processingTime}ms</div>
+                                <div class="result-stat-label">Temps</div>
+                            </div>
+                            <div class="result-stat">
+                                <div class="result-stat-value">${result.stats.aiSuggestions || 0}</div>
+                                <div class="result-stat-label">Suggestions IA</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-comparison">
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #dc2626;">❌ Texte original</h4>
+                            <div class="text-box original-text">${escapeHtml(result.original)}</div>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #16a34a;">✅ Texte corrigé</h4>
+                            <div class="text-box corrected-text">${escapeHtml(result.corrected)}</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-bottom: 15px; color: #1e293b;">🔧 Détail des corrections</h4>
+                    <div class="corrections-list">
+                        ${result.corrections.map(correction => `
+                            <div class="correction-item">
+                                <div class="correction-header">
+                                    <div>
+                                        <span class="correction-category category-${correction.category}">${correction.category}</span>
+                                        <span class="correction-priority">Priorité: ${correction.priority}</span>
+                                        ${correction.isAISuggestion ? '<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.8em;">🤖 IA</span>' : ''}
+                                    </div>
+                                    <div><strong>${correction.rule_id}</strong></div>
+                                </div>
+                                <div class="correction-details">
+                                    <div class="correction-change">
+                                        "${escapeHtml(correction.original)}" → "${escapeHtml(correction.corrected)}"
+                                    </div>
+                                    <div class="correction-explanation">
+                                        💡 ${correction.explanation}
+                                    </div>
+                                    ${correction.example ? `<div class="correction-explanation">📝 Exemple: ${correction.example}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            resultsSection.classList.add('active');
+        }
+
+        // Tester avec des exemples
+        function testWithExamples() {
+            const examples = [
+                "Il vas au cinéma hier soir pour voir un film intéressant.",
+                "Les chat sont beau et mange beaucoup dans la cuisine.",
+                "Je pense que je suis compétent, je voudrais vous dire que j'ai de l'expérience.",
+                "Après qu'il ait mangé, il est parti sans dire au revoir.",
+                "C'est les enfants qui jouent dans le jardin avec leurs ballons."
+            ];
+            
+            const randomExample = examples[Math.floor(Math.random() * examples.length)];
+            document.getElementById('text-input').value = randomExample;
+            
+            // Lancer l'analyse automatiquement
+            setTimeout(() => analyzeText(), 500);
+        }
+
+        // Effacer les résultats
+        function clearResults() {
+            document.getElementById('text-input').value = '';
+            document.getElementById('results-section').classList.remove('active');
+            currentAnalysis = null;
+        }
+
+        // Afficher/masquer le chargement
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('results-content').style.display = show ? 'none' : 'block';
+        }
+
+        // Afficher une erreur
+        function showError(message) {
+            const resultsSection = document.getElementById('results-section');
+            const resultsContent = document.getElementById('results-content');
+            
+            resultsContent.innerHTML = `
+                <div class="result-card" style="background: #fef2f2; border: 2px solid #fecaca;">
+                    <div style="color: #dc2626; font-weight: bold; margin-bottom: 10px;">❌ Erreur</div>
+                    <div style="color: #991b1b;">${message}</div>
+                </div>
+            `;
+            
+            resultsSection.classList.add('active');
+            showLoading(false);
+        }
+
+        // Mettre à jour les statistiques
+        async function updateStats() {
+            try {
+                if (window.hybridAnalyzer && window.hybridAnalyzer.isReady) {
+                    const stats = await window.hybridAnalyzer.getStats();
+                    
+                    document.getElementById('total-rules').textContent = stats.totalRules || 0;
+                    document.getElementById('ai-status').textContent = stats.aiEnabled ? '✅' : '❌';
+                    document.getElementById('cache-size').textContent = stats.cacheSize || 0;
+                    
+                    if (stats.performance) {
+                        document.getElementById('avg-time').textContent = stats.performance.averageProcessingTime + 'ms';
+                    } else {
+                        document.getElementById('avg-time').textContent = '-';
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur mise à jour stats:', error);
+            }
+        }
+
+        // Rafraîchir les statistiques
+        function refreshStats() {
+            updateStats();
+        }
+
+        // Échapper le HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialiser au chargement de la page
+        document.addEventListener('DOMContentLoaded', initializeSystem);
+
+        // Mettre à jour les stats périodiquement
+        setInterval(updateStats, 10000);
+    </script>
+</body>
+</html>
