@@ -6,13 +6,17 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
   
   // Créer le nuage de correction
   const cloud = document.createElement('div');
-  cloud.className = 'activity-correction-cloud fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 max-w-sm';
+  cloud.className = 'activity-correction-cloud fixed z-50 rounded-lg shadow-2xl border-2 p-4 max-w-sm';
   cloud.style.cssText = `
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     min-width: 300px;
     max-width: 400px;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    border-color: #6d28d9;
+    color: white;
+    box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
   `;
   
   // Construire le contenu du nuage
@@ -22,19 +26,19 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
   if (response.corrections && response.corrections.length > 0) {
     cloudContent += `
       <div class="mb-3">
-        <h4 class="text-sm font-semibold text-red-600 mb-2">🔍 Erreurs détectées :</h4>
+        <h4 class="text-sm font-semibold text-white mb-2">🔍 Erreurs détectées :</h4>
         <div class="space-y-1">
     `;
     response.corrections.forEach((correction, index) => {
       cloudContent += `
-        <div class="flex items-center justify-between bg-red-50 p-2 rounded">
-          <span class="text-sm text-gray-700">
-            "<span class="line-through text-red-500">${correction.text}</span>" → 
-            "<span class="text-green-600 font-medium">${correction.correction}</span>"
+        <div class="flex items-center justify-between bg-white/20 backdrop-blur-sm p-2 rounded">
+          <span class="text-sm text-white">
+            "<span class="line-through text-yellow-300">${correction.text}</span>" → 
+            "<span class="text-green-300 font-medium">${correction.correction}</span>"
           </span>
           <button 
             onclick="applyActivityCorrection('${correction.text}', '${correction.correction}', '${chapterId}', '${activityId}')"
-            class="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            class="ml-2 px-2 py-1 bg-white/30 backdrop-blur-sm text-white text-xs rounded hover:bg-white/40 transition-colors border border-white/50"
             title="Appliquer cette correction"
           >
             Appliquer
@@ -49,12 +53,12 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
   if (response.explanations && response.explanations.length > 0) {
     cloudContent += `
       <div class="mb-3">
-        <h4 class="text-sm font-semibold text-blue-600 mb-2">💡 Explications :</h4>
+        <h4 class="text-sm font-semibold text-white mb-2">💡 Explications :</h4>
         <div class="space-y-1">
     `;
     response.explanations.forEach(exp => {
       cloudContent += `
-        <div class="text-sm text-gray-600 bg-blue-50 p-2 rounded">
+        <div class="text-sm text-white bg-white/20 backdrop-blur-sm p-2 rounded">
           ${exp}
         </div>
       `;
@@ -66,16 +70,16 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
   if (response.suggestions && response.suggestions.length > 0) {
     cloudContent += `
       <div class="mb-3">
-        <h4 class="text-sm font-semibold text-green-600 mb-2">🎯 Suggestions :</h4>
+        <h4 class="text-sm font-semibold text-white mb-2">🎯 Suggestions :</h4>
         <div class="space-y-1">
     `;
     response.suggestions.forEach((suggestion, index) => {
       cloudContent += `
-        <div class="flex items-center justify-between bg-green-50 p-2 rounded">
-          <span class="text-sm text-gray-700">${suggestion}</span>
+        <div class="flex items-center justify-between bg-white/20 backdrop-blur-sm p-2 rounded">
+          <span class="text-sm text-white">${suggestion}</span>
           <button 
             onclick="applyActivitySuggestion('${suggestion}', '${chapterId}', '${activityId}')"
-            class="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            class="ml-2 px-2 py-1 bg-white/30 backdrop-blur-sm text-white text-xs rounded hover:bg-white/40 transition-colors border border-white/50"
             title="Appliquer cette suggestion"
           >
             Appliquer
@@ -88,10 +92,10 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
   
   // Ajouter les boutons de contrôle
   cloudContent += `
-    <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
+    <div class="flex justify-between items-center mt-4 pt-3 border-t border-white/30">
       <button 
         onclick="speakActivityCorrection(this)"
-        class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+        class="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors border border-white/50"
         title="Écouter les corrections"
       >
         <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
@@ -100,7 +104,7 @@ window.createActivityCorrectionCloud = function(response, originalAnswer, chapte
       </button>
       <button 
         onclick="closeActivityCorrectionCloud(this)"
-        class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+        class="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors border border-white/50"
         title="Fermer"
       >
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
