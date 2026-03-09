@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌐 Test spaCy Cloud avec votre token</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        
+        .result {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        .status-success { background: #dcfce7; color: #166534; }
+        .status-error { background: #fef2f2; color: #dc2626; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .status-info { background: #dbeafe; color: #1e40af; }
+        
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .token-card {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        
+        .token-text { font-weight: bold; color: #1e293b; }
+        .token-pos { color: #6366f1; font-size: 0.9em; }
+        .token-lemma { color: #059669; font-size: 0.9em; }
+        
+        .entity-card {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 5px 0;
+        }
+        
+        .entity-text { font-weight: bold; }
+        .entity-label { color: #d97706; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌐 Test spaCy Cloud</h1>
+        <p>Token configuré : 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</p>
+        <p>Analyse linguistique professionnelle via Hugging Face</p>
+    </div>
+    
+    <!-- Test de connexion -->
+    <div class="test-section">
+        <div class="test-title">🔗 Test de connexion spaCy Cloud</div>
+        <div>
+            <button class="btn btn-primary" onclick="testConnection()">Tester connexion</button>
+            <button class="btn btn-success" onclick="integrateToPipeline()">Intégrer au pipeline</button>
+            <span id="connection-status" class="status">En attente</span>
+        </div>
+        <div id="connection-result" class="result" style="display:none;"></div>
+    </div>
+    
+    <!-- Test d'analyse -->
+    <div class="test-section">
+        <div class="test-title">🔍 Analyse linguistique complète</div>
+        <textarea class="test-input" id="analysis-input">Le chat noir mange une souris blanche à Paris. Marie et Jean travaillent ensemble depuis longtemps.</textarea>
+        <div>
+            <button class="btn btn-warning" onclick="analyzeWithSpacyCloud()">Analyser avec spaCy Cloud</button>
+            <button class="btn btn-primary" onclick="compareWithSimulation()">Comparer avec simulation JS</button>
+            <span id="analysis-status" class="status">En attente</span>
+        </div>
+        <div id="analysis-result" class="result" style="display:none;"></div>
+    </div>
+    
+    <!-- Test du pipeline complet -->
+    <div class="test-section">
+        <div class="test-title">🚀 Pipeline complet avec spaCy Cloud</div>
+        <textarea class="test-input" id="pipeline-input">Les chat sont beau et ils vas au cinema. Je pense que je suis competent.</textarea>
+        <div>
+            <button class="btn btn-success" onclick="testFullPipeline()">Pipeline complet</button>
+            <span id="pipeline-status" class="status">En attente</span>
+        </div>
+        <div id="pipeline-result" class="result" style="display:none;"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="database/init-browser-sqlite.js"></script>
+    <script src="database-rules-manager.js"></script>
+    <script src="database-integration.js"></script>
+    <script src="groq-ai-analyzer.js"></script>
+    <script src="spacy-analyzer.js"></script>
+    <script src="hybrid-nlp-analyzer.js"></script>
+    <script src="hybrid-pipeline-fixed.js"></script>
+    
+    <!-- spaCy Cloud avec votre token -->
+    <script src="cloud-spacy-configured.js"></script>
+
+    <script>
+        let systemReady = false;
+
+        async function initializeSystem() {
+            try {
+                console.log('🚀 Initialisation du système de test spaCy Cloud...');
+                
+                // Attendre les modules
+                await waitForModules();
+                
+                if (window.hybridPipeline) {
+                    await window.hybridPipeline.initialize();
+                    systemReady = true;
+                    console.log('✅ Système de test spaCy Cloud prêt');
+                    updateStatus('connection-status', 'info', 'Prêt');
+                } else {
+                    throw new Error('Pipeline non disponible');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur d\'initialisation:', error);
+                updateStatus('connection-status', 'error', 'Erreur: ' + error.message);
+            }
+        }
+
+        function waitForModules() {
+            return new Promise((resolve) => {
+                const check = () => {
+                    if (window.HybridNLPPipeline && window.spacyCloudClientConfigured) {
+                        window.hybridPipeline = new window.HybridNLPPipeline();
+                        resolve();
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                };
+                check();
+            });
+        }
+
+        function updateStatus(elementId, status, text) {
+            const element = document.getElementById(elementId);
+            element.className = `status status-${status}`;
+            element.textContent = text;
+        }
+
+        function showResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.textContent = JSON.stringify(result, null, 2);
+        }
+
+        function showFormattedResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            
+            let html = '<div style="margin-bottom: 20px;">';
+            
+            // Métadonnées
+            if (result.metadata) {
+                html += '<h4>📊 Métadonnées</h4>';
+                html += `<div style="background: #f0fdf4; padding: 10px; border-radius: 6px; margin: 10px 0;">`;
+                html += `Module: ${result.metadata.module}<br>`;
+                html += `Modèle: ${result.metadata.model}<br>`;
+                html += `Tokens: ${result.metadata.tokensCount}<br>`;
+                html += `Entités: ${result.metadata.entitiesCount}<br>`;
+                html += `Temps: ${result.processingTime}ms`;
+                html += '</div>';
+            }
+            
+            // Tokens
+            if (result.analysis && result.analysis.tokens) {
+                html += '<h4>🔤 Tokens analysés</h4>';
+                html += '<div class="token-grid">';
+                result.analysis.tokens.forEach(token => {
+                    html += '<div class="token-card">';
+                    html += `<div class="token-text">"${token.text}"</div>`;
+                    html += `<div class="token-pos">POS: ${token.pos}</div>`;
+                    html += `<div class="token-lemma">Lemma: ${token.lemma}</div>`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Entités
+            if (result.analysis && result.analysis.entities && result.analysis.entities.length > 0) {
+                html += '<h4>🏷️ Entités nommées</h4>';
+                result.analysis.entities.forEach(entity => {
+                    html += '<div class="entity-card">';
+                    html += `<span class="entity-text">"${entity.text}"</span> - `;
+                    html += `<span class="entity-label">${entity.label}</span>`;
+                    html += ` (confiance: ${(entity.confidence * 100).toFixed(1)}%)`;
+                    html += '</div>';
+                });
+            }
+            
+            html += '</div>';
+            html += '<div class="result">' + JSON.stringify(result, null, 2) + '</div>';
+            
+            element.innerHTML = html;
+        }
+
+        async function testConnection() {
+            updateStatus('connection-status', 'warning', 'Test en cours...');
+
+            try {
+                console.log('🧪 Test de connexion spaCy Cloud...');
+                const result = await window.spacyCloudClientConfigured.testConnection();
+                
+                showFormattedResult('connection-result', result);
+                updateStatus('connection-status', 'success', '✅ Connexion réussie');
+                
+            } catch (error) {
+                console.error('❌ Erreur test connexion:', error);
+                showResult('connection-result', { error: error.message });
+                updateStatus('connection-status', 'error', '❌ Échec connexion');
+            }
+        }
+
+        async function analyzeWithSpacyCloud() {
+            if (!systemReady) {
+                updateStatus('analysis-status', 'error', 'Système non prêt');
+                return;
+            }
+
+            const text = document.getElementById('analysis-input').value.trim();
+            updateStatus('analysis-status', 'warning', 'Analyse en cours...');
+
+            try {
+                console.log('🔍 Analyse avec spaCy Cloud...');
+                const result = await window.spacyCloudClientConfigured.analyzeText(text);
+                
+                showFormattedResult('analysis-result', result);
+                updateStatus('analysis-status', 'success', `✅ ${result.metadata.tokensCount} tokens analysés`);
+                
+            } catch (error) {
+                console.error('❌ Erreur analyse spaCy Cloud:', error);
+                showResult('analysis-result', { error: error.message });
+                updateStatus('analysis-status', 'error', '❌ Erreur analyse');
+            }
+        }
+
+        async function compareWithSimulation() {
+            if (!systemReady) {
+                updateStatus('analysis-status', 'error', 'Système non prêt');
+                return;
+            }
+
+            const text = document.getElementById('analysis-input').value.trim();
+            updateStatus('analysis-status', 'warning', 'Comparaison en cours...');
+
+            try {
+                console.log('🔄 Comparaison spaCy Cloud vs Simulation...');
+                
+                // spaCy Cloud
+                const cloudResult = await window.spacyCloudClientConfigured.analyzeText(text);
+                
+                // Simulation JS
+                const simResult = await window.hybridPipeline.modules.spacy.process(text);
+                
+                const comparison = {
+                    text: text,
+                    spaCyCloud: {
+                        tokens: cloudResult.metadata.tokensCount,
+                        entities: cloudResult.metadata.entitiesCount,
+                        time: cloudResult.processingTime,
+                        module: cloudResult.metadata.module
+                    },
+                    simulationJS: {
+                        tokens: simResult.analysis.tokens.length,
+                        entities: simResult.analysis.entities.length,
+                        time: simResult.processingTime,
+                        module: simResult.metadata.module
+                    }
+                };
+                
+                showResult('analysis-result', comparison);
+                updateStatus('analysis-status', 'success', '✅ Comparaison terminée');
+                
+            } catch (error) {
+                console.error('❌ Erreur comparaison:', error);
+                showResult('analysis-result', { error: error.message });
+                updateStatus('analysis-status', 'error', '❌ Erreur comparaison');
+            }
+        }
+
+        async function integrateToPipeline() {
+            updateStatus('connection-status', 'warning', 'Intégration en cours...');
+
+            try {
+                const success = await window.integrateSpacyCloud();
+                
+                if (success) {
+                    updateStatus('connection-status', 'success', '✅ Intégré au pipeline');
+                    showResult('connection-result', { 
+                        message: 'spaCy Cloud est maintenant utilisé dans le pipeline !',
+                        token: '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'
+                    });
+                } else {
+                    updateStatus('connection-status', 'error', '❌ Échec intégration');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur intégration:', error);
+                showResult('connection-result', { error: error.message });
+                updateStatus('connection-status', 'error', '❌ Erreur intégration');
+            }
+        }
+
+        async function testFullPipeline() {
+            if (!systemReady) {
+                updateStatus('pipeline-status', 'error', 'Système non prêt');
+                return;
+            }
+
+            const text = document.getElementById('pipeline-input').value.trim();
+            updateStatus('pipeline-status', 'warning', 'Pipeline en cours...');
+
+            try {
+                console.log('🚀 Test pipeline complet avec spaCy Cloud...');
+                
+                // S'assurer que spaCy Cloud est intégré
+                await window.integrateSpacyCloud();
+                
+                // Tester le pipeline complet
+                const result = await window.hybridPipeline.processText(text);
+
+                showFormattedResult('pipeline-result', result);
+                updateStatus('pipeline-status', 'success', `✅ ${result.suggestions.length} suggestions en ${result.processingTime}ms`);
+                
+            } catch (error) {
+                console.error('❌ Erreur pipeline complet:', error);
+                showResult('pipeline-result', { error: error.message });
+                updateStatus('pipeline-status', 'error', '❌ Erreur pipeline');
+            }
+        }
+
+        // Initialisation au chargement
+        document.addEventListener('DOMContentLoaded', initializeSystem);
+    </script>
+</body>
+</html>
