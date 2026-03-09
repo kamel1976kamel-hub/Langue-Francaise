@@ -459,7 +459,7 @@ class HybridNLPPipeline {
                 }
             },
             
-            prepareContext: (text, spacyAnalysis, rulesCorrections) => {
+            prepareContext: function(text, spacyAnalysis, rulesCorrections) {
                 return {
                     textLength: text.length,
                     tokensCount: spacyAnalysis ? spacyAnalysis.analysis.tokens.length : 0,
@@ -469,7 +469,7 @@ class HybridNLPPipeline {
                 };
             },
             
-            analyzeComplexity: (text) => {
+            analyzeComplexity: function(text) {
                 const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
                 const avgSentenceLength = sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length;
                 
@@ -480,7 +480,7 @@ class HybridNLPPipeline {
                 };
             },
             
-            analyzeStyle: (text) => {
+            analyzeStyle: function(text) {
                 const indicators = {
                     formal: /\b(cependant|néanmoins|par conséquent|en effet|ainsi)\b/i.test(text),
                     informal: /\b(bah|du coup|genre|style|kiffer|zarb)\b/i.test(text),
@@ -494,7 +494,7 @@ class HybridNLPPipeline {
                 };
             },
             
-            detectRepetition: (text) => {
+            detectRepetition: function(text) {
                 const words = text.toLowerCase().split(/\s+/);
                 const wordCount = {};
                 
@@ -603,7 +603,7 @@ class HybridNLPPipeline {
                 return resolved;
             },
             
-            findOverlappingSuggestions: (suggestions) => {
+            findOverlappingSuggestions: function(suggestions) {
                 const sorted = [...suggestions].sort((a, b) => a.start - b.start);
                 const conflicts = [];
                 let currentGroup = [];
@@ -664,7 +664,7 @@ class HybridNLPPipeline {
                 });
             },
             
-            validateWithSpacy: (suggestion, spacyAnalysis) => {
+            validateWithSpacy: function(suggestion, spacyAnalysis) {
                 // Validation basique avec l'analyse spaCy
                 // Vérifier que la suggestion ne crée pas d'erreurs grammaticales évidentes
                 const text = suggestion.corrected;
@@ -690,13 +690,13 @@ class HybridNLPPipeline {
             description: 'Visualisation et interaction avec les corrections',
             capabilities: ['affichage', 'surlignage', 'interactions', 'statistiques'],
             
-            displayResults: (originalText, suggestions, metadata) => {
+            displayResults: function(originalText, suggestions, metadata) {
                 const result = {
                     original: originalText,
                     corrected: this.applySuggestions(originalText, suggestions),
-                    suggestions: suggestions,
-                    stats: this.calculateStats(suggestions, metadata),
-                    visualization: this.createVisualization(originalText, suggestions)
+                    suggestions: suggestions || [],
+                    stats: this.calculateStats(suggestions || [], metadata),
+                    visualization: this.createVisualization(originalText, suggestions || [])
                 };
                 
                 return result;
@@ -717,7 +717,7 @@ class HybridNLPPipeline {
                 return correctedText;
             },
             
-            calculateStats: (suggestions, metadata) => {
+            calculateStats: function(suggestions, metadata) {
                 const stats = {
                     totalSuggestions: suggestions.length,
                     byCategory: {},
@@ -758,17 +758,17 @@ class HybridNLPPipeline {
                 return stats;
             },
             
-            createVisualization: (text, suggestions) => {
+            createVisualization: function(text, suggestions) {
                 const highlights = [];
                 
                 suggestions.forEach(suggestion => {
                     highlights.push({
-                        start: suggestion.start,
-                        end: suggestion.end,
-                        type: suggestion.category,
-                        source: suggestion.source,
-                        tooltip: `${suggestion.explanation} (${suggestion.source})`,
-                        className: `highlight-${suggestion.category} highlight-${suggestion.source}`
+                        start: suggestion.start || 0,
+                        end: suggestion.end || (suggestion.start || 0) + (suggestion.original?.length || 0),
+                        type: suggestion.category || 'unknown',
+                        source: suggestion.source || 'unknown',
+                        tooltip: `${suggestion.explanation || 'Correction'} (${suggestion.source || 'Unknown'})`,
+                        className: `highlight-${suggestion.category || 'unknown'} highlight-${suggestion.source || 'unknown'}`
                     });
                 });
                 
@@ -779,7 +779,7 @@ class HybridNLPPipeline {
                 };
             },
             
-            generateHighlightedHTML: (text, highlights) => {
+            generateHighlightedHTML: function(text, highlights) {
                 let html = text;
                 
                 // Trier les highlights par position décroissante
@@ -817,31 +817,36 @@ class HybridNLPPipeline {
         }
         
         const startTime = Date.now();
-        console.log('🔄 Début du traitement du pipeline hybride...');
+        console.log("🔄 Début du traitement du pipeline hybride...");
         
         try {
             // ÉTAPE 1: Prétraitement spaCy
-            console.log('📝 Étape 1: Analyse spaCy...');
+            console.log("🔄 Début du traitement du pipeline hybride...");
+            console.log("📝 Étape 1: Analyse spaCy...");
             const spacyResult = await this.modules.spacy.process(text);
+            console.log("✅ Étape 1: spaCy terminée");
             
             // ÉTAPE 2: Moteur de règles BDD
-            console.log('⚙️ Étape 2: Moteur de règles BDD...');
+            console.log("⚙️ Étape 2: Moteur de règles BDD...");
             const rulesResult = await this.modules.rulesEngine.process(text, spacyResult);
+            console.log("✅ Étape 2: BDD terminée");
             
             // ÉTAPE 3: Analyse IA Groq
-            console.log('🧠 Étape 3: Analyse IA Groq...');
+            console.log("🧠 Étape 3: Analyse IA Groq...");
             const groqResult = await this.modules.groqAI.process(text, spacyResult, rulesResult);
+            console.log("✅ Étape 3: IA terminée");
             
             // ÉTAPE 4: Fusion intelligente
-            console.log('🔀 Étape 4: Fusion intelligente...');
+            console.log("🔀 Étape 4: Fusion intelligente...");
             const fusionResult = await this.modules.fusion.process(
                 rulesResult.corrections, 
                 groqResult.suggestions, 
                 spacyResult
             );
+            console.log("✅ Étape 4: Fusion terminée");
             
             // ÉTAPE 5: Interface utilisateur
-            console.log('🖥️ Étape 5: Interface utilisateur...');
+            console.log("🖥️ Étape 5: Interface utilisateur...");
             const interfaceResult = this.modules.interface.displayResults(
                 text, 
                 fusionResult.finalSuggestions,
@@ -852,6 +857,7 @@ class HybridNLPPipeline {
                     fusion: fusionResult
                 }
             );
+            console.log("✅ Étape 5: Interface terminée");
             
             const totalTime = Date.now() - startTime;
             

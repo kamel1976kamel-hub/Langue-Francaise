@@ -15,37 +15,49 @@ const GROQ_CONFIG = {
 // Fonction pour appeler l'API Groq
 async function callGroqAPI(prompt) {
     try {
+        const payload = {
+            model: GROQ_CONFIG.model,
+            messages: [
+                {
+                    role: 'system',
+                    content: 'Tu es un expert linguistique français. Analyse les textes et propose des améliorations de style, de fluidité et de formulation. Retourne uniquement des suggestions structurées en JSON.'
+                },
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            max_tokens: GROQ_CONFIG.maxTokens,
+            temperature: GROQ_CONFIG.temperature
+        };
+        
+        console.log("Payload envoyé à Groq:", JSON.stringify(payload, null, 2));
+        console.log("URL:", GROQ_CONFIG.baseURL + "/chat/completions");
+        console.log("Clé API (premiers caractères):", GROQ_CONFIG.apiKey.substring(0, 10) + "...");
+        
         const response = await fetch(`${GROQ_CONFIG.baseURL}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                model: GROQ_CONFIG.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'Tu es un expert linguistique français. Analyse les textes et propose des améliorations de style, de fluidité et de formulation. Retourne uniquement des suggestions structurées en JSON.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                max_tokens: GROQ_CONFIG.maxTokens,
-                temperature: GROQ_CONFIG.temperature
-            })
+            body: JSON.stringify(payload)
         });
 
+        console.log("Status HTTP:", response.status);
+        console.log("Headers:", Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error("Détail de l'erreur:", errorText);
+            throw new Error(`Erreur HTTP: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log("Réponse Groq:", data);
         return data.choices[0].message.content;
     } catch (error) {
-        console.error('❌ Erreur API Groq:', error.message);
+        console.error("❌ Erreur API Groq:", error);
         return null;
     }
 }
