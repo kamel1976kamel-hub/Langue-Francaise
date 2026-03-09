@@ -16,8 +16,18 @@ window.validateRule = function(rule, ruleId) {
         errors.push('Pattern ou regex manquant');
     }
     
-    if (!rule.message || typeof rule.message !== 'string') {
-        errors.push('Message manquant ou invalide');
+    // Accepter 'correction' ou 'replacement' pour la compatibilité
+    if ((!rule.correction && !rule.replacement) || 
+        (rule.correction && typeof rule.correction !== 'string' && typeof rule.correction !== 'function') || 
+        (rule.replacement && typeof rule.replacement !== 'string')) {
+        errors.push('Correction ou replacement manquant ou invalide');
+    }
+    
+    // Accepter 'message' ou 'explanation' pour la compatibilité
+    if ((!rule.message && !rule.explanation) || 
+        (rule.message && typeof rule.message !== 'string') || 
+        (rule.explanation && typeof rule.explanation !== 'string')) {
+        errors.push('Message ou explication manquant ou invalide');
     }
     
     // Validation du pattern
@@ -25,6 +35,10 @@ window.validateRule = function(rule, ruleId) {
         try {
             if (typeof rule.pattern === 'string') {
                 new RegExp(rule.pattern);
+            } else if (typeof rule.pattern === 'function') {
+                // Fonction de correction - valide
+            } else if (rule.pattern instanceof RegExp) {
+                // RegExp - valide
             } else if (Array.isArray(rule.pattern)) {
                 rule.pattern.forEach((p, i) => {
                     if (typeof p !== 'string') {
@@ -34,7 +48,7 @@ window.validateRule = function(rule, ruleId) {
                     }
                 });
             } else {
-                errors.push('Pattern doit être une chaîne ou un tableau');
+                errors.push('Pattern doit être une chaîne, RegExp, fonction ou tableau');
             }
         } catch (regexError) {
             errors.push(`Pattern regex invalide: ${regexError.message}`);
