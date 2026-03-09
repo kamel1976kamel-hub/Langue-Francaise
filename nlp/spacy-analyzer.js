@@ -317,3 +317,67 @@ window.analyzeTextLocal = function(text) {
 
 console.log('✅ SpacyAnalyzer chargé - Analyse linguistique française');
 console.log('✅ Fonction analyzeTextLocal disponible pour l\'analyse en temps réel');
+
+// ---------------------------------------------------------------------
+// INTÉGRATION DES RÈGLES AVANCÉES
+// ---------------------------------------------------------------------
+
+// Fonction pour intégrer les règles avancées si disponibles
+window.initializeAdvancedRules = function() {
+    let rulesIntegrated = 0;
+    
+    // Intégrer les règles de style (ponctuation, syntaxe)
+    if (window.styleRules && window.styleRules.length > 0) {
+        console.log(`🎨 Intégration de ${window.styleRules.length} règles de style...`);
+        window.SpacyAnalyzer.patterns.style = window.styleRules;
+        rulesIntegrated += window.styleRules.length;
+    }
+    
+    // Intégrer les règles de vocabulaire
+    if (window.vocabulaireRules && window.vocabulaireRules.length > 0) {
+        console.log(`📚 Intégration de ${window.vocabulaireRules.length} règles de vocabulaire...`);
+        window.SpacyAnalyzer.patterns.vocabulaire = window.vocabulaireRules;
+        rulesIntegrated += window.vocabulaireRules.length;
+    }
+    
+    // Intégrer les règles d'orthographe
+    if (window.orthographeRules && window.orthographeRules.length > 0) {
+        console.log(`📝 Intégration de ${window.orthographeRules.length} règles d'orthographe...`);
+        window.SpacyAnalyzer.patterns.orthographe = window.orthographeRules;
+        rulesIntegrated += window.orthographeRules.length;
+    }
+    
+    // Intégrer les règles de conjugaison
+    if (window.conjugaisonRules && window.conjugaisonRules.length > 0) {
+        console.log(`🔤 Intégration de ${window.conjugaisonRules.length} règles de conjugaison...`);
+        window.SpacyAnalyzer.patterns.conjugaison = window.conjugaisonRules;
+        rulesIntegrated += window.conjugaisonRules.length;
+    }
+    
+    if (rulesIntegrated > 0) {
+        // Fusionner avec les règles existantes
+        const totalRules = Object.keys(window.SpacyAnalyzer.patterns).reduce((count, category) => {
+            return count + (Array.isArray(window.SpacyAnalyzer.patterns[category]) ? window.SpacyAnalyzer.patterns[category].length : 0);
+        }, 0);
+        
+        console.log(`📊 Total des règles disponibles : ${totalRules}`);
+        console.log('🎯 Règles de style, vocabulaire, orthographe et conjugaison intégrées avec succès !');
+        
+        return true;
+    } else {
+        console.log('⚠️ Règles de style non disponibles - Utilisation des règles de base uniquement');
+        return false;
+    }
+};
+
+// Auto-initialisation quand les règles de style sont chargées
+if (window.styleRules) {
+    window.initializeAdvancedRules();
+} else {
+    // Attendre que les règles de style soient chargées
+    setTimeout(() => {
+        if (window.styleRules) {
+            window.initializeAdvancedRules();
+        }
+    }, 100);
+}
