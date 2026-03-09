@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Cohérence - Système NLP Standardisé</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .status-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        
+        .status-label {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        
+        .btn.secondary {
+            background: #6b7280;
+        }
+        
+        .btn.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .test-area {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin: 15px 0;
+        }
+        
+        .test-input {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        
+        .results {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .correction {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✅ Test de Cohérence NLP</h1>
+        <p>Système standardisé avec règles simplifiées</p>
+    </div>
+
+    <div class="card">
+        <h2>📊 État du Système Standardisé</h2>
+        <div id="system-status">
+            <div class="loading">
+                <div class="spinner"></div>
+                Chargement des modules...
+            </div>
+        </div>
+        
+        <div class="status-grid" id="status-grid">
+            <!-- Statistiques insérées ici -->
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🧪 Test du Pipeline Unifié</h2>
+        
+        <div class="test-area">
+            <h3>Texte à analyser</h3>
+            <textarea id="test-input" class="test-input" placeholder="Entrez un texte à tester...">L'enfant mange beaucoup et c'est quoi ce livre ? Les enfant joue dans le jardin. Il vas à l'école.</textarea>
+            
+            <div style="margin: 15px 0;">
+                <button onclick="testStandardizedSystem()" class="btn">🔍 Tester Système Standardisé</button>
+                <button onclick="testLegacySystem()" class="btn secondary">🔄 Tester Système Legacy</button>
+                <button onclick="clearResults()" class="btn secondary">🗑️ Effacer</button>
+            </div>
+        </div>
+        
+        <div id="test-results">
+            <div class="loading">
+                <p>Cliquez sur "Tester" pour lancer l'analyse</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📋 Validation des Règles</h2>
+        <div id="rules-validation">
+            <div class="loading">
+                <div class="spinner"></div>
+                Validation des règles...
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts standardisés (ordre cohérent) -->
+    <script src="spacy-rules-style-simple.js"></script>
+    <script src="spacy-rules-vocabulaire-simple.js"></script>
+    <script src="spacy-rules-conjugaison-simple.js"></script>
+    <script src="spacy-rules-orthographe-simple.js"></script>
+    <script src="rules-validator.js"></script>
+    <script src="groq-ai-analyzer.js"></script>
+    <script src="advanced-text-corrector.js"></script>
+    <script src="spacy-analyzer.js"></script>
+
+    <script>
+        let systemStats = {};
+        
+        // Initialisation et validation du système
+        function initializeSystem() {
+            console.log('🚀 Initialisation du système NLP standardisé...');
+            
+            // Valider les règles
+            const validation = validateAllRules();
+            displaySystemStatus(validation);
+            displayRulesValidation(validation);
+            
+            // Initialiser le pipeline
+            if (window.initializeAdvancedPipeline) {
+                window.initializeAdvancedPipeline().then(success => {
+                    console.log('Pipeline initialisé:', success);
+                });
+            }
+        }
+        
+        // Valider toutes les règles
+        function validateAllRules() {
+            const validation = {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                categories: {}
+            };
+            
+            const ruleCategories = [
+                { name: 'style', variable: 'styleRules' },
+                { name: 'vocabulaire', variable: 'vocabulaireRules' },
+                { name: 'conjugaison', variable: 'conjugaisonRules' },
+                { name: 'orthographe', variable: 'orthographeRules' }
+            ];
+            
+            ruleCategories.forEach(category => {
+                const rules = window[category.variable];
+                if (rules && Array.isArray(rules)) {
+                    validation.categories[category.name] = {
+                        total: rules.length,
+                        valid: 0,
+                        invalid: 0,
+                        rules: []
+                    };
+                    
+                    validation.total += rules.length;
+                    
+                    rules.forEach((rule, index) => {
+                        const ruleValidation = validateRule(rule, `${category.name}_${index}`);
+                        if (ruleValidation.isValid) {
+                            validation.valid++;
+                            validation.categories[category.name].valid++;
+                        } else {
+                            validation.invalid++;
+                            validation.categories[category.name].invalid++;
+                        }
+                        validation.categories[category.name].rules.push({
+                            rule: rule,
+                            validation: ruleValidation
+                        });
+                    });
+                }
+            });
+            
+            return validation;
+        }
+        
+        // Valider une règle individuelle
+        function validateRule(rule, ruleId) {
+            const errors = [];
+            
+            if (!rule.id) errors.push('Champ id manquant');
+            if (!rule.name) errors.push('Champ name manquant');
+            if (!rule.pattern) errors.push('Champ pattern manquant');
+            if (!rule.correction && !rule.replacement) errors.push('Champ correction/replacement manquant');
+            
+            // Valider le pattern
+            if (rule.pattern) {
+                try {
+                    if (typeof rule.pattern === 'string') {
+                        new RegExp(rule.pattern);
+                    }
+                } catch (e) {
+                    errors.push('Pattern regex invalide');
+                }
+            }
+            
+            return {
+                isValid: errors.length === 0,
+                errors: errors
+            };
+        }
+        
+        // Afficher l'état du système
+        function displaySystemStatus(validation) {
+            const statusDiv = document.getElementById('system-status');
+            const gridDiv = document.getElementById('status-grid');
+            
+            const healthScore = validation.total > 0 ? Math.round((validation.valid / validation.total) * 100) : 0;
+            
+            let statusHTML = `
+                <div class="success">
+                    <strong>✅ Système standardisé opérationnel</strong><br>
+                    Score de santé: ${healthScore}% | ${validation.valid}/${validation.total} règles valides
+                </div>
+            `;
+            
+            statusDiv.innerHTML = statusHTML;
+            
+            let gridHTML = '';
+            Object.keys(validation.categories).forEach(category => {
+                const cat = validation.categories[category];
+                const catHealth = cat.total > 0 ? Math.round((cat.valid / cat.total) * 100) : 0;
+                
+                gridHTML += `
+                    <div class="status-item">
+                        <div class="status-value">${catHealth}%</div>
+                        <div class="status-label">${category.toUpperCase()} (${cat.valid}/${cat.total})</div>
+                    </div>
+                `;
+            });
+            
+            gridDiv.innerHTML = gridHTML;
+            
+            systemStats = validation;
+        }
+        
+        // Afficher la validation des règles
+        function displayRulesValidation(validation) {
+            const validationDiv = document.getElementById('rules-validation');
+            
+            let html = '';
+            Object.keys(validation.categories).forEach(category => {
+                const cat = validation.categories[category];
+                
+                html += `<h3>${category.charAt(0).toUpperCase() + category.slice(1)} (${cat.valid}/${cat.total} valides)</h3>`;
+                
+                if (cat.invalid > 0) {
+                    html += '<div style="color: #ef4444; margin: 10px 0;">';
+                    cat.rules.forEach(item => {
+                        if (!item.validation.isValid) {
+                            html += `<div>❌ ${item.rule.name || 'Sans nom'}: ${item.validation.errors.join(', ')}</div>`;
+                        }
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<div style="color: #10b981; margin: 10px 0;">✅ Toutes les règles sont valides</div>';
+                }
+            });
+            
+            validationDiv.innerHTML = html;
+        }
+        
+        // Tester le système standardisé
+        function testStandardizedSystem() {
+            const text = document.getElementById('test-input').value;
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analyse en cours...</div>';
+            
+            if (window.analyzeTextLocal) {
+                window.analyzeTextLocal(text).then(result => {
+                    displayTestResults(result, 'Système Standardisé');
+                }).catch(error => {
+                    resultsDiv.innerHTML = `<div style="color: #ef4444;">❌ Erreur: ${error.message}</div>`;
+                });
+            } else {
+                resultsDiv.innerHTML = '<div style="color: #ef4444;">❌ Système non disponible</div>';
+            }
+        }
+        
+        // Tester le système legacy
+        function testLegacySystem() {
+            const text = document.getElementById('test-input').value;
+            const resultsDiv = document.getElementById('test-results');
+            
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analyse legacy en cours...</div>';
+            
+            if (window.analyzeTextLocalFallback) {
+                const result = window.analyzeTextLocalFallback(text);
+                displayTestResults(result, 'Système Legacy');
+            } else {
+                resultsDiv.innerHTML = '<div style="color: #ef4444;">❌ Système legacy non disponible</div>';
+            }
+        }
+        
+        // Afficher les résultats de test
+        function displayTestResults(result, systemName) {
+            const resultsDiv = document.getElementById('test-results');
+            
+            let html = `
+                <h3>${systemName}</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-value">${result.errors ? result.errors.length : 0}</div>
+                        <div class="status-label">ERREURS</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">${result.confidence || 0}%</div>
+                        <div class="status-label">CONFIANCE</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">${result.suggestions ? result.suggestions.length : 0}</div>
+                        <div class="status-label">SUGGESTIONS</div>
+                    </div>
+                </div>
+            `;
+            
+            if (result.errors && result.errors.length > 0) {
+                html += '<h4>🔍 Corrections détectées:</h4>';
+                result.errors.forEach((error, i) => {
+                    html += `
+                        <div class="correction">
+                            <strong>[${error.rule || error.type || 'Règle ' + (i+1)}]</strong><br>
+                            "${error.text}" → "${error.correction}"<br>
+                            <small>${error.explanation || 'Aucune explication'}</small>
+                        </div>
+                    `;
+                });
+            } else {
+                html += '<div style="color: #10b981; text-align: center; padding: 20px;">✅ Aucune correction détectée</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Effacer les résultats
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '<div class="loading"><p>Cliquez sur "Tester" pour lancer l\'analyse</p></div>';
+        }
+        
+        // Initialisation au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                initializeSystem();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
