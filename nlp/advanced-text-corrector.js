@@ -18,7 +18,10 @@ const pipelineState = {
 
 // Fusion des suggestions avec priorisation
 window.mergeSuggestions = function(ruleResults, aiResults) {
-    const allSuggestions = [...ruleResults, ...aiResults];
+    // Gérer les cas où ruleResults ou aiResults ne sont pas des tableaux
+    const ruleArray = Array.isArray(ruleResults) ? ruleResults : (ruleResults && ruleResults.corrections ? ruleResults.corrections : []);
+    const aiArray = Array.isArray(aiResults) ? aiResults : [];
+    const allSuggestions = [...ruleArray, ...aiArray];
     
     // Déduplication basée sur la position
     const uniqueSuggestions = [];
