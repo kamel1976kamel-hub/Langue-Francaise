@@ -4,7 +4,7 @@
 console.log('🌐 Initialisation du client spaCy Cloud via proxy');
 
 class SpacyProxyClient {
-    constructor(proxyUrl = 'http://localhost:8001') {
+    constructor(proxyUrl = 'http://localhost:8002') {
         this.proxyUrl = proxyUrl;
         this.isAvailable = false;
         this.checkAvailability();
@@ -159,9 +159,9 @@ class SpacyProxyClient {
             const response = await fetch(`${this.proxyUrl}/test`);
             const data = await response.json();
             
-            if (data.status === 'success') {
+            if (data.status === 'test_ok' || data.status === 'success') {
                 console.log('🎉 Test proxy spaCy réussi !');
-                console.log('📊 Exemple de résultat:', data.sample_result);
+                console.log('📊 Exemple de résultat:', data.output || data.sample_result);
                 return data;
             } else {
                 throw new Error(data.message || 'Test proxy échoué');

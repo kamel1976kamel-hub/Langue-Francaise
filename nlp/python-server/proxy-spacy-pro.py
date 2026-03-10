@@ -198,11 +198,11 @@ def index():
 
 if __name__ == '__main__':
     print("🌐 Démarrage du serveur proxy spaCy Professionnel...")
-    print(f"📡 Proxy disponible sur: http://localhost:8001")
-    print(f"🎯 Endpoint analyse: http://localhost:8001/analyze")
-    print(f"🧪 Endpoint test: http://localhost:8001/test")
-    print(f"❤️‍🔥 Endpoint santé: http://localhost:8001/health")
-    print(f"📚 Modèles: http://localhost:8001/models")
+    print(f"📡 Proxy disponible sur: http://localhost:8002")
+    print(f"🎯 Endpoint analyse: http://localhost:8002/analyze")
+    print(f"🧪 Endpoint test: http://localhost:8002/test")
+    print(f"❤️‍🔥 Endpoint santé: http://localhost:8002/health")
+    print(f"📚 Modèles: http://localhost:8002/models")
     print(f"🔗 100% spaCy local - SANS Hugging Face")
     print(f"🚀 Lancement du serveur professionnel...")
-    app.run(host='0.0.0.0', port=8001, debug=False)
+    app.run(host='0.0.0.0', port=8002, debug=False)

@@ -159,13 +159,13 @@
         <ol>
             <li><strong>Ouvrir un terminal</strong> dans le dossier <code>nlp/python-server/</code></li>
             <li><strong>Démarrer le proxy spaCy</strong> :
-                <br><code>& "C:\Users\horizon pc\AppData\Local\Programs\Python\Python311\python.exe" proxy-server.py</code>
+                <br><code>& "C:\Users\horizon pc\AppData\Local\Programs\Python\Python311\python.exe" proxy-spacy-pro.py</code>
             </li>
-            <li><strong>Attendre le message</strong> : "Running on http://localhost:8001"</li>
+            <li><strong>Attendre le message</strong> : "Running on http://localhost:8002"</li>
             <li><strong>Garder le terminal ouvert</strong> (ne fermez pas !)</li>
             <li><strong>Actualiser cette page</strong> et tester !</li>
         </ol>
-        <p><strong>⚠️ Note :</strong> Le proxy utilise Hugging Face API (nécessite connexion internet)</p>
+        <p><strong>✅ Note :</strong> Le proxy utilise spaCy local (100% sans Hugging Face, ultra-rapide)</p>
     </div>
     
     <!-- Status du proxy -->
@@ -173,7 +173,7 @@
         <div class="test-title">🔍 Status du serveur proxy</div>
         <div id="proxy-status" class="proxy-status">
             <h4>🔄 Vérification du proxy spaCy...</h4>
-            <p>Le proxy doit être démarré sur http://localhost:8001</p>
+            <p>Le proxy doit être démarré sur http://localhost:8002</p>
         </div>
         <div>
             <button class="btn btn-primary" onclick="checkProxyStatus()">Vérifier proxy</button>
@@ -334,7 +334,7 @@
                     statusDiv.className = 'proxy-status';
                     statusDiv.innerHTML = `
                         <h4>✅ Proxy spaCy disponible</h4>
-                        <p>Le serveur proxy fonctionne sur http://localhost:8001</p>
+                        <p>Le serveur 📡 Proxy disponible sur: http://localhost:8002</p>
                         <p>Vous pouvez maintenant utiliser spaCy professionnel !</p>
                     `;
                     updateStatus('status-indicator', 'success', '✅ Proxy OK');
