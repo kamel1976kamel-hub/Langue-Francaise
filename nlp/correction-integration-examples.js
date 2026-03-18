@@ -84,18 +84,27 @@ function integrateChatCorrection() {
         let submitButton = null;
         
         // Chercher dans le parent direct
-        submitButton = input.parentNode.querySelector('button[type="submit"], .submit-btn, .btn-primary');
+        submitButton = input.parentNode.querySelector('button[type="submit"], .submit-btn, .btn-primary, button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
         
         // Si pas trouvé, chercher plus largement
         if (!submitButton) {
-            submitButton = input.closest('form')?.querySelector('button[type="submit"], .submit-btn, .btn-primary');
+            submitButton = input.closest('form')?.querySelector('button[type="submit"], .submit-btn, .btn-primary, button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
         }
         
         // Si encore pas trouvé, chercher dans le conteneur parent
         if (!submitButton) {
             const container = input.closest('.input-group, .form-group, .chat-input-container');
             if (container) {
-                submitButton = container.querySelector('button[type="submit"], .submit-btn, .btn-primary');
+                submitButton = container.querySelector('button[type="submit"], .submit-btn, .btn-primary, button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
+            }
+        }
+        
+        // Si encore pas trouvé, chercher tous les boutons dans le conteneur parent
+        if (!submitButton) {
+            const parentContainer = input.closest('div');
+            if (parentContainer) {
+                const allButtons = parentContainer.querySelectorAll('button');
+                submitButton = allButtons[allButtons.length - 1]; // Prendre le dernier bouton
             }
         }
         
@@ -103,11 +112,15 @@ function integrateChatCorrection() {
             const submitId = submitButton.id || `submit-btn-${index}`;
             submitButton.id = submitId;
             
+            console.log(`✅ Bouton de soumission trouvé pour ${inputId}:`, submitButton);
+            
             // Vérifier si le bouton de correction existe déjà
             const existingBtn = submitButton.parentNode.querySelector('.integrated-correction-btn');
             if (!existingBtn) {
                 addCorrectionButton(submitId, inputId);
             }
+        } else {
+            console.log(`❌ Aucun bouton de soumission trouvé pour ${inputId}`);
         }
     });
 }
