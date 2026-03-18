@@ -850,9 +850,9 @@ window.makeDraggable = function(element) {
     }
   };
 
-  element.addEventListener('touchstart', dragStart, false);
-  element.addEventListener('touchend', dragEnd, false);
-  element.addEventListener('touchmove', drag, false);
+  element.addEventListener('touchstart', dragStart, { passive: false });
+  element.addEventListener('touchend', dragEnd, { passive: false });
+  element.addEventListener('touchmove', drag, { passive: false });
   element.addEventListener('mousedown', dragStart, false);
   element.addEventListener('mouseup', dragEnd, false);
   element.addEventListener('mousemove', drag, false);
