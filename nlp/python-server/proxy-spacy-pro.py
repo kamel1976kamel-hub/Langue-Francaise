@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 """
 Proxy spaCy Professionnel Local - 100% sans Hugging Face
-Utilise spaCy fr_core_news_md pour une analyse linguistique complète
+Utilise spaCy fr_core_news_lg pour une analyse linguistique complète
 """
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import spacy
 import json
+import sys
 
 app = Flask(__name__)
 CORS(app)
 
-# Charger spaCy professionnel local
+# Charger le modèle spaCy français
 print("🐍 Chargement du modèle spaCy professionnel français...")
 try:
     nlp = spacy.load("fr_core_news_md")
-    print("✅ Modèle spaCy fr_core_news_md chargé avec succès")
-    print("🎯 Capacités: Tokens, POS, Lemmes, Dépendances, Entités, Vecteurs")
-except Exception as e:
-    print(f"❌ Erreur chargement spaCy: {e}")
-    print("💡 Installez le modèle avec: python -m spacy download fr_core_news_md")
-    exit(1)
+    print(f"✅ Modèle spaCy français chargé avec succès: {nlp.meta['name']} v{nlp.meta['version']}")
+except OSError:
+    print("❌ Erreur: Le modèle spaCy français n'est pas installé.")
+    print("� Veuillez installer le modèle avec:")
+    print("   python -m spacy download fr_core_news_lg")
+    print("   Ou:")
+    print("   pip install https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.7.0/fr_core_news_lg-3.7.0.tar.gz")
+    sys.exit(1)
 
 def format_spacy_results(doc):
     """Formate les résultats spaCy pour le client"""
