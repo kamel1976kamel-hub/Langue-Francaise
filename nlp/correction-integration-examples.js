@@ -29,6 +29,10 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         cursor: pointer;
         font-weight: 500;
         transition: all 0.2s ease;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     `;
     
     correctionButton.addEventListener('mouseenter', () => {
@@ -41,7 +45,7 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         correctionButton.style.transform = 'translateY(0)';
     });
     
-    // Insérer le bouton avant le bouton de soumission
+    // Insérer le bouton à gauche du bouton de soumission
     submitButton.parentNode.insertBefore(correctionButton, submitButton);
     
     console.log('✅ Bouton de correction ajouté pour:', targetInputId);

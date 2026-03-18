@@ -35,7 +35,7 @@ class IntegratedCorrectionSystem {
         template.id = 'integrated-correction-cloud-template';
         template.innerHTML = `
             <div class="integrated-correction-overlay" style="display: none;">
-                <div class="integrated-correction-cloud">
+                <div class="integrated-correction-cloud" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
                     <div class="integrated-correction-header">
                         <h3>🔍 Corrections suggérées</h3>
                         <button class="close-integrated-cloud-btn" onclick="window.integratedCorrectionSystem.closeCorrectionCloud()">✕</button>
@@ -436,11 +436,11 @@ const correctionStyles = `
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: 99999;
 }
 
 .integrated-correction-cloud {
@@ -451,7 +451,9 @@ const correctionStyles = `
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 100000;
 }
 
 .integrated-correction-header {
