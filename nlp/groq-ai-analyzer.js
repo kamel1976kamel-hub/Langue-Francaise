@@ -141,6 +141,9 @@ Focus sur :
 // Extraction manuelle des suggestions si le parsing JSON échoue
 function extractSuggestionsFromText(text) {
     const suggestions = [];
+    if (!text || typeof text !== 'string') {
+        return suggestions;
+    }
     const lines = text.split('\n');
     
     let currentSuggestion = null;
