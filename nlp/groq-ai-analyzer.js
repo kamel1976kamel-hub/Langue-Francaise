@@ -5,7 +5,7 @@ console.log('🧠 Initialisation du module IA Groq pour analyse linguistique');
 
 // Configuration de l'API Groq
 const GROQ_CONFIG = {
-    apiKey: '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', // Clé API Groq de l'utilisateur
+    apiKey: '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', // Clé API Groq de l'utilisateur
     baseURL: 'https://api.groq.com/openai/v1',
     model: 'llama-3.1-8b-instant', // modèle valide et disponible
     maxTokens: 500,
@@ -15,6 +15,12 @@ const GROQ_CONFIG = {
 // Fonction pour appeler l'API Groq
 async function callGroqAPI(prompt) {
     try {
+        // Vérifier si la clé API est valide
+        if (!GROQ_CONFIG.apiKey || GROQ_CONFIG.apiKey.length < 20) {
+            console.warn('⚠️ Clé API Groq invalide ou manquante. Utilisation du fallback.');
+            return null;
+        }
+
         const payload = {
             model: GROQ_CONFIG.model,
             messages: [
@@ -30,34 +36,38 @@ async function callGroqAPI(prompt) {
             max_tokens: GROQ_CONFIG.maxTokens,
             temperature: GROQ_CONFIG.temperature
         };
-        
-        console.log("Payload envoyé à Groq:", JSON.stringify(payload, null, 2));
-        console.log("URL:", GROQ_CONFIG.baseURL + "/chat/completions");
-        console.log("Clé API (premiers caractères):", GROQ_CONFIG.apiKey.substring(0, 10) + "...");
-        
-        const response = await fetch(`${GROQ_CONFIG.baseURL}/chat/completions`, {
+
+        console.log('🧠 Payload envoyé à Groq:', payload);
+        console.log('🌐 URL:', GROQ_CONFIG.baseURL);
+        console.log('🔑 Clé API (premiers caractères):', GROQ_CONFIG.apiKey.substring(0, 10) + '...');
+
+        const response = await fetch(GROQ_CONFIG.baseURL + '/chat/completions', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`,
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`
             },
             body: JSON.stringify(payload)
         });
 
-        console.log("Status HTTP:", response.status);
-        console.log("Headers:", Object.fromEntries(response.headers.entries()));
+        console.log('📊 Status HTTP:', response.status);
+        console.log('📋 Headers:', response.headers);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("Détail de l'erreur:", errorText);
+            console.error('💥 Détail de l\'erreur:', errorText);
+            if (response.status === 401) {
+                console.warn('⚠️ Erreur 401: Clé API invalide. Utilisation du fallback spaCy local.');
+                return null;
+            }
             throw new Error(`Erreur HTTP: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
-        console.log("Réponse Groq:", data);
-        return data.choices[0].message.content;
+        console.log('✅ Réponse Groq:', data);
+        return data;
     } catch (error) {
-        console.error("❌ Erreur API Groq:", error);
+        console.error('❌ Erreur API Groq:', error);
         return null;
     }
 }

@@ -68,7 +68,8 @@ class NLPIntegrationManager {
             // Timeout après 10 secondes
             setTimeout(() => {
                 clearInterval(checkInterval);
-                throw new Error('Timeout: Les scripts NLP n\'ont pas pu être chargés');
+                console.warn('⚠️ Timeout NLP: Utilisation du fallback spaCy local');
+                resolve(); // Continue avec spaCy local
             }, 10000);
         });
     }
