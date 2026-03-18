@@ -41,6 +41,29 @@
                 window.CorrectionIntegration.autoIntegrateCorrection();
             }
         }, 2000);
+        
+        // Créer une zone de test après 3 secondes
+        setTimeout(() => {
+            console.log('🧪 Création d\'une zone de test...');
+            const testDiv = document.createElement('div');
+            testDiv.innerHTML = `
+                <div style="margin: 20px; padding: 20px; border: 2px solid #3b82f6; border-radius: 8px; background: #f0f9ff;">
+                    <h3>🧪 Zone de test du système de correction</h3>
+                    <p>Écrivez un texte avec des erreurs pour tester le système :</p>
+                    <textarea id="test-correction-text" style="width: 100%; height: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;" placeholder="Les chat sont beau et ils vas au cinema..."></textarea>
+                    <div style="margin-top: 10px;">
+                        <button id="test-submit-btn" class="btn btn-primary">Soumettre</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(testDiv);
+            
+            // Ajouter le bouton de correction
+            setTimeout(() => {
+                window.CorrectionIntegration.addCorrectionButton('test-submit-btn', 'test-correction-text');
+                console.log('✅ Bouton de test ajouté');
+            }, 500);
+        }, 3000);
     </script>
     
     <style>
