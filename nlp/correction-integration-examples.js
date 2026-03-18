@@ -297,6 +297,8 @@ if (typeof document !== 'undefined') {
 
 // Initialisation automatique
 if (typeof window !== 'undefined') {
+    console.log('🔍 Correction Integration: Initialisation...');
+    
     // Démarrer l'intégration quand le système NLP est prêt
     document.addEventListener('nlp-ready', () => {
         console.log('🎯 Système NLP prêt, démarrage de l\'intégration...');
@@ -306,12 +308,23 @@ if (typeof window !== 'undefined') {
     // Écouter les clics sur les boutons de correction
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('integrated-correction-btn')) {
-            this.handleCorrectionButtonClick(e.target);
+            console.log('🔍 Clic sur bouton de correction détecté');
+            if (window.integratedCorrectionSystem) {
+                window.integratedCorrectionSystem.handleCorrectionButtonClick(e.target);
+            }
         }
     });
-    // Ou démarrer directement si le DOM est déjà chargé
+    
+    // Démarrer directement si le DOM est déjà chargé
     if (document.readyState !== 'loading') {
-        setTimeout(autoIntegrateCorrection, 1000);
+        console.log('🔍 DOM déjà chargé, démarrage immédiat...');
+        setTimeout(autoIntegrateCorrection, 500);
+    } else {
+        console.log('🔍 DOM en chargement, attente...');
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔍 DOM chargé, démarrage de l\'intégration...');
+            setTimeout(autoIntegrateCorrection, 500);
+        });
     }
     
     // Exporter les fonctions pour utilisation manuelle
@@ -322,4 +335,6 @@ if (typeof window !== 'undefined') {
         createManualCorrectionInterface,
         autoIntegrateCorrection
     };
+    
+    console.log('✅ Correction Integration: Initialisation terminée');
 }

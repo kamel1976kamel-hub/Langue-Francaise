@@ -662,13 +662,22 @@ if (typeof document !== 'undefined') {
 
 // Initialisation globale
 if (typeof window !== 'undefined') {
+    console.log('🔍 Integrated Correction System: Création de l\'instance...');
     window.integratedCorrectionSystem = new IntegratedCorrectionSystem();
     
     // Écouter le chargement du DOM
-    document.addEventListener('DOMContentLoaded', () => {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔍 DOM chargé, initialisation du système...');
+            window.integratedCorrectionSystem.initialize();
+        });
+    } else {
+        console.log('🔍 DOM déjà chargé, initialisation immédiate...');
         window.integratedCorrectionSystem.initialize();
-    });
+    }
     
     // Export pour utilisation
     window.IntegratedCorrectionSystem = IntegratedCorrectionSystem;
+    
+    console.log('✅ Integrated Correction System: Prêt');
 }

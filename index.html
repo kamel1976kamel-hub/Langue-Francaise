@@ -23,10 +23,25 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=43"></script>
-    <script src="nlp/correction-integration-examples.js?v=43"></script>
+    <script src="nlp/integrated-correction-system.js?v=44"></script>
+    <script src="nlp/correction-integration-examples.js?v=44"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
+    
+    <!-- Debug script -->
+    <script>
+        console.log('🔍 Debug: Scripts chargés');
+        console.log('🔍 integratedCorrectionSystem disponible:', typeof window.integratedCorrectionSystem);
+        console.log('🔍 CorrectionIntegration disponible:', typeof window.CorrectionIntegration);
+        
+        // Forcer l'intégration après 2 secondes
+        setTimeout(() => {
+            console.log('🚀 Forçage de l\'intégration...');
+            if (window.CorrectionIntegration) {
+                window.CorrectionIntegration.autoIntegrateCorrection();
+            }
+        }, 2000);
+    </script>
     
     <style>
       /* ============================================
