@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=47"></script>
-    <script src="nlp/correction-integration-examples.js?v=47"></script>
+    <script src="nlp/integrated-correction-system.js?v=48"></script>
+    <script src="nlp/correction-integration-examples.js?v=48"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -41,6 +41,28 @@
                 window.CorrectionIntegration.autoIntegrateCorrection();
             }
         }, 2000);
+        
+        // Debug avancé après 5 secondes
+        setTimeout(() => {
+            console.log('🔍 Debug avancé...');
+            console.log('📝 Inputs trouvés:', document.querySelectorAll('input[type="text"], textarea').length);
+            console.log('🔘 Boutons trouvés:', document.querySelectorAll('button[type="submit"], .btn-primary, .submit-btn').length);
+            console.log('🔍 Boutons de correction:', document.querySelectorAll('.integrated-correction-btn').length);
+            
+            // Ajouter manuellement un bouton de test
+            const chatInput = document.querySelector('input[placeholder*="question"], textarea[placeholder*="question"], input[placeholder*="poser"]');
+            if (chatInput) {
+                console.log('✅ Input de chat trouvé:', chatInput);
+                window.CorrectionIntegration.addCorrectionButton('test-submit', chatInput.id || 'chat-input');
+            } else {
+                console.log('❌ Input de chat non trouvé, recherche plus large...');
+                const allInputs = document.querySelectorAll('input[type="text"], textarea');
+                console.log('📝 Tous les inputs:', allInputs);
+                allInputs.forEach((input, index) => {
+                    console.log(`Input ${index}:`, input.placeholder || input.id || input.className);
+                });
+            }
+        }, 5000);
     </script>
     
     <style>
