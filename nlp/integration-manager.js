@@ -65,12 +65,12 @@ class NLPIntegrationManager {
                 }
             }, 100);
 
-            // Timeout après 10 secondes
+            // Timeout après 5 secondes (plus rapide)
             setTimeout(() => {
                 clearInterval(checkInterval);
                 console.warn('⚠️ Timeout NLP: Utilisation du fallback spaCy local');
                 resolve(); // Continue avec spaCy local
-            }, 10000);
+            }, 5000);
         });
     }
 
