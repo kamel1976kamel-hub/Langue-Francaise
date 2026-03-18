@@ -20,7 +20,8 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     
     // Ajouter les styles
     correctionButton.style.cssText = `
-        margin-right: 10px;
+        margin: 8px 0;
+        width: 100%;
         background: #f59e0b;
         color: white;
         border: none;
@@ -30,8 +31,9 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         font-weight: 500;
         transition: all 0.2s ease;
         font-size: 14px;
-        display: inline-flex;
+        display: flex;
         align-items: center;
+        justify-content: center;
         gap: 6px;
     `;
     
@@ -45,8 +47,24 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         correctionButton.style.transform = 'translateY(0)';
     });
     
-    // Insérer le bouton à gauche du bouton de soumission
-    submitButton.parentNode.insertBefore(correctionButton, submitButton);
+    // Chercher le conteneur parent commun
+    const parentContainer = submitButton.closest('.input-group, .form-group, .chat-input-container, div');
+    
+    if (parentContainer) {
+        // Chercher l'input/textarea dans ce conteneur
+        const targetInput = parentContainer.querySelector('input[type="text"], textarea');
+        
+        if (targetInput) {
+            // Insérer le bouton de correction juste après l'input/textarea
+            targetInput.parentNode.insertBefore(correctionButton, targetInput.nextSibling);
+        } else {
+            // Fallback: insérer avant le bouton de soumission
+            submitButton.parentNode.insertBefore(correctionButton, submitButton);
+        }
+    } else {
+        // Fallback: insérer avant le bouton de soumission
+        submitButton.parentNode.insertBefore(correctionButton, submitButton);
+    }
     
     console.log('✅ Bouton de correction ajouté pour:', targetInputId);
 }
