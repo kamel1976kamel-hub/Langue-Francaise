@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=51"></script>
-    <script src="nlp/correction-integration-examples.js?v=51"></script>
+    <script src="nlp/integrated-correction-system.js?v=52"></script>
+    <script src="nlp/correction-integration-examples.js?v=52"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -48,6 +48,20 @@
             console.log('📝 Inputs trouvés:', document.querySelectorAll('input[type="text"], textarea').length);
             console.log('🔘 Boutons trouvés:', document.querySelectorAll('button[type="submit"], .btn-primary, .submit-btn').length);
             console.log('🔍 Boutons de correction:', document.querySelectorAll('.integrated-correction-btn').length);
+            
+            // Analyser les styles du bouton vert
+            const greenButton = document.querySelector('.btn-primary, .submit-btn, button[type="submit"]');
+            if (greenButton) {
+                console.log('🎨 Styles du bouton vert:', {
+                    height: window.getComputedStyle(greenButton).height,
+                    padding: window.getComputedStyle(greenButton).padding,
+                    fontSize: window.getComputedStyle(greenButton).fontSize,
+                    fontWeight: window.getComputedStyle(greenButton).fontWeight,
+                    borderRadius: window.getComputedStyle(greenButton).borderRadius,
+                    margin: window.getComputedStyle(greenButton).margin,
+                    width: window.getComputedStyle(greenButton).width
+                });
+            }
             
             // Ajouter manuellement un bouton de test
             const chatInput = document.querySelector('input[placeholder*="question"], textarea[placeholder*="question"], input[placeholder*="poser"]');
