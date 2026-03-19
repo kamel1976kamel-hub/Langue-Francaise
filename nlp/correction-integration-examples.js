@@ -22,21 +22,22 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     correctionButton.style.cssText = `
         margin: 8px 0;
         width: 100%;
+        height: 40px;
         background: #f59e0b;
         color: white;
         border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
+        padding: 0 16px;
+        border-radius: 6px;
         cursor: pointer;
-        font-weight: 600;
+        font-weight: 500;
         transition: all 0.2s ease;
         font-size: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        min-height: 44px;
+        gap: 6px;
+        box-sizing: border-box;
+        line-height: 1;
     `;
     
     correctionButton.addEventListener('mouseenter', () => {
