@@ -25,16 +25,18 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         background: #f59e0b;
         color: white;
         border: none;
-        padding: 8px 16px;
-        border-radius: 6px;
+        padding: 12px 24px;
+        border-radius: 8px;
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 600;
         transition: all 0.2s ease;
         font-size: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        min-height: 44px;
     `;
     
     correctionButton.addEventListener('mouseenter', () => {
