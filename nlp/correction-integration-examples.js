@@ -20,8 +20,9 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     
     // Ajouter les styles - copie exacte du bouton vert
     correctionButton.style.cssText = `
-        margin: 8px 0;
+        margin: 0;
         width: 100%;
+        height: 40px;
         background: #f59e0b;
         color: white;
         border: none;
@@ -31,14 +32,13 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         font-weight: 500;
         transition: all 0.2s ease;
         font-size: 14px;
-        display: inline-flex;
+        display: flex;
         align-items: center;
         justify-content: center;
         gap: 6px;
         box-sizing: border-box;
-        line-height: 1.5;
-        min-height: 38px;
-        white-space: nowrap;
+        line-height: 1;
+        flex-shrink: 0;
     `;
     
     correctionButton.addEventListener('mouseenter', () => {
