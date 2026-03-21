@@ -25,7 +25,7 @@
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=65"></script>
+    <script src="main.js?v=66"></script>
     
     // Debug script -->
     <script>
@@ -650,6 +650,389 @@
         } else {
             console.warn('⚠️ Speech Synthesis non supporté par ce navigateur');
         }
+        
+        // Fonctions pour la correction des activités
+        window.analyzeActivityAnswer = function(chapterId, activityId) {
+            try {
+                console.log('🔍 analyzeActivityAnswer appelé pour', chapterId, activityId);
+                
+                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+                const answer = textarea.value.trim();
+                
+                if (!answer) {
+                    console.log('⚠️ Réponse vide');
+                    return;
+                }
+                
+                console.log('📝 Réponse à analyser:', answer);
+                
+                // Afficher le panneau de correction
+                const correctionPanel = document.getElementById(`activity-correction-panel-${chapterId}-${activityId}`);
+                const correctionContent = document.getElementById(`activity-correction-content-${chapterId}-${activityId}`);
+                
+                correctionPanel.classList.remove('hidden');
+                correctionContent.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div><p class="text-sm mt-2 text-amber-600">Analyse en cours...</p></div>';
+                
+                // Analyser la réponse avec le système de correction
+                if (window.correctTextWithDatabase) {
+                    console.log('🚀 Utilisation de la base de données pour l\'activité');
+                    window.correctTextWithDatabase(answer)
+                        .then(corrections => {
+                            console.log('✅ Corrections reçues pour l\'activité:', corrections);
+                            displayActivityCorrections(corrections, answer, chapterId, activityId);
+                        })
+                        .catch(error => {
+                            console.error('❌ Erreur lors de l\'analyse de l\'activité:', error);
+                            displayActivityError(error, chapterId, activityId);
+                        });
+                } else if (window.analyzeTextLocal) {
+                    console.log('🔄 Utilisation de l\'analyse locale pour l\'activité');
+                    const corrections = window.analyzeTextLocal(answer);
+                    console.log('✅ Corrections locales reçues pour l\'activité:', corrections);
+                    displayActivityCorrections(corrections, answer, chapterId, activityId);
+                } else {
+                    console.log('⚠️ Système de correction non disponible pour l\'activité, analyse basique');
+                    displayActivityBasicAnalysis(answer, chapterId, activityId);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur analyzeActivityAnswer:', error);
+            }
+        };
+        
+        function displayActivityCorrections(corrections, originalAnswer, chapterId, activityId) {
+            const correctionContent = document.getElementById(`activity-correction-content-${chapterId}-${activityId}`);
+            
+            // Stocker les corrections globalement pour cette activité
+            window.currentActivityCorrections = window.currentActivityCorrections || {};
+            window.currentActivityCorrections[`${chapterId}-${activityId}`] = {
+                corrections: corrections,
+                originalAnswer: originalAnswer
+            };
+            
+            console.log('🔍 displayActivityCorrections appelé avec:', corrections);
+            
+            // Vérifier les deux formats possibles
+            const correctionList = corrections.corrections || corrections.errors || [];
+            
+            if (!corrections || correctionList.length === 0) {
+                correctionContent.innerHTML = `
+                    <div class="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-green-800">✅ Parfait ! Votre réponse est correcte</span>
+                        </div>
+                        <p class="text-sm mt-2 text-green-700">Aucune correction n'est nécessaire. Vous pouvez soumettre votre réponse directement.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            const errors = correctionList;
+            
+            console.log(`📋 Affichage de ${errors.length} corrections pour l'activité`);
+            
+            errors.forEach((error, index) => {
+                const errorId = `activity-error-${chapterId}-${activityId}-${index}`;
+                html += `
+                    <div class="p-3 rounded-lg bg-red-50 border border-red-200">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0">
+                                <input type="checkbox" id="${errorId}" checked class="mt-1 rounded border-red-300 text-red-600 focus:ring-red-500">
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-800">${error.type || 'Erreur'}</span>
+                                    <span class="text-sm font-medium text-red-700">"${error.original || error.text}"</span>
+                                </div>
+                                <p class="text-sm text-red-600">${error.explanation || error.message}</p>
+                                ${error.suggestion ? `
+                                    <div class="mt-2 p-2 rounded bg-green-50">
+                                        <p class="text-xs font-medium text-green-800">💡 Suggestion :</p>
+                                        <p class="text-sm text-green-700">"${error.suggestion}"</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Ajouter la réponse corrigée complète
+            if (corrections.correctedText) {
+                html += `
+                    <div class="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <p class="text-sm font-medium text-green-800 mb-2">✅ Réponse corrigée :</p>
+                        <p class="text-sm text-green-700">${corrections.correctedText}</p>
+                    </div>
+                `;
+            }
+            
+            correctionContent.innerHTML = html;
+        }
+        
+        function displayActivityBasicAnalysis(answer, chapterId, activityId) {
+            const correctionContent = document.getElementById(`activity-correction-content-${chapterId}-${activityId}`);
+            
+            // Analyse basique manuelle
+            const basicErrors = [];
+            
+            // Vérifications simples
+            if (answer.includes('une texte')) {
+                basicErrors.push({
+                    type: 'Grammaire',
+                    original: 'une texte',
+                    explanation: '"Texte" est masculin, il faut utiliser "un"',
+                    suggestion: answer.replace('une texte', 'un texte')
+                });
+            }
+            
+            if (answer.includes('c\'est quoi')) {
+                basicErrors.push({
+                    type: 'Style',
+                    original: 'c\'est quoi',
+                    explanation: 'Expression trop familière',
+                    suggestion: answer.replace('c\'est quoi', 'qu\'est-ce que')
+                });
+            }
+            
+            if (basicErrors.length === 0) {
+                correctionContent.innerHTML = `
+                    <div class="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-green-800">✅ Votre réponse semble correcte</span>
+                        </div>
+                        <p class="text-sm mt-2 text-green-700">L'analyse basique ne détecte aucune erreur importante.</p>
+                    </div>
+                `;
+            } else {
+                displayActivityCorrections({ errors: basicErrors, correctedText: answer }, answer, chapterId, activityId);
+            }
+        }
+        
+        function displayActivityError(error, chapterId, activityId) {
+            const correctionContent = document.getElementById(`activity-correction-content-${chapterId}-${activityId}`);
+            correctionContent.innerHTML = `
+                <div class="p-3 rounded-lg bg-red-50 border border-red-200">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-sm font-medium text-red-800">❌ Erreur lors de l'analyse</span>
+                    </div>
+                    <p class="text-sm mt-2 text-red-600">${error.message || 'Une erreur est survenue'}</p>
+                </div>
+            `;
+        }
+        
+        window.applyActivityCorrections = function(chapterId, activityId) {
+            try {
+                console.log('🔧 applyActivityCorrections appelé pour', chapterId, activityId);
+                
+                const activityKey = `${chapterId}-${activityId}`;
+                const activityCorrections = window.currentActivityCorrections?.[activityKey];
+                
+                if (!activityCorrections) {
+                    console.log('⚠️ Aucune correction à appliquer pour cette activité');
+                    return;
+                }
+                
+                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+                let correctedText = activityCorrections.originalAnswer;
+                
+                // Appliquer les corrections cochées
+                const checkboxes = document.querySelectorAll(`#activity-correction-content-${chapterId}-${activityId} input[type="checkbox"]:checked`);
+                console.log(`📋 ${checkboxes.length} corrections cochées à appliquer pour l'activité`);
+                
+                checkboxes.forEach((checkbox, index) => {
+                    // Utiliser le bon format de corrections
+                    const correctionList = activityCorrections.corrections.corrections || activityCorrections.corrections.errors || [];
+                    const correction = correctionList[index];
+                    if (correction) {
+                        correctedText = correctedText.replace(correction.original, correction.corrected);
+                        console.log(`✅ Correction appliquée: "${correction.original}" → "${correction.corrected}"`);
+                    } else {
+                        console.warn(`⚠️ Correction non trouvée à l'index ${index}`);
+                    }
+                });
+                
+                // Utiliser le texte corrigé complet si disponible
+                if (activityCorrections.corrections.correctedText) {
+                    correctedText = activityCorrections.corrections.correctedText;
+                }
+                
+                textarea.value = correctedText;
+                console.log('✅ Corrections appliquées pour l\'activité:', correctedText);
+                
+                // Fermer le panneau de correction
+                closeActivityCorrectionPanel(chapterId, activityId);
+                
+                // Mettre à jour le panneau avec un message de succès
+                const correctionContent = document.getElementById(`activity-correction-content-${chapterId}-${activityId}`);
+                correctionContent.innerHTML = `
+                    <div class="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-green-800">✅ Corrections appliquées</span>
+                        </div>
+                        <p class="text-sm mt-2 text-green-700">Votre réponse a été corrigée dans le champ de saisie.</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Erreur applyActivityCorrections:', error);
+            }
+        };
+        
+        window.ignoreActivityCorrections = function(chapterId, activityId) {
+            try {
+                console.log('⏭️ ignoreActivityCorrections appelé pour', chapterId, activityId);
+                closeActivityCorrectionPanel(chapterId, activityId);
+            } catch (error) {
+                console.error('❌ Erreur ignoreActivityCorrections:', error);
+            }
+        };
+        
+        window.closeActivityCorrectionPanel = function(chapterId, activityId) {
+            const correctionPanel = document.getElementById(`activity-correction-panel-${chapterId}-${activityId}`);
+            correctionPanel.classList.add('hidden');
+            console.log('📝 Panneau de correction d\'activité fermé');
+        };
+        
+        // Créer la fonction submitActivity si elle n'existe pas
+        window.submitActivity = window.submitActivity || function(chapterId, activityId) {
+            try {
+                console.log('🚀 submitActivity appelé pour', chapterId, activityId);
+                
+                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+                const answer = textarea.value.trim();
+                
+                if (!answer) {
+                    alert('⚠️ Veuillez d\'abord écrire une réponse.');
+                    return;
+                }
+                
+                console.log('📝 Réponse à soumettre:', answer);
+                
+                // Afficher l'indicateur de chargement
+                const feedbackDiv = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
+                const feedbackText = document.getElementById(`activity-feedback-text-${chapterId}-${activityId}`);
+                
+                feedbackDiv.classList.remove('hidden');
+                feedbackText.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2 text-blue-600">Analyse en cours...</p></div>';
+                
+                // Envoyer la réponse via le système IA
+                if (window.demanderIA) {
+                    console.log('📡 Appel de window.demanderIA pour l\'activité...');
+                    
+                    // Récupérer le contexte de l'activité
+                    const activity = window.ActivitiesOptimized?.getActivity(chapterId, activityId);
+                    const activityContext = activity?.context || 'activité';
+                    
+                    window.demanderIA(answer, activityContext)
+                        .then((response) => {
+                            console.log('✅ Réponse IA reçue pour l\'activité:', response);
+                            
+                            // Afficher la réponse de l'IA
+                            if (response && response.analysis) {
+                                let messageToDisplay = response.analysis;
+                                
+                                if (typeof messageToDisplay === 'object') {
+                                    if (messageToDisplay.analysis) {
+                                        messageToDisplay = messageToDisplay.analysis;
+                                    } else if (messageToDisplay.response) {
+                                        messageToDisplay = messageToDisplay.response;
+                                    } else {
+                                        messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                    }
+                                }
+                                
+                                if (typeof messageToDisplay === 'object') {
+                                    messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                }
+                                
+                                // Afficher avec le même format que les messages de chat
+                                feedbackText.innerHTML = `
+                                    <div class="flex gap-3">
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                                                <div class="flex justify-between items-start">
+                                                    <p class="text-sm flex-1" style="color: var(--bs-white);">${messageToDisplay}</p>
+                                                    <button 
+                                                        onclick="readText(this)"
+                                                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                                                        title="Lire à voix haute"
+                                                    >
+                                                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                feedbackText.innerHTML = `
+                                    <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span class="text-sm font-medium text-yellow-800">⚠️ Réponse incomplète</span>
+                                        </div>
+                                        <p class="text-sm mt-2 text-yellow-700">Désolé, je n'ai pas pu générer de réponse complète.</p>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('❌ Erreur lors de l\'analyse de l\'activité:', error);
+                            feedbackText.innerHTML = `
+                                <div class="p-3 rounded-lg bg-red-50 border border-red-200">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span class="text-sm font-medium text-red-800">❌ Erreur technique</span>
+                                    </div>
+                                    <p class="text-sm mt-2 text-red-600">Une erreur technique est survenue. Veuillez réessayer.</p>
+                                </div>
+                            `;
+                        });
+                } else {
+                    console.error('❌ window.demanderIA non disponible pour l\'activité');
+                    feedbackText.innerHTML = `
+                        <div class="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                            <div class="flex items-center gap-2">
+                                <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-800">⚠️ Service indisponible</span>
+                            </div>
+                            <p class="text-sm mt-2 text-gray-600">Le service IA n'est pas disponible actuellement.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur submitActivity:', error);
+            }
+        };
         
         // Fonctions pour l'indicateur de chargement
     </script>
@@ -5497,11 +5880,38 @@
                   `}
                   <div class="flex gap-2">
                     <button 
+                      onclick="analyzeActivityAnswer('${chapterId}', '${id}')"
+                      class="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors"
+                    >
+                      🔍 Analyser et corriger
+                    </button>
+                    <button 
                       onclick="submitActivity('${chapterId}', '${id}')"
                       class="px-4 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-800 transition-colors"
                     >
                       Vérifier avec l'IA
                     </button>
+                  </div>
+                  <div id="activity-correction-panel-${chapterId}-${id}" class="hidden mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="text-sm font-medium text-amber-800">🔍 Analyse de votre réponse</h4>
+                      <button onclick="closeActivityCorrectionPanel('${chapterId}', '${id}')" class="text-amber-600 hover:text-amber-800">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div id="activity-correction-content-${chapterId}-${id}" class="space-y-2">
+                      <!-- Contenu des corrections -->
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                      <button onclick="applyActivityCorrections('${chapterId}', '${id}')" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
+                        ✅ Appliquer les corrections
+                      </button>
+                      <button onclick="ignoreActivityCorrections('${chapterId}', '${id}')" class="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors">
+                        ⏭️ Ignorer
+                      </button>
+                    </div>
                   </div>
                   <div id="activity-feedback-${chapterId}-${id}" class="hidden p-3 bg-slate-50 rounded-lg text-sm">
                     <div class="flex items-start justify-between gap-2">
