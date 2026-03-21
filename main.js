@@ -661,6 +661,20 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         
         console.log('🔑 Clé API Groq:', apiKey.substring(0, 10) + '...');
         
+        // Déterminer le type de prompt selon le contexte
+        let systemPrompt;
+        let userPrompt;
+        
+        if (activityContext === 'chat' || activityContext.includes('chat')) {
+            // Mode chat : répondre directement aux questions
+            systemPrompt = `Tu es un assistant expert en français et en pédagogie. Réponds de manière claire, utile et encourageante aux questions de l'étudiant. Sois précis et donne des exemples quand c'est pertinent. Utilise un langage simple mais correct.`;
+            userPrompt = `Question de l'étudiant : "${studentAnswer}"`;
+        } else {
+            // Mode analyse pédagogique : analyser la réponse
+            systemPrompt = `Tu es un expert en français et en pédagogie. Analyse la réponse de l'étudiant avec le contexte suivant : ${activityContext}. Sois encourageant mais précis. Identifie les points forts et les axes d'amélioration. Formatage JSON avec les champs : analysis, error_type, rule, hint, example, exercise, validation, confidence.`;
+            userPrompt = `Texte de l'étudiant : "${studentAnswer}"`;
+        }
+        
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -672,14 +686,14 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
                 messages: [
                     {
                         role: 'system',
-                        content: `Tu es un expert en français et en pédagogie. Analyse la réponse de l'étudiant avec le contexte suivant : ${activityContext}. Sois encourageant mais précis. Identifie les points forts et les axes d'amélioration. Formatage JSON avec les champs : analysis, error_type, rule, hint, example, exercise, validation, confidence.`
+                        content: systemPrompt
                     },
                     {
                         role: 'user',
-                        content: `Texte de l'étudiant : "${studentAnswer}"`
+                        content: userPrompt
                     }
                 ],
-                max_tokens: 300, // Réduit pour plus de stabilité
+                max_tokens: activityContext === 'chat' ? 500 : 300, // Plus de tokens pour le chat
                 temperature: 0.7
             }),
             signal: controller.signal
@@ -693,26 +707,37 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         
         const data = await response.json();
         const aiResponse = data.choices[0].message.content;
-        
         console.log('✅ Réponse API Groq reçue:', aiResponse);
         
-        // Tenter de parser le JSON
-        try {
-            const parsedResponse = JSON.parse(aiResponse);
-            console.log('📊 Réponse parsée:', parsedResponse);
-            return JSON.stringify(parsedResponse);
-        } catch (parseError) {
-            // console.log('⚠️ Réponse non-JSON, retour formaté'); // Réduit le bruit console
-            return JSON.stringify({
-                analysis: aiResponse.substring(0, 200),
-                error_type: "général",
-                rule: "expression",
-                hint: "Continuez vos efforts",
-                example: "Votre expression est bonne",
-                exercise: "Pratiquez régulièrement",
-                validation: true,
-                confidence: 0.8
-            });
+        // Traiter la réponse selon le contexte
+        if (activityContext === 'chat' || activityContext.includes('chat')) {
+            // Mode chat : retourner la réponse directement
+            return {
+                analysis: aiResponse,
+                corrections: [],
+                explanations: [],
+                suggestions: [],
+                isChatResponse: true
+            };
+        } else {
+            // Mode analyse pédagogique : tenter de parser le JSON
+            try {
+                const parsedResponse = JSON.parse(aiResponse);
+                console.log('📊 Réponse parsée:', parsedResponse);
+                return JSON.stringify(parsedResponse);
+            } catch (parseError) {
+                // console.log('⚠️ Réponse non-JSON, retour formaté'); // Réduit le bruit console
+                return JSON.stringify({
+                    analysis: aiResponse.substring(0, 200),
+                    error_type: "général",
+                    rule: "expression",
+                    hint: "Continuez vos efforts",
+                    example: "Votre expression est bonne",
+                    exercise: "Pratiquez régulièrement",
+                    validation: true,
+                    confidence: 0.8
+                });
+            }
         }
         
     } catch (error) {
