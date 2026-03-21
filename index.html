@@ -26,7 +26,7 @@
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="nlp/correction-integration-examples.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=51"></script>
+    <script src="main.js?v=52"></script>
     
     <!-- Debug script -->
     <script>
@@ -223,13 +223,37 @@
                         .then((response) => {
                             console.log('✅ Message envoyé avec succès via window.demanderIA');
                             console.log('📤 Réponse IA:', response);
+                            console.log('📝 Type de response.analysis:', typeof response.analysis);
+                            console.log('📝 Contenu de response.analysis:', response.analysis);
                             
                             // Masquer l'indicateur de chargement
                             hideTypingIndicator();
                             
                             // Afficher la réponse de l'IA
                             if (response && response.analysis) {
-                                addChatMessage(response.analysis, 'ai');
+                                // response.analysis peut être une chaîne (mode chat) ou un objet (mode analyse)
+                                let messageToDisplay = response.analysis;
+                                
+                                // Si c'est un objet, essayer d'extraire le texte
+                                if (typeof messageToDisplay === 'object') {
+                                    console.log('🔍 response.analysis est un objet, clés:', Object.keys(messageToDisplay));
+                                    // Chercher une propriété qui pourrait contenir le texte
+                                    if (messageToDisplay.analysis) {
+                                        messageToDisplay = messageToDisplay.analysis;
+                                    } else if (messageToDisplay.response) {
+                                        messageToDisplay = messageToDisplay.response;
+                                    } else {
+                                        messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                    }
+                                }
+                                
+                                // Si c'est encore un objet après extraction, convertir en chaîne
+                                if (typeof messageToDisplay === 'object') {
+                                    messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                }
+                                
+                                console.log('📤 Message final à afficher:', messageToDisplay);
+                                addChatMessage(messageToDisplay, 'ai');
                             } else {
                                 addChatMessage('Désolé, je n\'ai pas pu générer de réponse.', 'ai');
                             }
