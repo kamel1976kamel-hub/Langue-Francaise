@@ -18,28 +18,44 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     correctionButton.innerHTML = '🔍 Correction';
     correctionButton.dataset.target = targetInputId;
     
-    // Ajouter les styles - copie exacte du bouton vert
+    // Ajouter les styles - copie exacte du bouton vert avec héritage
     correctionButton.style.cssText = `
-        margin: 0;
-        width: 100%;
-        height: 40px;
-        background: #f59e0b;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        box-sizing: border-box;
-        line-height: 1;
-        flex-shrink: 0;
+        background: #f59e0b !important;
+        color: white !important;
+        border: none !important;
+        cursor: pointer !important;
     `;
+    
+    // Ajouter les classes du bouton vert pour hériter des styles
+    correctionButton.className = 'btn btn-warning integrated-correction-btn';
+    
+    // Forcer l'héritage des styles du bouton vert
+    setTimeout(() => {
+        const greenButton = document.querySelector('.btn-primary, .submit-btn, button[type="submit"]');
+        if (greenButton) {
+            const computedStyles = window.getComputedStyle(greenButton);
+            
+            // Copier tous les styles pertinents
+            const stylesToCopy = [
+                'height', 'width', 'padding', 'margin', 'border-radius',
+                'font-size', 'font-weight', 'line-height', 'display',
+                'align-items', 'justify-content', 'box-sizing', 'transition'
+            ];
+            
+            stylesToCopy.forEach(style => {
+                correctionButton.style.setProperty(style, computedStyles.getPropertyValue(style), 'important');
+            });
+            
+            console.log('🎨 Styles copiés du bouton vert:', {
+                height: computedStyles.height,
+                width: computedStyles.width,
+                padding: computedStyles.padding,
+                margin: computedStyles.margin,
+                fontSize: computedStyles.fontSize,
+                fontWeight: computedStyles.fontWeight
+            });
+        }
+    }, 100);
     
     correctionButton.addEventListener('mouseenter', () => {
         correctionButton.style.background = '#d97706';

@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=53"></script>
-    <script src="nlp/correction-integration-examples.js?v=53"></script>
+    <script src="nlp/integrated-correction-system.js?v=54"></script>
+    <script src="nlp/correction-integration-examples.js?v=54"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -52,15 +52,45 @@
             // Analyser les styles du bouton vert
             const greenButton = document.querySelector('.btn-primary, .submit-btn, button[type="submit"]');
             if (greenButton) {
-                console.log('🎨 Styles du bouton vert:', {
-                    height: window.getComputedStyle(greenButton).height,
-                    padding: window.getComputedStyle(greenButton).padding,
-                    fontSize: window.getComputedStyle(greenButton).fontSize,
-                    fontWeight: window.getComputedStyle(greenButton).fontWeight,
-                    borderRadius: window.getComputedStyle(greenButton).borderRadius,
-                    margin: window.getComputedStyle(greenButton).margin,
-                    width: window.getComputedStyle(greenButton).width
+                const greenStyles = window.getComputedStyle(greenButton);
+                console.log('🎨 Styles complets du bouton vert:', {
+                    height: greenStyles.height,
+                    width: greenStyles.width,
+                    padding: greenStyles.padding,
+                    margin: greenStyles.margin,
+                    fontSize: greenStyles.fontSize,
+                    fontWeight: greenStyles.fontWeight,
+                    borderRadius: greenStyles.borderRadius,
+                    display: greenStyles.display,
+                    lineHeight: greenStyles.lineHeight,
+                    boxSizing: greenStyles.boxSizing,
+                    border: greenStyles.border,
+                    fontFamily: greenStyles.fontFamily
                 });
+                
+                // Comparer avec le bouton de correction
+                const correctionBtn = document.querySelector('.integrated-correction-btn');
+                if (correctionBtn) {
+                    const correctionStyles = window.getComputedStyle(correctionBtn);
+                    console.log('🔍 Styles du bouton correction:', {
+                        height: correctionStyles.height,
+                        width: correctionStyles.width,
+                        padding: correctionStyles.padding,
+                        margin: correctionStyles.margin,
+                        fontSize: correctionStyles.fontSize,
+                        fontWeight: correctionStyles.fontWeight,
+                        borderRadius: correctionStyles.borderRadius,
+                        display: correctionStyles.display,
+                        lineHeight: correctionStyles.lineHeight,
+                        boxSizing: correctionStyles.boxSizing
+                    });
+                    
+                    console.log('📊 Comparaison des hauteurs:', {
+                        vert: greenStyles.height,
+                        correction: correctionStyles.height,
+                        identiques: greenStyles.height === correctionStyles.height
+                    });
+                }
             }
             
             // Ajouter manuellement un bouton de test
