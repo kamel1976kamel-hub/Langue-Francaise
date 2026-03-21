@@ -25,7 +25,7 @@
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=61"></script>
+    <script src="main.js?v=63"></script>
     
     // Debug script -->
     <script>
@@ -350,9 +350,9 @@
         
         window.applyAllCorrections = function() {
             try {
-                console.log('✅ applyAllCorrections appelé');
+                console.log('🔧 applyAllCorrections appelé');
                 
-                if (!window.currentCorrections || !window.originalQuestion) {
+                if (!window.currentCorrections) {
                     console.log('⚠️ Aucune correction à appliquer');
                     return;
                 }
@@ -362,10 +362,17 @@
                 
                 // Appliquer les corrections cochées
                 const checkboxes = document.querySelectorAll('#correctionContent input[type="checkbox"]:checked');
+                console.log(`📋 ${checkboxes.length} corrections cochées à appliquer`);
+                
                 checkboxes.forEach((checkbox, index) => {
-                    const error = window.currentCorrections.errors[index];
-                    if (error && error.suggestion) {
-                        correctedText = correctedText.replace(error.original || error.text, error.suggestion);
+                    // Utiliser le bon format de corrections
+                    const correctionList = window.currentCorrections.corrections || window.currentCorrections.errors || [];
+                    const correction = correctionList[index];
+                    if (correction) {
+                        correctedText = correctedText.replace(correction.original, correction.corrected);
+                        console.log(`✅ Correction appliquée: "${correction.original}" → "${correction.corrected}"`);
+                    } else {
+                        console.warn(`⚠️ Correction non trouvée à l'index ${index}`);
                     }
                 });
                 
