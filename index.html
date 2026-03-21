@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=65"></script>
-    <script src="nlp/correction-integration-examples.js?v=65"></script>
+    <script src="nlp/integrated-correction-system.js?v=66"></script>
+    <script src="nlp/correction-integration-examples.js?v=66"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -127,12 +127,26 @@
                     newCorrectionBtn.dataset.target = chatInput.id;
                     
                     // Ajouter le gestionnaire de clic
-                    newCorrectionBtn.addEventListener('click', () => {
+                    newCorrectionBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🔍 Clic sur bouton de correction détecté');
+                        
                         if (window.integratedCorrectionSystem) {
                             window.integratedCorrectionSystem.handleCorrectionButtonClick({
                                 dataset: { target: chatInput.id }
                             });
+                        } else {
+                            console.error('❌ integratedCorrectionSystem non disponible');
                         }
+                    });
+                    
+                    // Empêcher la suppression du bouton
+                    newCorrectionBtn.addEventListener('DOMNodeRemoved', (e) => {
+                        console.warn('⚠️ Tentative de suppression du bouton de correction détectée !');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
                     });
                     
                     // Insérer le bouton avant le bouton de soumission
@@ -149,6 +163,57 @@
                 console.log('❌ Bouton de soumission non trouvé');
             }
         }, 5000);
+    </script>
+    
+    <!-- Fonction sendAIChatMessage manquante -->
+    <script>
+        // Fonction pour envoyer le message chat (manquante)
+        window.sendAIChatMessage = function() {
+            try {
+                // Trouver l'input de chat
+                const chatInput = document.querySelector('textarea[placeholder*="question"], input[placeholder*="question"], #chatInput, textarea');
+                
+                if (!chatInput) {
+                    console.error('❌ Input de chat non trouvé');
+                    return;
+                }
+                
+                const message = chatInput.value.trim();
+                if (!message) {
+                    console.log('⚠️ Message vide');
+                    return;
+                }
+                
+                console.log('📤 Envoi du message:', message);
+                
+                // Utiliser le système IA existant
+                if (window.demanderIA) {
+                    window.demanderIA(message, 'chat').then(response => {
+                        console.log('✅ Réponse IA reçue:', response);
+                        
+                        // Vider l'input
+                        chatInput.value = '';
+                        
+                        // Réinitialiser la hauteur
+                        chatInput.style.height = 'auto';
+                        
+                        // Afficher la réponse (adapter selon votre interface)
+                        console.log('📝 Réponse à afficher:', response.analysis);
+                        
+                    }).catch(error => {
+                        console.error('❌ Erreur IA:', error);
+                    });
+                } else {
+                    console.error('❌ Système IA non disponible');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur sendAIChatMessage:', error);
+            }
+        };
+        
+        // Debug pour vérifier que la fonction est bien définie
+        console.log('✅ Fonction sendAIChatMessage définie:', typeof window.sendAIChatMessage);
     </script>
     
     <style>
