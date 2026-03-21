@@ -25,7 +25,7 @@
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=63"></script>
+    <script src="main.js?v=64"></script>
     
     // Debug script -->
     <script>
@@ -145,7 +145,14 @@
                             <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                                 <p class="text-sm" style="color: var(--bs-white);">${message}</p>
                             </div>
-                            <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <button onclick="readText(this)" class="p-2 rounded-full hover:bg-white/10 transition-colors" title="Lire à voix haute">
+                                    <svg class="h-4 w-4" style="color: var(--bs-white);" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                                    </svg>
+                                </button>
+                                <p class="text-xs" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                            </div>
                         </div>
                     `;
                 }
@@ -558,6 +565,97 @@
             } catch (error) {
                 console.error('❌ Erreur hideTypingIndicator:', error);
             }
+        }
+        
+        // Fonction pour lire le texte à voix haute
+        function readText(button) {
+            try {
+                console.log('🔊 Lecture audio demandée');
+                
+                // Trouver le message parent
+                const messageDiv = button.closest('.flex-1');
+                const textElement = messageDiv.querySelector('p');
+                const textToRead = textElement.textContent;
+                
+                console.log('📝 Texte à lire:', textToRead);
+                
+                // Vérifier si la lecture est déjà en cours
+                if (window.speechSynthesis.speaking) {
+                    console.log('⏸️ Arrêt de la lecture en cours');
+                    window.speechSynthesis.cancel();
+                    
+                    // Réinitialiser l'icône
+                    button.innerHTML = `
+                        <svg class="h-4 w-4" style="color: var(--bs-white);" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                    `;
+                    return;
+                }
+                
+                // Créer l'utterance pour la synthèse vocale
+                const utterance = new SpeechSynthesisUtterance(textToRead);
+                
+                // Configurer la voix (français si disponible)
+                const voices = window.speechSynthesis.getVoices();
+                const frenchVoice = voices.find(voice => voice.lang.startsWith('fr'));
+                if (frenchVoice) {
+                    utterance.voice = frenchVoice;
+                }
+                
+                // Configurer les paramètres
+                utterance.rate = 0.9;  // Vitesse légèrement réduite
+                utterance.pitch = 1.0; // Ton normal
+                utterance.volume = 1.0; // Volume maximum
+                
+                // Changer l'icône pendant la lecture
+                button.innerHTML = `
+                    <svg class="h-4 w-4" style="color: var(--bs-white);" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                `;
+                
+                // Événements
+                utterance.onstart = () => {
+                    console.log('🔊 Début de la lecture audio');
+                };
+                
+                utterance.onend = () => {
+                    console.log('✅ Fin de la lecture audio');
+                    // Réinitialiser l'icône
+                    button.innerHTML = `
+                        <svg class="h-4 w-4" style="color: var(--bs-white);" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                    `;
+                };
+                
+                utterance.onerror = (event) => {
+                    console.error('❌ Erreur lors de la lecture audio:', event);
+                    // Réinitialiser l'icône en cas d'erreur
+                    button.innerHTML = `
+                        <svg class="h-4 w-4" style="color: var(--bs-white);" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                    `;
+                };
+                
+                // Démarrer la lecture
+                window.speechSynthesis.speak(utterance);
+                
+            } catch (error) {
+                console.error('❌ Erreur readText:', error);
+            }
+        }
+        
+        // Charger les voix disponibles au chargement de la page
+        if (window.speechSynthesis) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => {
+                console.log('🔊 Voix disponibles:', window.speechSynthesis.getVoices().length);
+            };
+        } else {
+            console.warn('⚠️ Speech Synthesis non supporté par ce navigateur');
         }
         
         // Fonctions pour l'indicateur de chargement
