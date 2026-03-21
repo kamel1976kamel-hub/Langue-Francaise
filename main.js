@@ -297,7 +297,7 @@ function improveResponseQuality(response, originalText = '') {
         'C\'est quoi un texte descriptif': 'Qu\'est-ce qu\'un texte descriptif',
         'Par où commencerons-nous': 'Par où commencerons-nous',
         'Je vais vous aider avec ça': 'Je vais vous aider avec cela',
-        'au moins entre 4 à 6 lignes': 'au moins 4 à 6 lignes'
+        'au moins entre 4 à 6 lignes': 'au main.js?v=44 à 6 lignes'
     };
     
     Object.keys(reformulations).forEach(maladroit => {
@@ -654,7 +654,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
         // Vérifier si la clé API est valide
-        const apiKey = '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';
+        const apiKey = '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';
         if (!apiKey || apiKey.trim() === '') {
             throw new Error('Clé API Groq manquante ou vide');
         }
