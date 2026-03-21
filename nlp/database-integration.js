@@ -176,13 +176,23 @@ class NLPDatabaseIntegration {
             const rules = window.NLPRules || {};
             const corrections = [];
             
+            console.log('🔍 Règles disponibles pour correction:', {
+                style: rules.style?.length || 0,
+                vocabulaire: rules.vocabulaire?.length || 0,
+                conjugaison: rules.conjugaison?.length || 0,
+                orthographe: rules.orthographe?.length || 0
+            });
+            
             // Appliquer les règles de chaque catégorie
             ['style', 'vocabulaire', 'conjugaison', 'orthographe'].forEach(category => {
                 if (rules[category]) {
-                    rules[category].forEach(rule => {
+                    console.log(`🔍 Test des règles ${category}:`, rules[category].length);
+                    rules[category].forEach((rule, index) => {
                         try {
                             if (rule.pattern && rule.correction) {
+                                console.log(`🔍 Test règle ${index}: ${rule.name} - pattern:`, rule.pattern);
                                 const matches = text.match(rule.pattern);
+                                console.log(`📋 Résultat pour ${rule.name}:`, matches);
                                 if (matches) {
                                     matches.forEach(match => {
                                         let correction;
@@ -192,6 +202,7 @@ class NLPDatabaseIntegration {
                                             correction = match.replace(rule.pattern, rule.correction);
                                         }
                                         
+                                        console.log(`✅ Correction trouvée: "${match}" → "${correction}"`);
                                         corrections.push({
                                             original: match,
                                             corrected: correction,
@@ -209,11 +220,15 @@ class NLPDatabaseIntegration {
                 }
             });
             
+            console.log('📊 Corrections trouvées:', corrections.length);
+            
             // Appliquer les corrections
             let correctedText = text;
             corrections.forEach(correction => {
                 correctedText = correctedText.replace(correction.original, correction.corrected);
             });
+            
+            console.log('📝 Texte corrigé:', correctedText);
             
             return {
                 success: true,
