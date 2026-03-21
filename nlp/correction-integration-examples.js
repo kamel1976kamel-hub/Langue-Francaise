@@ -26,10 +26,21 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         background-color: #f59e0b !important;
         color: white !important;
         transition: all 0.2s ease !important;
+        position: relative !important;
+        visibility: visible !important;
+        display: inline-flex !important;
+        opacity: 1 !important;
     `;
     
     // Plus besoin de copier les styles - les classes Tailwind s'en occupent
     console.log('🎨 Bouton de correction créé avec classes Tailwind identiques');
+    
+    // Empêcher la suppression du bouton
+    correctionButton.addEventListener('DOMNodeRemoved', (e) => {
+        console.warn('⚠️ Tentative de suppression du bouton de correction détectée !');
+        e.preventDefault();
+        e.stopPropagation();
+    });
     
     correctionButton.addEventListener('mouseenter', () => {
         correctionButton.style.background = '#d97706';

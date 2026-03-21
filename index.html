@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=59"></script>
-    <script src="nlp/correction-integration-examples.js?v=59"></script>
+    <script src="nlp/integrated-correction-system.js?v=60"></script>
+    <script src="nlp/correction-integration-examples.js?v=60"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -93,16 +93,21 @@
                 }
             }
             
-            // Nettoyer les doublons de boutons de correction
+            // Debug: Surveiller les boutons de correction
             const allCorrectionBtns = document.querySelectorAll('.integrated-correction-btn');
-            if (allCorrectionBtns.length > 1) {
-                console.log(`🔄 Nettoyage : ${allCorrectionBtns.length} boutons de correction trouvés, suppression des doublons`);
-                // Garder seulement le premier bouton
-                for (let i = 1; i < allCorrectionBtns.length; i++) {
-                    allCorrectionBtns[i].remove();
-                }
-                console.log('✅ Doublons supprimés, 1 bouton de correction conservé');
-            }
+            console.log(`🔍 Boutons de correction trouvés: ${allCorrectionBtns.length}`);
+            
+            // Observer les changements sur les boutons
+            allCorrectionBtns.forEach((btn, index) => {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' || mutation.type === 'childList') {
+                            console.log(`🔄 Changement détecté sur le bouton ${index}:`, mutation);
+                        }
+                    });
+                });
+                observer.observe(btn, { attributes: true, childList: true, subtree: true });
+            });
         }, 5000);
     </script>
     
