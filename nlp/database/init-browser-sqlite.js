@@ -3394,18 +3394,25 @@ class BrowserSQLiteManager {
     }
 
     async query(sql, params = []) {
-        // Simuler des requêtes SQL simples
-        if (sql.includes('SELECT * FROM linguistic_rules')) {
-            return this.db.get('linguistic_rules') || [];
-        }
+        console.log('🔍 Query SQL simulée:', sql, params);
         
-        if (sql.includes('SELECT * FROM linguistic_rules WHERE category')) {
-            const category = params[0];
-            const allRules = this.db.get('linguistic_rules') || [];
-            return allRules.filter(rule => rule.category === category);
+        if (sql.includes('SELECT') && sql.includes('linguistic_rules')) {
+            if (sql.includes('WHERE category')) {
+                const category = params[0];
+                const allRules = this.db.get('linguistic_rules') || [];
+                const filtered = allRules.filter(rule => rule.category === category);
+                console.log(`📋 Règles trouvées pour ${category}:`, filtered.length);
+                return filtered;
+            } else {
+                // Requête SELECT * FROM linguistic_rules
+                const allRules = this.db.get('linguistic_rules') || [];
+                console.log('📋 Toutes les règles trouvées:', allRules.length);
+                return allRules;
+            }
         }
         
         // Pour d'autres requêtes, retourner un résultat vide
+        console.log('⚠️ Requête non gérée, retour vide');
         return [];
     }
 

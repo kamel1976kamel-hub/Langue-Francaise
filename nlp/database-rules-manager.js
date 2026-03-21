@@ -134,6 +134,7 @@ class DatabaseRulesManager {
         }
 
         try {
+            console.log('🔍 Chargement de toutes les règles depuis la base de données...');
             const rules = await this.db.query(`
                 SELECT 
                     rule_id as id,
@@ -150,7 +151,16 @@ class DatabaseRulesManager {
                 ORDER BY category, priority DESC
             `);
 
+            console.log('📋 Règles brutes reçues:', rules.length);
+            
             const rulesByCategory = this.groupRulesByCategory(rules);
+            
+            console.log('📊 Règles groupées par catégorie:', {
+                style: rulesByCategory.style.length,
+                vocabulaire: rulesByCategory.vocabulaire.length,
+                conjugaison: rulesByCategory.conjugaison.length,
+                orthographe: rulesByCategory.orthographe.length
+            });
             
             if (this.config.cacheRules) {
                 this.cache.set(cacheKey, rulesByCategory);
@@ -160,7 +170,8 @@ class DatabaseRulesManager {
             return rulesByCategory;
 
         } catch (error) {
-            console.error('Erreur lors du chargement des règles:', error);
+            console.error('❌ Erreur lors du chargement des règles:', error);
+            console.log('🔄 Utilisation du fallback JSON');
             return this.getJSONRules();
         }
     }
