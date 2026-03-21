@@ -18,16 +18,14 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     correctionButton.innerHTML = '🔍 Correction';
     correctionButton.dataset.target = targetInputId;
     
-    // Ajouter les styles - copie exacte du bouton vert avec héritage
-    correctionButton.style.cssText = `
-        background: #f59e0b !important;
-        color: white !important;
-        border: none !important;
-        cursor: pointer !important;
-    `;
+    // Ajouter les classes du bouton vert pour hériter des styles de base
+    correctionButton.className = 'btn integrated-correction-btn';
     
-    // Ajouter les classes du bouton vert pour hériter des styles
-    correctionButton.className = 'btn btn-warning integrated-correction-btn';
+    // Appliquer uniquement la couleur différente en gardant les autres styles
+    correctionButton.style.cssText = `
+        background-color: #f59e0b !important;
+        border-color: #f59e0b !important;
+    `;
     
     // Forcer l'héritage des styles du bouton vert
     setTimeout(() => {
