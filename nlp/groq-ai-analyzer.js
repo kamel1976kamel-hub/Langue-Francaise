@@ -5,7 +5,7 @@ console.log('🧠 Initialisation du module IA Groq pour analyse linguistique');
 
 // Configuration de l'API Groq
 const GROQ_CONFIG = {
-    apiKey: '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', // Clé API Groq de l'utilisateur
+    apiKey: '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', // Clé API Groq de l'utilisateur
     baseURL: 'https://api.groq.com/openai/v1',
     model: 'llama-3.1-8b-instant', // modèle valide et disponible
     maxTokens: 500,
