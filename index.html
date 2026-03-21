@@ -25,7 +25,7 @@
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=66"></script>
+    <script src="main.js?v=68"></script>
     
     // Debug script -->
     <script>
@@ -652,6 +652,218 @@
         }
         
         // Fonctions pour la correction des activités
+        window.analyzeAndSubmitActivity = function(chapterId, activityId) {
+            try {
+                console.log('🔍 analyzeAndSubmitActivity appelé pour', chapterId, activityId);
+                
+                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+                const answer = textarea.value.trim();
+                
+                if (!answer) {
+                    console.log('⚠️ Réponse vide');
+                    alert('⚠️ Veuillez d\'abord écrire une réponse.');
+                    return;
+                }
+                
+                console.log('📝 Réponse à analyser:', answer);
+                
+                // Afficher l'indicateur de chargement
+                const feedbackDiv = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
+                const feedbackText = document.getElementById(`activity-feedback-text-${chapterId}-${activityId}`);
+                
+                feedbackDiv.classList.remove('hidden');
+                feedbackText.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2 text-blue-600">Analyse en cours...</p></div>';
+                
+                // Analyser la réponse avec le système de correction
+                if (window.correctTextWithDatabase) {
+                    console.log('🚀 Utilisation de la base de données pour l\'activité');
+                    window.correctTextWithDatabase(answer)
+                        .then(corrections => {
+                            console.log('✅ Corrections reçues pour l\'activité:', corrections);
+                            processActivityCorrections(corrections, answer, chapterId, activityId);
+                        })
+                        .catch(error => {
+                            console.error('❌ Erreur lors de l\'analyse de l\'activité:', error);
+                            // En cas d'erreur, soumettre directement
+                            submitCorrectedActivity(answer, chapterId, activityId);
+                        });
+                } else if (window.analyzeTextLocal) {
+                    console.log('🔄 Utilisation de l\'analyse locale pour l\'activité');
+                    const corrections = window.analyzeTextLocal(answer);
+                    console.log('✅ Corrections locales reçues pour l\'activité:', corrections);
+                    processActivityCorrections(corrections, answer, chapterId, activityId);
+                } else {
+                    console.log('⚠️ Système de correction non disponible pour l\'activité, soumission directe');
+                    submitCorrectedActivity(answer, chapterId, activityId);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur analyzeAndSubmitActivity:', error);
+            }
+        };
+        
+        function processActivityCorrections(corrections, originalAnswer, chapterId, activityId) {
+            try {
+                // Vérifier les deux formats possibles
+                const correctionList = corrections.corrections || corrections.errors || [];
+                
+                if (!corrections || correctionList.length === 0) {
+                    console.log('✅ Aucune correction nécessaire, soumission directe');
+                    submitCorrectedActivity(originalAnswer, chapterId, activityId);
+                    return;
+                }
+                
+                console.log(`📋 ${correctionList.length} corrections trouvées pour l'activité`);
+                
+                // Appliquer automatiquement toutes les corrections
+                let correctedText = originalAnswer;
+                
+                // Utiliser le texte corrigé complet si disponible
+                if (corrections.correctedText) {
+                    correctedText = corrections.correctedText;
+                    console.log('✅ Utilisation du texte corrigé complet:', correctedText);
+                } else {
+                    // Appliquer les corrections manuellement
+                    correctionList.forEach((correction, index) => {
+                        if (correction.original && correction.corrected) {
+                            correctedText = correctedText.replace(correction.original, correction.corrected);
+                            console.log(`✅ Correction appliquée: "${correction.original}" → "${correction.corrected}"`);
+                        }
+                    });
+                }
+                
+                // Mettre à jour le textarea avec le texte corrigé
+                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+                textarea.value = correctedText;
+                
+                console.log('🚀 Soumission automatique de l\'activité corrigée:', correctedText);
+                
+                // Soumettre directement à l'IA
+                submitCorrectedActivity(correctedText, chapterId, activityId);
+                
+            } catch (error) {
+                console.error('❌ Erreur processActivityCorrections:', error);
+                // En cas d'erreur, soumettre le texte original
+                submitCorrectedActivity(originalAnswer, chapterId, activityId);
+            }
+        }
+        
+        function submitCorrectedActivity(answer, chapterId, activityId) {
+            try {
+                console.log('🚀 submitCorrectedActivity appelé pour', chapterId, activityId);
+                console.log('📝 Réponse à soumettre:', answer);
+                
+                // Afficher l'indicateur de chargement
+                const feedbackDiv = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
+                const feedbackText = document.getElementById(`activity-feedback-text-${chapterId}-${activityId}`);
+                
+                feedbackDiv.classList.remove('hidden');
+                feedbackText.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2 text-blue-600">Analyse en cours...</p></div>';
+                
+                // Envoyer la réponse via le système IA
+                if (window.demanderIA) {
+                    console.log('📡 Appel de window.demanderIA pour l\'activité...');
+                    
+                    // Utiliser un contexte d'activité par défaut
+                    const activityContext = 'activité';
+                    
+                    window.demanderIA(answer, activityContext)
+                        .then((response) => {
+                            console.log('✅ Réponse IA reçue pour l\'activité:', response);
+                            
+                            // Afficher la réponse de l'IA
+                            if (response && response.analysis) {
+                                let messageToDisplay = response.analysis;
+                                
+                                if (typeof messageToDisplay === 'object') {
+                                    if (messageToDisplay.analysis) {
+                                        messageToDisplay = messageToDisplay.analysis;
+                                    } else if (messageToDisplay.response) {
+                                        messageToDisplay = messageToDisplay.response;
+                                    } else {
+                                        messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                    }
+                                }
+                                
+                                if (typeof messageToDisplay === 'object') {
+                                    messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                }
+                                
+                                // Afficher avec le même format que les messages de chat
+                                feedbackText.innerHTML = `
+                                    <div class="flex gap-3">
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
+                                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
+                                                <div class="flex justify-between items-start">
+                                                    <p class="text-sm flex-1" style="color: var(--bs-white);">${messageToDisplay}</p>
+                                                    <button 
+                                                        onclick="readText(this)"
+                                                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
+                                                        title="Lire à voix haute"
+                                                    >
+                                                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                feedbackText.innerHTML = `
+                                    <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span class="text-sm font-medium text-yellow-800">⚠️ Réponse incomplète</span>
+                                        </div>
+                                        <p class="text-sm mt-2 text-yellow-700">Désolé, je n'ai pas pu générer de réponse complète.</p>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('❌ Erreur lors de l\'analyse de l\'activité:', error);
+                            feedbackText.innerHTML = `
+                                <div class="p-3 rounded-lg bg-red-50 border border-red-200">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span class="text-sm font-medium text-red-800">❌ Erreur technique</span>
+                                    </div>
+                                    <p class="text-sm mt-2 text-red-600">Une erreur technique est survenue. Veuillez réessayer.</p>
+                                </div>
+                            `;
+                        });
+                } else {
+                    console.error('❌ window.demanderIA non disponible pour l\'activité');
+                    feedbackText.innerHTML = `
+                        <div class="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                            <div class="flex items-center gap-2">
+                                <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-800">⚠️ Service indisponible</span>
+                            </div>
+                            <p class="text-sm mt-2 text-gray-600">Le service IA n'est pas disponible actuellement.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur submitCorrectedActivity:', error);
+            }
+        }
+        
         window.analyzeActivityAnswer = function(chapterId, activityId) {
             try {
                 console.log('🔍 analyzeActivityAnswer appelé pour', chapterId, activityId);
@@ -933,9 +1145,8 @@
                 if (window.demanderIA) {
                     console.log('📡 Appel de window.demanderIA pour l\'activité...');
                     
-                    // Récupérer le contexte de l'activité
-                    const activity = window.ActivitiesOptimized?.getActivity(chapterId, activityId);
-                    const activityContext = activity?.context || 'activité';
+                    // Utiliser un contexte d'activité par défaut
+                    const activityContext = 'activité';
                     
                     window.demanderIA(answer, activityContext)
                         .then((response) => {
@@ -5880,38 +6091,14 @@
                   `}
                   <div class="flex gap-2">
                     <button 
-                      onclick="analyzeActivityAnswer('${chapterId}', '${id}')"
-                      class="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors"
+                      onclick="analyzeAndSubmitActivity('${chapterId}', '${id}')"
+                      class="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2"
                     >
-                      🔍 Analyser et corriger
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                      </svg>
+                      Analyser et vérifier
                     </button>
-                    <button 
-                      onclick="submitActivity('${chapterId}', '${id}')"
-                      class="px-4 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-800 transition-colors"
-                    >
-                      Vérifier avec l'IA
-                    </button>
-                  </div>
-                  <div id="activity-correction-panel-${chapterId}-${id}" class="hidden mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div class="flex items-center justify-between mb-3">
-                      <h4 class="text-sm font-medium text-amber-800">🔍 Analyse de votre réponse</h4>
-                      <button onclick="closeActivityCorrectionPanel('${chapterId}', '${id}')" class="text-amber-600 hover:text-amber-800">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                      </button>
-                    </div>
-                    <div id="activity-correction-content-${chapterId}-${id}" class="space-y-2">
-                      <!-- Contenu des corrections -->
-                    </div>
-                    <div class="flex gap-2 mt-3">
-                      <button onclick="applyActivityCorrections('${chapterId}', '${id}')" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
-                        ✅ Appliquer les corrections
-                      </button>
-                      <button onclick="ignoreActivityCorrections('${chapterId}', '${id}')" class="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors">
-                        ⏭️ Ignorer
-                      </button>
-                    </div>
                   </div>
                   <div id="activity-feedback-${chapterId}-${id}" class="hidden p-3 bg-slate-50 rounded-lg text-sm">
                     <div class="flex items-start justify-between gap-2">
