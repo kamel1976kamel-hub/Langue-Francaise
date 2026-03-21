@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=64"></script>
-    <script src="nlp/correction-integration-examples.js?v=64"></script>
+    <script src="nlp/integrated-correction-system.js?v=65"></script>
+    <script src="nlp/correction-integration-examples.js?v=65"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -100,7 +100,7 @@
             allCorrectionBtns.forEach(btn => btn.remove());
             
             // Trouver le bouton de soumission pour copier ses styles exacts
-            const submitButton = document.querySelector('button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
+            const submitButton = document.querySelector('button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"], .btn-primary, .submit-btn, button[type="submit"]');
             if (submitButton) {
                 console.log('✅ Bouton de soumission trouvé, copie des styles...');
                 
