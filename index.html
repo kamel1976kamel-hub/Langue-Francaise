@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=63"></script>
-    <script src="nlp/correction-integration-examples.js?v=63"></script>
+    <script src="nlp/integrated-correction-system.js?v=64"></script>
+    <script src="nlp/correction-integration-examples.js?v=64"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -105,8 +105,13 @@
                 console.log('✅ Bouton de soumission trouvé, copie des styles...');
                 
                 // Trouver l'input associé
-                const chatInput = document.querySelector('input[placeholder*="question"], textarea[placeholder*="question"], input[placeholder*="poser"]');
+                const chatInput = document.querySelector('input[placeholder*="question"], textarea[placeholder*="question"], input[placeholder*="poser"], #chatInput, input[type="text"], textarea');
                 if (chatInput) {
+                    // S'assurer que l'input a un ID
+                    if (!chatInput.id) {
+                        chatInput.id = 'chatInput';
+                    }
+                    
                     // Créer le nouveau bouton de correction parfait
                     const newCorrectionBtn = document.createElement('button');
                     newCorrectionBtn.type = 'button';
@@ -118,11 +123,14 @@
                     newCorrectionBtn.style.backgroundColor = '#f59e0b';
                     newCorrectionBtn.style.color = 'white';
                     
+                    // Ajouter les attributs nécessaires
+                    newCorrectionBtn.dataset.target = chatInput.id;
+                    
                     // Ajouter le gestionnaire de clic
                     newCorrectionBtn.addEventListener('click', () => {
                         if (window.integratedCorrectionSystem) {
                             window.integratedCorrectionSystem.handleCorrectionButtonClick({
-                                dataset: { target: chatInput.id || 'chatInput' }
+                                dataset: { target: chatInput.id }
                             });
                         }
                     });
@@ -133,6 +141,7 @@
                     console.log('🎊 NOUVEAU BOUTON CRÉÉ avec dimensions identiques !');
                     console.log('🎨 Classes:', newCorrectionBtn.className);
                     console.log('📏 Styles:', newCorrectionBtn.style.cssText);
+                    console.log('🎯 Cible:', chatInput.id, chatInput);
                 } else {
                     console.log('❌ Input de chat non trouvé');
                 }
