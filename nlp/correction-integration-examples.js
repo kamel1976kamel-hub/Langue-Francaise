@@ -21,7 +21,7 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     // Ajouter les mêmes classes Tailwind que le bouton vert
     correctionButton.className = 'px-4 py-3 rounded-lg transition-colors integrated-correction-btn';
     
-    // Appliquer les styles exacts du bouton vert avec couleur orange et dimensions identiques
+    // Appliquer les styles exacts du bouton vert avec couleur orange
     correctionButton.style.cssText = `
         background-color: #f59e0b !important;
         color: white !important;
@@ -30,10 +30,6 @@ function addCorrectionButton(submitButtonId, targetInputId) {
         visibility: visible !important;
         display: inline-flex !important;
         opacity: 1 !important;
-        width: 100% !important;
-        margin: 16px 0px 0px !important;
-        padding: 8px 16px !important;
-        box-sizing: border-box !important;
     `;
     
     // Plus besoin de copier les styles - les classes Tailwind s'en occupent

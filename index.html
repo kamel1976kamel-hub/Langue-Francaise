@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=62"></script>
-    <script src="nlp/correction-integration-examples.js?v=62"></script>
+    <script src="nlp/integrated-correction-system.js?v=61"></script>
+    <script src="nlp/correction-integration-examples.js?v=61"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -93,32 +93,18 @@
                 }
             }
             
-            // Nettoyer les doublons et corriger les dimensions
+            // Vérifier que le bouton de correction est bien présent
             const allCorrectionBtns = document.querySelectorAll('.integrated-correction-btn');
             console.log(`✅ Boutons de correction trouvés: ${allCorrectionBtns.length}`);
             
-            if (allCorrectionBtns.length > 1) {
-                console.log(`🔄 Nettoyage : ${allCorrectionBtns.length} boutons de correction trouvés, suppression des doublons`);
-                // Garder seulement le premier bouton
-                for (let i = 1; i < allCorrectionBtns.length; i++) {
-                    allCorrectionBtns[i].remove();
-                }
-                console.log('✅ Doublons supprimés, 1 bouton de correction conservé');
-            }
-            
-            // Corriger les dimensions du bouton restant
-            const remainingBtn = document.querySelector('.integrated-correction-btn');
-            if (remainingBtn) {
-                // Forcer les mêmes dimensions que le bouton vert
-                remainingBtn.style.width = '100%';
-                remainingBtn.style.margin = '16px 0px 0px';
-                remainingBtn.style.padding = '8px 16px';
-                
-                console.log('🎊 SUCCÈS: Le bouton de correction est présent et corrigé !');
-                console.log('🎨 Classes du bouton:', remainingBtn.className);
-                console.log('📏 Styles corrigés:', remainingBtn.style.cssText);
-            } else {
+            if (allCorrectionBtns.length === 1) {
+                console.log('🎊 SUCCÈS: Le bouton de correction est présent et stable !');
+                console.log('🎨 Classes du bouton:', allCorrectionBtns[0].className);
+                console.log('📏 Styles du bouton:', allCorrectionBtns[0].style.cssText);
+            } else if (allCorrectionBtns.length === 0) {
                 console.log('❌ ERREUR: Aucun bouton de correction trouvé');
+            } else {
+                console.log(`⚠️ ATTENTION: ${allCorrectionBtns.length} boutons de correction trouvés (doublons)`);
             }
         }, 5000);
     </script>
