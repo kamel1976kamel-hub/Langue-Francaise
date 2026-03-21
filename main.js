@@ -199,7 +199,7 @@ window.demanderIA = async function(prompt, contexte) {
                 originalText = contextObj.student_message;
             }
         } catch (e) {
-            console.log('⚠️ Impossible de parser le contexte pour extraire le texte original');
+            // console.log('⚠️ Impossible de parser le contexte pour extraire le texte original'); // Réduit le bruit console
         }
         
         // Améliorer la qualité de la réponse avec le texte original
@@ -702,7 +702,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             console.log('📊 Réponse parsée:', parsedResponse);
             return JSON.stringify(parsedResponse);
         } catch (parseError) {
-            console.log('⚠️ Réponse non-JSON, retour formaté');
+            // console.log('⚠️ Réponse non-JSON, retour formaté'); // Réduit le bruit console
             return JSON.stringify({
                 analysis: aiResponse.substring(0, 200),
                 error_type: "général",

@@ -26,7 +26,7 @@
     <script src="nlp/integrated-correction-system.js?v=68"></script>
     <script src="nlp/correction-integration-examples.js?v=69"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=45"></script>
+    <script src="main.js?v=46"></script>
     
     <!-- Debug script -->
     <script>
@@ -141,12 +141,34 @@
                         }
                     });
                     
-                    // Empêcher la suppression du bouton
+                    // Protection renforcée contre la suppression
                     newCorrectionBtn.addEventListener('DOMNodeRemoved', (e) => {
                         console.warn('⚠️ Tentative de suppression du bouton de correction détectée !');
                         e.preventDefault();
                         e.stopPropagation();
                         return false;
+                    });
+                    
+                    // Observer le conteneur pour détecter les suppressions
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === 'childList') {
+                                mutation.removedNodes.forEach((node) => {
+                                    if (node === newCorrectionBtn || node.contains?.(newCorrectionBtn)) {
+                                        console.warn('🔄 Bouton de correction supprimé, recréation automatique...');
+                                        setTimeout(() => {
+                                            submitButton.parentNode.insertBefore(newCorrectionBtn, submitButton);
+                                        }, 100);
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    
+                    // Observer le parent du bouton
+                    observer.observe(submitButton.parentNode, {
+                        childList: true,
+                        subtree: true
                     });
                     
                     // Insérer le bouton avant le bouton de soumission
