@@ -26,7 +26,7 @@
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="nlp/correction-integration-examples.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=52"></script>
+    <script src="main.js?v=53"></script>
     
     <!-- Debug script -->
     <script>
@@ -382,7 +382,247 @@
             }
         }
         
-        // Fonctions pour l'indicateur de chargement
+        // Fonctions pour l'analyse et la correction des questions
+        window.analyzeQuestion = function() {
+            try {
+                console.log('🔍 analyzeQuestion appelé');
+                
+                const chatInput = document.getElementById('chatInput');
+                const question = chatInput.value.trim();
+                
+                if (!question) {
+                    console.log('⚠️ Question vide');
+                    return;
+                }
+                
+                console.log('📝 Question à analyser:', question);
+                
+                // Afficher le panneau de correction
+                const correctionPanel = document.getElementById('correctionPanel');
+                const correctionContent = document.getElementById('correctionContent');
+                
+                correctionPanel.classList.remove('hidden');
+                correctionContent.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2" style="color: #6366f1;">Analyse en cours...</p></div>';
+                
+                // Analyser la question avec le système de correction
+                if (window.correctTextWithDatabase) {
+                    window.correctTextWithDatabase(question)
+                        .then(corrections => {
+                            console.log('✅ Corrections reçues:', corrections);
+                            displayCorrections(corrections, question);
+                        })
+                        .catch(error => {
+                            console.error('❌ Erreur lors de l\'analyse:', error);
+                            displayError(error);
+                        });
+                } else if (window.analyzeTextLocal) {
+                    const corrections = window.analyzeTextLocal(question);
+                    console.log('✅ Corrections locales reçues:', corrections);
+                    displayCorrections(corrections, question);
+                } else {
+                    console.log('⚠️ Système de correction non disponible, analyse basique');
+                    displayBasicAnalysis(question);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur analyzeQuestion:', error);
+            }
+        };
+        
+        function displayCorrections(corrections, originalQuestion) {
+            const correctionContent = document.getElementById('correctionContent');
+            
+            // Stocker les corrections globalement
+            window.currentCorrections = corrections;
+            window.originalQuestion = originalQuestion;
+            
+            if (!corrections || !corrections.errors || corrections.errors.length === 0) {
+                correctionContent.innerHTML = `
+                    <div class="p-3 rounded-lg" style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e;">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-green-800">✅ Parfait ! Votre question est correcte</span>
+                        </div>
+                        <p class="text-sm mt-2" style="color: #16a34a;">Aucune correction n'est nécessaire. Vous pouvez envoyer votre question directement.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            const errors = corrections.errors || [];
+            
+            errors.forEach((error, index) => {
+                const errorId = `error-${index}`;
+                html += `
+                    <div class="p-3 rounded-lg border" style="background-color: rgba(239, 68, 68, 0.05); border-color: #ef4444;">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0">
+                                <input type="checkbox" id="${errorId}" checked class="mt-1 rounded border-red-300 text-red-600 focus:ring-red-500">
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-medium px-2 py-1 rounded" style="background-color: #ef4444; color: white;">${error.type || 'Erreur'}</span>
+                                    <span class="text-sm font-medium" style="color: #dc2626;">"${error.original || error.text}"</span>
+                                </div>
+                                <p class="text-sm" style="color: #7f1d1d;">${error.explanation || error.message}</p>
+                                ${error.suggestion ? `
+                                    <div class="mt-2 p-2 rounded" style="background-color: rgba(34, 197, 94, 0.1);">
+                                        <p class="text-xs font-medium text-green-800">💡 Suggestion :</p>
+                                        <p class="text-sm text-green-700">"${error.suggestion}"</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Ajouter la question corrigée complète
+            if (corrections.correctedText) {
+                html += `
+                    <div class="p-3 rounded-lg" style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e;">
+                        <p class="text-sm font-medium text-green-800 mb-2">✅ Question corrigée :</p>
+                        <p class="text-sm" style="color: #166534;">${corrections.correctedText}</p>
+                    </div>
+                `;
+            }
+            
+            correctionContent.innerHTML = html;
+        }
+        
+        function displayBasicAnalysis(question) {
+            const correctionContent = document.getElementById('correctionContent');
+            
+            // Analyse basique manuelle
+            const basicErrors = [];
+            
+            // Vérifications simples
+            if (question.includes('une texte')) {
+                basicErrors.push({
+                    type: 'Grammaire',
+                    original: 'une texte',
+                    explanation: '"Texte" est masculin, il faut utiliser "un"',
+                    suggestion: question.replace('une texte', 'un texte')
+                });
+            }
+            
+            if (question.includes('c\'est quoi')) {
+                basicErrors.push({
+                    type: 'Style',
+                    original: 'c\'est quoi',
+                    explanation: 'Expression trop familière',
+                    suggestion: question.replace('c\'est quoi', 'qu\'est-ce que')
+                });
+            }
+            
+            if (basicErrors.length === 0) {
+                correctionContent.innerHTML = `
+                    <div class="p-3 rounded-lg" style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e;">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-green-800">✅ Votre question semble correcte</span>
+                        </div>
+                        <p class="text-sm mt-2" style="color: #16a34a;">L\'analyse basique ne détecte aucune erreur importante.</p>
+                    </div>
+                `;
+            } else {
+                displayCorrections({ errors: basicErrors, correctedText: question }, question);
+            }
+        }
+        
+        function displayError(error) {
+            const correctionContent = document.getElementById('correctionContent');
+            correctionContent.innerHTML = `
+                <div class="p-3 rounded-lg" style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444;">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-sm font-medium text-red-800">❌ Erreur lors de l'analyse</span>
+                    </div>
+                    <p class="text-sm mt-2" style="color: #7f1d1d;">${error.message || 'Une erreur est survenue'}</p>
+                </div>
+            `;
+        }
+        
+        window.applyAllCorrections = function() {
+            try {
+                console.log('✅ applyAllCorrections appelé');
+                
+                if (!window.currentCorrections || !window.originalQuestion) {
+                    console.log('⚠️ Aucune correction à appliquer');
+                    return;
+                }
+                
+                const chatInput = document.getElementById('chatInput');
+                let correctedText = window.originalQuestion;
+                
+                // Appliquer les corrections cochées
+                const checkboxes = document.querySelectorAll('#correctionContent input[type="checkbox"]:checked');
+                checkboxes.forEach((checkbox, index) => {
+                    const error = window.currentCorrections.errors[index];
+                    if (error && error.suggestion) {
+                        correctedText = correctedText.replace(error.original || error.text, error.suggestion);
+                    }
+                });
+                
+                // Utiliser le texte corrigé complet si disponible
+                if (window.currentCorrections.correctedText) {
+                    correctedText = window.currentCorrections.correctedText;
+                }
+                
+                chatInput.value = correctedText;
+                console.log('✅ Corrections appliquées:', correctedText);
+                
+                // Mettre à jour le panneau
+                const correctionContent = document.getElementById('correctionContent');
+                correctionContent.innerHTML = `
+                    <div class="p-3 rounded-lg" style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e;">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-green-800">✅ Corrections appliquées</span>
+                        </div>
+                        <p class="text-sm mt-2" style="color: #16a34a;">Votre question a été corrigée dans le champ de saisie.</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Erreur applyAllCorrections:', error);
+            }
+        };
+        
+        window.sendCorrectedQuestion = function() {
+            try {
+                console.log('🚀 sendCorrectedQuestion appelé');
+                
+                // Appliquer d'abord les corrections
+                applyAllCorrections();
+                
+                // Fermer le panneau de correction
+                closeCorrectionPanel();
+                
+                // Envoyer la question corrigée
+                setTimeout(() => {
+                    sendAIChatMessage();
+                }, 300);
+                
+            } catch (error) {
+                console.error('❌ Erreur sendCorrectedQuestion:', error);
+            }
+        };
+        
+        window.closeCorrectionPanel = function() {
+            const correctionPanel = document.getElementById('correctionPanel');
+            correctionPanel.classList.add('hidden');
+            console.log('📝 Panneau de correction fermé');
+        };
         function showTypingIndicator() {
             try {
                 let chatContainer = null;
@@ -2454,18 +2694,62 @@
                     placeholder="Posez votre question..." 
                     class="flex-1 px-4 py-3 rounded-lg text-sm border resize-none min-h-[44px] max-h-[120px]"
                     style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
-                    onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendAIChatMessage(); }"
+                    onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); if(event.ctrlKey) sendAIChatMessage(); else analyzeQuestion(); }"
                     oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px';"
                     rows="1"
                   ></textarea>
                   <button 
+                    onclick="analyzeQuestion()"
+                    class="px-3 py-3 rounded-lg transition-colors"
+                    style="background-color: #6366f1; color: white;"
+                    title="Analyser ma question (Ctrl+Entrée)"
+                  >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                  </button>
+                  <button 
                     onclick="sendAIChatMessage()"
                     class="px-4 py-3 rounded-lg transition-colors"
                     style="background-color: var(--bs-primary); color: white;"
+                    title="Envoyer (Entrée)"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                     </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Zone de correction (cachée par défaut) -->
+              <div id="correctionPanel" class="hidden mt-4 p-4 rounded-lg" style="background-color: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1;">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="text-sm font-semibold" style="color: #6366f1;">🔍 Analyse de votre question</h4>
+                  <button onclick="closeCorrectionPanel()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                
+                <div id="correctionContent" class="space-y-3">
+                  <!-- Les corrections seront insérées ici -->
+                </div>
+                
+                <div class="flex gap-2 mt-4">
+                  <button 
+                    onclick="applyAllCorrections()"
+                    class="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    style="background-color: #6366f1; color: white;"
+                  >
+                    ✅ Appliquer toutes les corrections
+                  </button>
+                  <button 
+                    onclick="sendCorrectedQuestion()"
+                    class="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    style="background-color: var(--bs-primary); color: white;"
+                  >
+                    🚀 Envoyer la question corrigée
                   </button>
                 </div>
               </div>
