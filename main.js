@@ -669,6 +669,17 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             // Mode chat : répondre directement aux questions
             systemPrompt = `Tu es un assistant expert en français et en pédagogie. Réponds de manière claire, utile et encourageante aux questions de l'étudiant. Sois précis et donne des exemples quand c'est pertinent. Utilise un langage simple mais correct.`;
             userPrompt = `Question de l'étudiant : "${studentAnswer}"`;
+        } else if (activityContext === 'activité') {
+            // Mode activité : analyser la réponse de manière pédagogique
+            systemPrompt = `Tu es un professeur de français. Analyse la réponse de l'étudiant de manière pédagogique et encourageante. 
+            - Identifie les erreurs de grammaire, orthographe, vocabulaire
+            - Explique les règles de manière simple
+            - Donne des exemples clairs
+            - Propose des exercices si nécessaire
+            - Sois toujours positif et constructif
+            
+            Réponds de manière naturelle et conversationnelle, pas en JSON.`;
+            userPrompt = `Réponse de l'étudiant : "${studentAnswer}". Analyse cette réponse et donne des conseils constructifs.`;
         } else {
             // Mode analyse pédagogique : analyser la réponse
             systemPrompt = `Tu es un expert en français et en pédagogie. Analyse la réponse de l'étudiant avec le contexte suivant : ${activityContext}. Sois encourageant mais précis. Identifie les points forts et les axes d'amélioration. Formatage JSON avec les champs : analysis, error_type, rule, hint, example, exercise, validation, confidence.`;
@@ -718,6 +729,15 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
                 explanations: [],
                 suggestions: [],
                 isChatResponse: true
+            };
+        } else if (activityContext === 'activité') {
+            // Mode activité : retourner la réponse naturelle
+            return {
+                analysis: aiResponse,
+                corrections: [],
+                explanations: [],
+                suggestions: [],
+                isActivityResponse: true
             };
         } else {
             // Mode analyse pédagogique : tenter de parser le JSON

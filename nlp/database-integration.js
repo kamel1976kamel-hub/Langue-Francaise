@@ -222,6 +222,12 @@ class NLPDatabaseIntegration {
                                             explanation: rule.explanation
                                         });
                                     });
+                                } else {
+                                    // Test avec un pattern plus large pour le débogage
+                                    if (rule.name === 'genre_texte_masculin') {
+                                        const testMatch = text.match(/\b(la|une)\s+texte(s?)\b/g);
+                                        console.log(`🔍 Test étendu pour genre_texte_masculin:`, testMatch);
+                                    }
                                 }
                             }
                         } catch (error) {

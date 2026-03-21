@@ -36,10 +36,10 @@ class BrowserSQLiteManager {
                 name: 'genre_texte_masculin',
                 category: 'grammaire',
                 pattern_type: 'regex',
-                pattern: '\\bune texte(s?)\\b',
-                correction: 'un texte$1',
-                explanation: '"Texte" est masculin, il faut utiliser "un".',
-                example: 'une texte → un texte',
+                pattern: '\\b(la|une) texte(s?)\\b',
+                correction: 'function(match) { return match.includes("une") ? "un texte" + (match.includes("textes") ? "s" : "") : "le texte" + (match.includes("textes") ? "s" : ""); }',
+                explanation: '"Texte" est masculin, il faut utiliser "le" ou "un".',
+                example: 'la texte → le texte, une texte → un texte',
                 priority: 95
             },
             {
