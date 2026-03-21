@@ -112,6 +112,8 @@ function integrateChatCorrection() {
             const existingBtn = submitButton.parentNode.querySelector('.integrated-correction-btn');
             if (!existingBtn) {
                 addCorrectionButton(submitId, inputId);
+            } else {
+                console.log('ℹ️ Bouton de correction déjà existant pour', inputId);
             }
         } else {
             console.log(`❌ Aucun bouton de soumission trouvé pour ${inputId}`);
