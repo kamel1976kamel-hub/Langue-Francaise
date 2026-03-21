@@ -30,6 +30,29 @@ class BrowserSQLiteManager {
 
     async insertRules() {
         const rules = [
+            // RÈGLES DE GRAMMAIRE - GENRE
+            {
+                rule_id: 'genre_texte_masculin',
+                name: 'genre_texte_masculin',
+                category: 'grammaire',
+                pattern_type: 'regex',
+                pattern: '\\bune texte(s?)\\b',
+                correction: 'un texte$1',
+                explanation: '"Texte" est masculin, il faut utiliser "un".',
+                example: 'une texte → un texte',
+                priority: 95
+            },
+            {
+                rule_id: 'style_c_est_quoi',
+                name: 'style_c_est_quoi',
+                category: 'style',
+                pattern_type: 'regex',
+                pattern: "\\bc'est quoi\\b",
+                correction: "qu'est-ce que",
+                explanation: 'Expression "c\'est quoi" trop familière. Utiliser "qu\'est-ce que".',
+                example: "c'est quoi → qu'est-ce que",
+                priority: 90
+            },
             // RÈGLES DE STYLE
             {
                 rule_id: 'ponctuation_fin',
