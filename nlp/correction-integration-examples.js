@@ -1,218 +1,35 @@
-// 🎯 Exemples d'intégration du système de correction
-// Pour les interfaces de chat et d'activités
+// 🗑️ FICHIER OBSOLÈTE - SYSTÈME DE CORRECTION INTÉGRÉ REMPLACÉ
+// 
+// Ce fichier contient l'ancien système de création automatique de boutons de correction.
+// Il a été remplacé par le nouveau système intégré dans index.html avec le panneau de correction.
+// 
+// Les fonctionnalités sont maintenant gérées par :
+// - analyzeQuestion() : Analyse la question
+// - displayCorrections() : Affiche les corrections dans le panneau
+// - applyAllCorrections() : Applique les corrections
+// - sendCorrectedQuestion() : Envoie la question corrigée
+//
+// Ce fichier est conservé pour référence mais n'est plus chargé dans index.html
 
-// Fonction pour ajouter un bouton de correction
+console.log('⚠️ correction-integration-examples.js est obsolète et ne devrait plus être utilisé');
+
+// Toutes les fonctions originales sont désactivées
 function addCorrectionButton(submitButtonId, targetInputId) {
-    const submitButton = document.getElementById(submitButtonId);
-    const targetInput = document.getElementById(targetInputId);
-    
-    if (!submitButton || !targetInput) {
-        console.error('❌ Éléments non trouvés:', { submitButtonId, targetInputId });
-        return;
-    }
-    
-    // Créer le bouton de correction
-    const correctionButton = document.createElement('button');
-    correctionButton.type = 'button';
-    correctionButton.className = 'btn btn-warning integrated-correction-btn';
-    correctionButton.innerHTML = '🔍 Correction';
-    correctionButton.dataset.target = targetInputId;
-    
-    // Ajouter les mêmes classes Tailwind que le bouton vert
-    correctionButton.className = 'px-4 py-3 rounded-lg transition-colors integrated-correction-btn';
-    
-    // Appliquer les styles exacts du bouton vert avec couleur orange
-    correctionButton.style.cssText = `
-        background-color: #f59e0b !important;
-        color: white !important;
-        transition: all 0.2s ease !important;
-        position: relative !important;
-        visibility: visible !important;
-        display: inline-flex !important;
-        opacity: 1 !important;
-    `;
-    
-    // Plus besoin de copier les styles - les classes Tailwind s'en occupent
-    console.log('🎨 Bouton de correction créé avec classes Tailwind identiques');
-    
-    // Empêcher la suppression du bouton
-    correctionButton.addEventListener('DOMNodeRemoved', (e) => {
-        console.warn('⚠️ Tentative de suppression du bouton de correction détectée !');
-        e.preventDefault();
-        e.stopPropagation();
-    });
-    
-    correctionButton.addEventListener('mouseenter', () => {
-        correctionButton.style.background = '#d97706';
-        correctionButton.style.transform = 'translateY(-1px)';
-    });
-    
-    correctionButton.addEventListener('mouseleave', () => {
-        correctionButton.style.background = '#f59e0b';
-        correctionButton.style.transform = 'translateY(0)';
-    });
-    
-    // Chercher le conteneur parent commun
-    const parentContainer = submitButton.closest('.input-group, .form-group, .chat-input-container, div');
-    
-    if (parentContainer) {
-        // Chercher l'input/textarea dans ce conteneur
-        const targetInput = parentContainer.querySelector('input[type="text"], textarea');
-        
-        if (targetInput) {
-            // Insérer le bouton de correction juste après l'input/textarea
-            targetInput.parentNode.insertBefore(correctionButton, targetInput.nextSibling);
-        } else {
-            // Fallback: insérer avant le bouton de soumission
-            submitButton.parentNode.insertBefore(correctionButton, submitButton);
-        }
-    } else {
-        // Fallback: insérer avant le bouton de soumission
-        submitButton.parentNode.insertBefore(correctionButton, submitButton);
-    }
-    
-    console.log('✅ Bouton de correction ajouté pour:', targetInputId);
+    console.warn('⚠️ addCorrectionButton est obsolète - utilisez le nouveau système dans index.html');
 }
 
-// Intégration pour l'interface de chat
 function integrateChatCorrection() {
-    console.log('💬 Intégration correction pour le chat...');
-    
-    // Chercher tous les inputs et textareas
-    const allInputs = document.querySelectorAll('input[type="text"], textarea');
-    
-    allInputs.forEach((input, index) => {
-        const inputId = input.id || `correction-input-${index}`;
-        input.id = inputId;
-        
-        // Chercher le bouton de soumission le plus proche
-        let submitButton = null;
-        
-        // Chercher dans le parent direct
-        submitButton = input.parentNode.querySelector('button[type="submit"], .submit-btn, .btn-primary, button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
-        
-        // Si pas trouvé, chercher plus largement
-        if (!submitButton) {
-            submitButton = input.closest('form')?.querySelector('button[type="submit"], .submit-btn, .btn-primary, button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
-        }
-        
-        // Si encore pas trouvé, chercher dans le conteneur parent
-        if (!submitButton) {
-            const container = input.closest('.input-group, .form-group, .chat-input-container');
-            if (container) {
-                submitButton = container.querySelector('button[type="submit"], .submit-btn, .btn-primary, button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
-            }
-        }
-        
-        // Si encore pas trouvé, chercher tous les boutons dans le conteneur parent
-        if (!submitButton) {
-            const parentContainer = input.closest('div');
-            if (parentContainer) {
-                const allButtons = parentContainer.querySelectorAll('button');
-                submitButton = allButtons[allButtons.length - 1]; // Prendre le dernier bouton
-            }
-        }
-        
-        if (submitButton) {
-            const submitId = submitButton.id || `submit-btn-${index}`;
-            submitButton.id = submitId;
-            console.log(`✅ Bouton de soumission trouvé pour ${inputId}:`, submitButton);
-            
-            // Vérifier si le bouton de correction existe déjà
-            const existingBtn = submitButton.parentNode.querySelector('.integrated-correction-btn');
-            if (!existingBtn) {
-                addCorrectionButton(submitId, inputId);
-            } else {
-                console.log('ℹ️ Bouton de correction déjà existant pour', inputId);
-            }
-        } else {
-            // Ne pas afficher d'erreur pour les inputs qui n'ont pas de bouton de soumission
-            const inputsWithoutSubmit = ['homeworkTitle', 'homeworkDescription', 'announcementTitle', 'announcementContent', 'settingsName', 'settingsBio'];
-            if (!inputsWithoutSubmit.includes(inputId)) {
-                console.log(`❌ Aucun bouton de soumission trouvé pour ${inputId}`);
-            }
-        }
-    });
+    console.warn('⚠️ integrateChatCorrection est obsolète - utilisez le nouveau système dans index.html');
 }
 
-// Intégration pour les activités
 function integrateActivitiesCorrection() {
-    console.log('📝 Intégration correction pour les activités...');
-    
-    // Chercher toutes les zones de texte (y compris celles des activités)
-    const allTextareas = document.querySelectorAll('textarea, .activity-textarea, .writing-area');
-    
-    allTextareas.forEach((textarea, index) => {
-        const textareaId = textarea.id || `activity-textarea-${index}`;
-        textarea.id = textareaId;
-        
-        // Chercher le bouton de soumission associé avec plusieurs stratégies
-        let submitButton = null;
-        
-        // Stratégie 1: chercher dans le parent direct
-        submitButton = textarea.parentNode.querySelector('button[type="submit"], .activity-submit, .submit-activity, .btn-primary');
-        
-        // Stratégie 2: chercher dans le formulaire parent
-        if (!submitButton) {
-            submitButton = textarea.closest('form')?.querySelector('button[type="submit"], .activity-submit, .submit-activity, .btn-primary');
-        }
-        
-        // Stratégie 3: chercher dans les conteneurs d'activité
-        if (!submitButton) {
-            const activityContainer = textarea.closest('.activity-container, .exercise-container, .writing-container');
-            if (activityContainer) {
-                submitButton = activityContainer.querySelector('button[type="submit"], .activity-submit, .submit-activity, .btn-primary');
-            }
-        }
-        
-        // Stratégie 4: chercher globalement mais proche
-        if (!submitButton) {
-            const allButtons = document.querySelectorAll('button[type="submit"], .activity-submit, .submit-activity, .btn-primary');
-            const closestButton = Array.from(allButtons).find(btn => {
-                const rect = textarea.getBoundingClientRect();
-                const btnRect = btn.getBoundingClientRect();
-                const distance = Math.abs(rect.top - btnRect.top) + Math.abs(rect.left - btnRect.left);
-                return distance < 200; // Distance maximale de 200px
-            });
-            submitButton = closestButton;
-        }
-        
-        if (submitButton) {
-            const submitId = submitButton.id || `activity-submit-${index}`;
-            submitButton.id = submitId;
-            
-            // Vérifier si le bouton de correction existe déjà
-            const existingBtn = submitButton.parentNode.querySelector('.integrated-correction-btn');
-            if (!existingBtn) {
-                addCorrectionButton(submitId, textareaId);
-            }
-        }
-    });
+    console.warn('⚠️ integrateActivitiesCorrection est obsolète - utilisez le nouveau système dans index.html');
 }
 
-// Intégration automatique au chargement
 function autoIntegrateCorrection() {
-    console.log('🚀 Intégration automatique du système de correction...');
-    
-    // Attendre que le DOM soit chargé
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', autoIntegrateCorrection);
-        return;
-    }
-    
-    // Intégrer pour le chat
-    integrateChatCorrection();
-    
-    // Intégrer pour les activités
-    integrateActivitiesCorrection();
-    
-    // Observer désactivé pour éviter la disparition des boutons
-    // setupMutationObserver();
-    
-    console.log('✅ Intégration terminée - Mutation Observer désactivé');
+    console.warn('⚠️ autoIntegrateCorrection est obsolète - utilisez le nouveau système dans index.html');
 }
 
-// Observer les changements dans le DOM pour les éléments dynamiques (désactivé pour éviter les doublons)
 function setupMutationObserver() {
     console.log('🔍 Mutation Observer désactivé pour éviter la suppression/recréation des boutons');
     // L'observer est désactivé car il causait la disparition des boutons de correction

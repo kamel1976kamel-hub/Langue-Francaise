@@ -21,12 +21,14 @@ class IntegratedCorrectionSystem {
 
     // Configuration des écouteurs d'événements
     setupEventListeners() {
-        // Écouter les clics sur les boutons de correction
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('integrated-correction-btn')) {
-                this.handleCorrectionButtonClick(e.target);
-            }
-        });
+        // Écouter les clics sur les boutons de correction (ancien système - désactivé)
+        // document.addEventListener('click', (e) => {
+        //     if (e.target.classList.contains('integrated-correction-btn')) {
+        //         this.handleCorrectionButtonClick(e.target);
+        //     }
+        // });
+        
+        console.log('🔍 Event listeners pour integrated-correction-btn désactivés - nouveau système utilisé');
     }
 
     // Créer le template du nuage de correction

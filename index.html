@@ -24,263 +24,17 @@
     <script src="nlp/spacy-analyzer.js?v=44"></script>
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
-    <script src="nlp/correction-integration-examples.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=54"></script>
+    <script src="main.js?v=56"></script>
     
     <!-- Debug script -->
     <script>
         console.log('🔍 Debug: Scripts chargés');
         console.log('🔍 integratedCorrectionSystem disponible:', typeof window.integratedCorrectionSystem);
-        console.log('🔍 CorrectionIntegration disponible:', typeof window.CorrectionIntegration);
-        
-        // Forcer l'intégration après 2 secondes
-        setTimeout(() => {
-            console.log('🚀 Forçage de l\'intégration...');
-            if (window.CorrectionIntegration) {
-                window.CorrectionIntegration.autoIntegrateCorrection();
-            }
-        }, 2000);
-        
-        // Debug avancé après 5 secondes
-        setTimeout(() => {
-            console.log('🔍 Debug avancé...');
-            console.log('📝 Inputs trouvés:', document.querySelectorAll('input[type="text"], textarea').length);
-            console.log('🔘 Boutons trouvés:', document.querySelectorAll('button[type="submit"], .btn-primary, .submit-btn').length);
-            console.log('🔍 Boutons de correction:', document.querySelectorAll('.integrated-correction-btn').length);
-            
-            // Analyser les styles du bouton vert
-            const greenButton = document.querySelector('.btn-primary, .submit-btn, button[type="submit"]');
-            if (greenButton) {
-                const greenStyles = window.getComputedStyle(greenButton);
-                console.log('🎨 Styles complets du bouton vert:', {
-                    height: greenStyles.height,
-                    width: greenStyles.width,
-                    padding: greenStyles.padding,
-                    margin: greenStyles.margin,
-                    fontSize: greenStyles.fontSize,
-                    fontWeight: greenStyles.fontWeight,
-                    borderRadius: greenStyles.borderRadius,
-                    display: greenStyles.display,
-                    lineHeight: greenStyles.lineHeight,
-                    boxSizing: greenStyles.boxSizing,
-                    border: greenStyles.border,
-                    fontFamily: greenStyles.fontFamily
-                });
-                
-                // Comparer avec le bouton de correction
-                const correctionBtn = document.querySelector('.integrated-correction-btn');
-                if (correctionBtn) {
-                    const correctionStyles = window.getComputedStyle(correctionBtn);
-                    console.log('🔍 Styles du bouton correction:', {
-                        height: correctionStyles.height,
-                        width: correctionStyles.width,
-                        padding: correctionStyles.padding,
-                        margin: correctionStyles.margin,
-                        fontSize: correctionStyles.fontSize,
-                        fontWeight: correctionStyles.fontWeight,
-                        borderRadius: correctionStyles.borderRadius,
-                        display: correctionStyles.display,
-                        lineHeight: correctionStyles.lineHeight,
-                        boxSizing: correctionStyles.boxSizing
-                    });
-                    
-                    console.log('📊 Comparaison des hauteurs:', {
-                        vert: greenStyles.height,
-                        correction: correctionStyles.height,
-                        identiques: greenStyles.height === correctionStyles.height
-                    });
-                }
-            }
-            
-            // Supprimer tous les boutons de correction existants
-            const allCorrectionBtns = document.querySelectorAll('.integrated-correction-btn');
-            console.log(`🗑️ Suppression de ${allCorrectionBtns.length} boutons de correction existants`);
-            
-            allCorrectionBtns.forEach(btn => btn.remove());
-            
-            // Trouver le bouton de soumission pour copier ses styles exacts
-            const submitButton = document.querySelector('button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"], .btn-primary, .submit-btn, button[type="submit"]');
-            if (submitButton) {
-                console.log('✅ Bouton de soumission trouvé, copie des styles...');
-                
-                // Trouver l'input associé (priorité au textarea de chat)
-                const chatInput = document.querySelector('textarea[placeholder*="question"], textarea[placeholder*="poser"], #chatInput, input[placeholder*="question"], input[placeholder*="poser"]');
-                if (chatInput) {
-                    // S'assurer que l'input a un ID
-                    if (!chatInput.id) {
-                        chatInput.id = 'chatInput';
-                    }
-                    
-                    // Créer le nouveau bouton de correction parfait
-                    const newCorrectionBtn = document.createElement('button');
-                    newCorrectionBtn.type = 'button';
-                    newCorrectionBtn.innerHTML = '🔍 Correction';
-                    newCorrectionBtn.className = submitButton.className + ' integrated-correction-btn';
-                    newCorrectionBtn.style.cssText = submitButton.style.cssText;
-                    
-                    // Remplacer uniquement la couleur de fond
-                    newCorrectionBtn.style.backgroundColor = '#f59e0b';
-                    newCorrectionBtn.style.color = 'white';
-                    
-                    // Ajouter les attributs nécessaires
-                    newCorrectionBtn.dataset.target = chatInput.id;
-                    
-                    // Ajouter le gestionnaire de clic
-                    newCorrectionBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('🔍 Clic sur bouton de correction détecté');
-                        
-                        if (window.integratedCorrectionSystem) {
-                            window.integratedCorrectionSystem.handleCorrectionButtonClick({
-                                dataset: { target: chatInput.id }
-                            });
-                        } else {
-                            console.error('❌ integratedCorrectionSystem non disponible');
-                        }
-                    });
-                    
-                    // Protection renforcée contre la suppression
-                    newCorrectionBtn.addEventListener('DOMNodeRemoved', (e) => {
-                        console.warn('⚠️ Tentative de suppression du bouton de correction détectée !');
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    });
-                    
-                    // Observer le conteneur pour détecter les suppressions
-                    const observer = new MutationObserver((mutations) => {
-                        mutations.forEach((mutation) => {
-                            if (mutation.type === 'childList') {
-                                mutation.removedNodes.forEach((node) => {
-                                    if (node === newCorrectionBtn || node.contains?.(newCorrectionBtn)) {
-                                        console.warn('🔄 Bouton de correction supprimé, recréation automatique...');
-                                        setTimeout(() => {
-                                            submitButton.parentNode.insertBefore(newCorrectionBtn, submitButton);
-                                        }, 100);
-                                    }
-                                });
-                            }
-                        });
-                    });
-                    
-                    // Observer le parent du bouton
-                    observer.observe(submitButton.parentNode, {
-                        childList: true,
-                        subtree: true
-                    });
-                    
-                    // Insérer le bouton avant le bouton de soumission
-                    submitButton.parentNode.insertBefore(newCorrectionBtn, submitButton);
-                    
-                    console.log('🎊 NOUVEAU BOUTON CRÉÉ avec dimensions identiques !');
-                    console.log('🎨 Classes:', newCorrectionBtn.className);
-                    console.log('📏 Styles:', newCorrectionBtn.style.cssText);
-                    console.log('🎯 Cible:', chatInput.id, chatInput);
-                } else {
-                    console.log('❌ Input de chat non trouvé');
-                }
-            } else {
-                console.log('❌ Bouton de soumission non trouvé');
-            }
-        }, 5000);
     </script>
     
-    <!-- Fonction sendAIChatMessage manquante -->
+    <!-- Fonctions pour le chat et l'analyse -->
     <script>
-        // Fonction sendAIChatMessage améliorée
-        window.sendAIChatMessage = function() {
-            try {
-                console.log('🚀 sendAIChatMessage appelé');
-                
-                // Trouver l'input de chat (priorité au textarea)
-                const chatInput = document.querySelector('textarea[placeholder*="question"], textarea[placeholder*="poser"], #chatInput, input[placeholder*="question"], input[placeholder*="poser"]');
-                
-                if (!chatInput) {
-                    console.error('❌ Input de chat non trouvé');
-                    return;
-                }
-                
-                const message = chatInput.value.trim();
-                if (!message) {
-                    console.log('⚠️ Message vide');
-                    return;
-                }
-                
-                console.log('📝 Message à envoyer:', message);
-                
-                // Afficher le message de l'utilisateur dans le chat
-                addChatMessage(message, 'user');
-                
-                // Afficher l'indicateur de chargement
-                showTypingIndicator();
-                
-                // Envoyer le message via le système IA existant
-                if (window.demanderIA) {
-                    console.log('📡 Appel de window.demanderIA...');
-                    window.demanderIA(message, 'chat')
-                        .then((response) => {
-                            console.log('✅ Message envoyé avec succès via window.demanderIA');
-                            console.log('📤 Réponse IA:', response);
-                            console.log('📝 Type de response.analysis:', typeof response.analysis);
-                            console.log('📝 Contenu de response.analysis:', response.analysis);
-                            
-                            // Masquer l'indicateur de chargement
-                            hideTypingIndicator();
-                            
-                            // Afficher la réponse de l'IA
-                            if (response && response.analysis) {
-                                // response.analysis peut être une chaîne (mode chat) ou un objet (mode analyse)
-                                let messageToDisplay = response.analysis;
-                                
-                                // Si c'est un objet, essayer d'extraire le texte
-                                if (typeof messageToDisplay === 'object') {
-                                    console.log('🔍 response.analysis est un objet, clés:', Object.keys(messageToDisplay));
-                                    // Chercher une propriété qui pourrait contenir le texte
-                                    if (messageToDisplay.analysis) {
-                                        messageToDisplay = messageToDisplay.analysis;
-                                    } else if (messageToDisplay.response) {
-                                        messageToDisplay = messageToDisplay.response;
-                                    } else {
-                                        messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
-                                    }
-                                }
-                                
-                                // Si c'est encore un objet après extraction, convertir en chaîne
-                                if (typeof messageToDisplay === 'object') {
-                                    messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
-                                }
-                                
-                                console.log('📤 Message final à afficher:', messageToDisplay);
-                                addChatMessage(messageToDisplay, 'ai');
-                            } else {
-                                addChatMessage('Désolé, je n\'ai pas pu générer de réponse.', 'ai');
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('❌ Erreur lors de l\'envoi:', error);
-                            hideTypingIndicator();
-                            addChatMessage('Désolé, une erreur technique est survenue. Veuillez réessayer.', 'ai');
-                        });
-                } else {
-                    console.error('❌ window.demanderIA non disponible');
-                    console.log('🔍 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('IA') || key.includes('demande')));
-                    hideTypingIndicator();
-                    addChatMessage('Le service IA n\'est pas disponible actuellement.', 'ai');
-                }
-                
-                // Vider l'input
-                chatInput.value = '';
-                chatInput.style.height = 'auto';
-                
-            } catch (error) {
-                console.error('❌ Erreur sendAIChatMessage:', error);
-                hideTypingIndicator();
-                addChatMessage('Une erreur est survenue lors de l\'envoi du message.', 'ai');
-            }
-        };
-        
         // Fonction pour ajouter un message au chat
         function addChatMessage(message, sender) {
             try {
@@ -608,9 +362,72 @@
                 // Fermer le panneau de correction
                 closeCorrectionPanel();
                 
-                // Envoyer la question corrigée
+                // Envoyer la question corrigée via le nouveau système
                 setTimeout(() => {
-                    sendAIChatMessage();
+                    const chatInput = document.getElementById('chatInput');
+                    const message = chatInput.value.trim();
+                    
+                    if (!message) {
+                        console.log('⚠️ Message vide après correction');
+                        return;
+                    }
+                    
+                    console.log('📝 Message corrigé à envoyer:', message);
+                    
+                    // Afficher le message de l'utilisateur dans le chat
+                    addChatMessage(message, 'user');
+                    
+                    // Afficher l'indicateur de chargement
+                    showTypingIndicator();
+                    
+                    // Envoyer le message via le système IA existant
+                    if (window.demanderIA) {
+                        console.log('📡 Appel de window.demanderIA...');
+                        window.demanderIA(message, 'chat')
+                            .then((response) => {
+                                console.log('✅ Message envoyé avec succès via window.demanderIA');
+                                console.log('📤 Réponse IA:', response);
+                                
+                                // Masquer l'indicateur de chargement
+                                hideTypingIndicator();
+                                
+                                // Afficher la réponse de l'IA
+                                if (response && response.analysis) {
+                                    let messageToDisplay = response.analysis;
+                                    
+                                    if (typeof messageToDisplay === 'object') {
+                                        if (messageToDisplay.analysis) {
+                                            messageToDisplay = messageToDisplay.analysis;
+                                        } else if (messageToDisplay.response) {
+                                            messageToDisplay = messageToDisplay.response;
+                                        } else {
+                                            messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                        }
+                                    }
+                                    
+                                    if (typeof messageToDisplay === 'object') {
+                                        messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
+                                    }
+                                    
+                                    addChatMessage(messageToDisplay, 'ai');
+                                } else {
+                                    addChatMessage('Désolé, je n\'ai pas pu générer de réponse.', 'ai');
+                                }
+                                
+                                // Vider l'input
+                                chatInput.value = '';
+                                chatInput.style.height = 'auto';
+                            })
+                            .catch((error) => {
+                                console.error('❌ Erreur lors de l\'envoi:', error);
+                                hideTypingIndicator();
+                                addChatMessage('Désolé, une erreur technique est survenue. Veuillez réessayer.', 'ai');
+                            });
+                    } else {
+                        console.error('❌ window.demanderIA non disponible');
+                        hideTypingIndicator();
+                        addChatMessage('Le service IA n\'est pas disponible actuellement.', 'ai');
+                    }
                 }, 300);
                 
             } catch (error) {
@@ -692,8 +509,7 @@
             }
         }
         
-        // Debug pour vérifier que la fonction est bien définie
-        console.log('✅ Fonction sendAIChatMessage définie:', typeof window.sendAIChatMessage);
+        // Fonctions pour l'indicateur de chargement
     </script>
     
     <style>
