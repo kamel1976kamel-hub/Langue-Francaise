@@ -116,7 +116,6 @@ function integrateChatCorrection() {
         if (submitButton) {
             const submitId = submitButton.id || `submit-btn-${index}`;
             submitButton.id = submitId;
-            
             console.log(`✅ Bouton de soumission trouvé pour ${inputId}:`, submitButton);
             
             // Vérifier si le bouton de correction existe déjà
@@ -127,7 +126,11 @@ function integrateChatCorrection() {
                 console.log('ℹ️ Bouton de correction déjà existant pour', inputId);
             }
         } else {
-            console.log(`❌ Aucun bouton de soumission trouvé pour ${inputId}`);
+            // Ne pas afficher d'erreur pour les inputs qui n'ont pas de bouton de soumission
+            const inputsWithoutSubmit = ['homeworkTitle', 'homeworkDescription', 'announcementTitle', 'announcementContent', 'settingsName', 'settingsBio'];
+            if (!inputsWithoutSubmit.includes(inputId)) {
+                console.log(`❌ Aucun bouton de soumission trouvé pour ${inputId}`);
+            }
         }
     });
 }
