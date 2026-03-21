@@ -654,7 +654,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
         // Vérifier si la clé API est valide
-        const apiKey = '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';
+        const apiKey = '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';
         if (!apiKey || apiKey.trim() === '') {
             throw new Error('Clé API Groq manquante ou vide');
         }
