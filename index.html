@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=55"></script>
-    <script src="nlp/correction-integration-examples.js?v=55"></script>
+    <script src="nlp/integrated-correction-system.js?v=56"></script>
+    <script src="nlp/correction-integration-examples.js?v=56"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -97,7 +97,15 @@
             const chatInput = document.querySelector('input[placeholder*="question"], textarea[placeholder*="question"], input[placeholder*="poser"]');
             if (chatInput) {
                 console.log('✅ Input de chat trouvé:', chatInput);
-                window.CorrectionIntegration.addCorrectionButton('test-submit', chatInput.id || 'chat-input');
+                
+                // Trouver le vrai bouton de soumission associé
+                const submitButton = document.querySelector('button[onclick*="sendAIChatMessage"], button[onclick*="sendMessage"]');
+                if (submitButton) {
+                    console.log('✅ Bouton de soumission trouvé:', submitButton.id);
+                    window.CorrectionIntegration.addCorrectionButton(submitButton.id, chatInput.id || 'chat-input');
+                } else {
+                    console.log('❌ Bouton de soumission non trouvé pour le chat');
+                }
             } else {
                 console.log('❌ Input de chat non trouvé, recherche plus large...');
                 const allInputs = document.querySelectorAll('input[type="text"], textarea');
