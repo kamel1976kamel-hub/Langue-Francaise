@@ -23,10 +23,10 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=68"></script>
-    <script src="nlp/correction-integration-examples.js?v=69"></script>
+    <script src="nlp/integrated-correction-system.js?v=69"></script>
+    <script src="nlp/correction-integration-examples.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=46"></script>
+    <script src="main.js?v=47"></script>
     
     <!-- Debug script -->
     <script>
@@ -189,9 +189,11 @@
     
     <!-- Fonction sendAIChatMessage manquante -->
     <script>
-        // Fonction pour envoyer le message chat (manquante)
+        // Fonction sendAIChatMessage améliorée
         window.sendAIChatMessage = function() {
             try {
+                console.log('🚀 sendAIChatMessage appelé');
+                
                 // Trouver l'input de chat (priorité au textarea)
                 const chatInput = document.querySelector('textarea[placeholder*="question"], textarea[placeholder*="poser"], #chatInput, input[placeholder*="question"], input[placeholder*="poser"]');
                 
@@ -206,28 +208,26 @@
                     return;
                 }
                 
-                console.log('📤 Envoi du message:', message);
+                console.log('📝 Message à envoyer:', message);
                 
-                // Utiliser le système IA existant
+                // Envoyer le message via le système IA existant
                 if (window.demanderIA) {
-                    window.demanderIA(message, 'chat').then(response => {
-                        console.log('✅ Réponse IA reçue:', response);
-                        
-                        // Vider l'input
-                        chatInput.value = '';
-                        
-                        // Réinitialiser la hauteur
-                        chatInput.style.height = 'auto';
-                        
-                        // Afficher la réponse (adapter selon votre interface)
-                        console.log('📝 Réponse à afficher:', response.analysis);
-                        
-                    }).catch(error => {
-                        console.error('❌ Erreur IA:', error);
-                    });
+                    console.log('📡 Appel de window.demanderIA...');
+                    window.demanderIA(message, 'chat')
+                        .then(() => {
+                            console.log('✅ Message envoyé avec succès via window.demanderIA');
+                        })
+                        .catch((error) => {
+                            console.error('❌ Erreur lors de l\'envoi:', error);
+                        });
                 } else {
-                    console.error('❌ Système IA non disponible');
+                    console.error('❌ window.demanderIA non disponible');
+                    console.log('🔍 Fonctions disponibles:', Object.keys(window).filter(key => key.includes('IA') || key.includes('demande')));
                 }
+                
+                // Vider l'input
+                chatInput.value = '';
+                chatInput.style.height = 'auto';
                 
             } catch (error) {
                 console.error('❌ Erreur sendAIChatMessage:', error);
