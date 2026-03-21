@@ -135,22 +135,44 @@ class IntegratedCorrectionSystem {
     // Analyser le texte avec le système NLP
     async analyzeText(text) {
         try {
+            // Validation du texte
+            if (!text || typeof text !== 'string') {
+                console.warn('⚠️ Texte invalide pour analyse NLP');
+                return {
+                    errors: [],
+                    suggestions: [],
+                    confidence: 0,
+                    source: 'invalid_input'
+                };
+            }
+            
             // Utiliser le pipeline hybride si disponible
-            if (window.processWithHybridPipeline) {
+            if (window.processWithHybridPipeline && typeof window.processWithHybridPipeline === 'function') {
+                console.log('🔗 Utilisation du pipeline hybride');
                 return await window.processWithHybridPipeline(text);
             }
             
             // Sinon, utiliser spaCy proxy
-            if (window.spacyProxyClient) {
+            if (window.spacyProxyClient && typeof window.spacyProxyClient.analyzeText === 'function') {
+                console.log('🔗 Utilisation du spaCy proxy');
                 return await window.spacyProxyClient.analyzeText(text);
             }
             
             // Fallback vers analyse locale
-            if (window.analyzeTextLocal) {
+            if (window.analyzeTextLocal && typeof window.analyzeTextLocal === 'function') {
+                console.log('🔗 Utilisation de l\'analyse locale');
                 return await window.analyzeTextLocal(text);
             }
             
-            throw new Error('Aucun système NLP disponible');
+            // Fallback vers SpacyAnalyzer
+            if (window.SpacyAnalyzer && typeof window.SpacyAnalyzer.analyze === 'function') {
+                console.log('🔗 Utilisation de SpacyAnalyzer');
+                return await window.SpacyAnalyzer.analyze(text);
+            }
+            
+            // Dernier recours : analyse basique
+            console.warn('⚠️ Aucun système NLP avancé disponible, analyse basique');
+            return this.performBasicAnalysis(text);
             
         } catch (error) {
             console.error('❌ Erreur analyse NLP:', error);

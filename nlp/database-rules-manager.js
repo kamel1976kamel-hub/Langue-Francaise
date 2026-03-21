@@ -69,22 +69,30 @@ class DatabaseRulesManager {
     }
 
     async initSQLite() {
-        // Utiliser BrowserSQLiteManager pour le navigateur
-        if (typeof window !== 'undefined' && window.BrowserSQLiteManager) {
-            // Environnement navigateur - utiliser le gestionnaire existant
-            const sqliteManager = new window.BrowserSQLiteManager();
-            await sqliteManager.initialize();
-            this.db = sqliteManager;
-            console.log('✅ SQLite navigateur connecté via BrowserSQLiteManager');
-        } else {
-            // Environnement Node.js - sqlite3
-            const sqlite3 = require('sqlite3').verbose();
-            this.db = new Promise((resolve, reject) => {
-                const db = new sqlite3.Database(this.config.sqlitePath, (err) => {
-                    if (err) reject(err);
-                    else resolve(db);
-                });
-            });
+        try {
+            // Utiliser BrowserSQLiteManager pour le navigateur
+            if (typeof window !== 'undefined' && window.BrowserSQLiteManager && typeof window.BrowserSQLiteManager === 'function') {
+                // Environnement navigateur - utiliser le gestionnaire existant
+                const sqliteManager = new window.BrowserSQLiteManager();
+                await sqliteManager.initialize();
+                this.db = sqliteManager;
+                console.log('✅ SQLite navigateur connecté via BrowserSQLiteManager');
+            } else if (typeof window !== 'undefined') {
+                // Fallback pour navigateur sans BrowserSQLiteManager
+                console.warn('⚠️ BrowserSQLiteManager non disponible, utilisation du fallback Map');
+                this.db = new Map();
+                console.log('✅ SQLite fallback (Map) initialisé');
+            } else {
+                // Environnement Node.js
+                const sqlite3 = require('sqlite3').verbose();
+                this.db = new sqlite3.Database(this.config.sqlitePath);
+                console.log('✅ SQLite Node.js connecté');
+            }
+        } catch (error) {
+            console.error('❌ Erreur initialisation SQLite:', error);
+            // Fallback ultime
+            this.db = new Map();
+            console.log('🔄 Fallback Map utilisé suite à erreur');
         }
     }
 

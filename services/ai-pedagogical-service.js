@@ -5,15 +5,36 @@ window.AIPedagogicalService = {
     async analyzeProduction(studentText, activityContext) {
         console.log('🤖 AI PÉDAGOGIQUE SERVICE - DÉBUT ANALYSE');
         console.log('📝 Texte étudiant:', studentText);
-        console.log('📏 Longueur:', studentText.length, 'caractères');
+        console.log('📏 Longueur:', studentText?.length || 0, 'caractères');
         console.log('🎯 Contexte activité:', activityContext || 'non spécifié');
+        
+        // Validation des entrées
+        if (!studentText || typeof studentText !== 'string' || studentText.trim().length === 0) {
+            console.warn('⚠️ Texte invalide ou vide');
+            return {
+                analysis: "Veuillez fournir un texte à analyser",
+                error_type: "input",
+                rule: "",
+                hint: "Écrivez un texte avant de demander l'analyse",
+                example: "Exemple : Je vais à l'école.",
+                exercise: "Écrivez une phrase simple",
+                validation: false,
+                confidence: 0.0,
+                errors_count: 0
+            };
+        }
         
         // 1. Utiliser SpacyAnalyzer comme moteur principal
         console.log('🔍 ÉTAPE 1: APPEL SPACY ANALYZER');
         let localAnalysis;
         try {
             console.log('📞 Appel à SpacyAnalyzer...');
-            localAnalysis = await window.SpacyAnalyzer?.analyze(studentText) || { errors: [], confidence: 0 };
+            if (window.SpacyAnalyzer && typeof window.SpacyAnalyzer.analyze === 'function') {
+                localAnalysis = await window.SpacyAnalyzer.analyze(studentText);
+            } else {
+                console.warn('⚠️ SpacyAnalyzer non disponible, fallback analyse interne');
+                localAnalysis = { errors: [], confidence: 0 };
+            }
             console.log('📊 Résultat SpacyAnalyzer:', localAnalysis);
             console.log(`  🔢 Erreurs détectées: ${localAnalysis.errors?.length || 0}`);
             console.log(`  📊 Confiance: ${(localAnalysis.confidence * 100).toFixed(1)}%`);
@@ -104,23 +125,40 @@ window.AIPedagogicalService = {
         console.log('📝 FORMATAGE PÉDAGOGIQUE - DÉBUT');
         console.log('📊 Analyse à formater:', analysis);
         
-        const hasErrors = analysis.errors && analysis.errors.length > 0;
-        const mainError = hasErrors ? analysis.errors[0] : null;
+        // Validation de l'analyse
+        if (!analysis || typeof analysis !== 'object') {
+            console.warn('⚠️ Analyse invalide, retour format par défaut');
+            return {
+                analysis: "Analyse indisponible",
+                error_type: "system",
+                rule: "",
+                hint: "Veuillez réessayer",
+                example: "Exemple non disponible",
+                exercise: "Exercice non disponible",
+                validation: false,
+                confidence: 0.0,
+                errors_count: 0
+            };
+        }
         
-        console.log(`  🔢 Erreurs: ${analysis.errors?.length || 0}`);
+        const errors = analysis.errors || [];
+        const hasErrors = Array.isArray(errors) && errors.length > 0;
+        const mainError = hasErrors ? errors[0] : null;
+        
+        console.log(`  🔢 Erreurs: ${errors.length}`);
         console.log(`  📊 HasErrors: ${hasErrors}`);
         console.log(`  🎯 MainError:`, mainError);
         
         const response = {
-            analysis: hasErrors ? `Détection de ${analysis.errors.length} erreur(s) linguistique(s)` : "Production correcte",
+            analysis: hasErrors ? `Détection de ${errors.length} erreur(s) linguistique(s)` : "Production correcte",
             error_type: mainError?.type || "aucune",
             rule: mainError?.rule || "",
             hint: mainError?.correction || "",
             example: this.generateExample(mainError),
             exercise: this.generateExercise(mainError),
             validation: !hasErrors,
-            confidence: analysis.confidence || 0.8,
-            errors_count: analysis.errors?.length || 0
+            confidence: typeof analysis.confidence === 'number' ? analysis.confidence : 0.8,
+            errors_count: errors.length
         };
         
         console.log('📤 Réponse formatée:', response);
@@ -173,6 +211,12 @@ window.AIPedagogicalService = {
         console.log('📝 Texte étudiant:', studentText);
         console.log('🎯 Contexte activité:', activityContext || 'non spécifié');
         
+        // Validation des entrées
+        if (!studentText || typeof studentText !== 'string') {
+            console.warn('⚠️ Texte invalide pour appel IA');
+            throw new Error('Texte invalide pour appel IA');
+        }
+        
         if (typeof window.demanderIA !== 'function') {
             console.error('❌ Service IA non disponible - window.demanderIA n\'est pas une fonction');
             throw new Error('Service IA non disponible');
@@ -180,10 +224,10 @@ window.AIPedagogicalService = {
         
         console.log('✅ Service IA disponible, construction du prompt...');
         
-        const prompt = `
-Analysez cette production d'étudiant en français et répondez OBLIGATOIREMENT en JSON :
+        const prompt = `En tant qu'expert pédagogique en langue française, analyse cette production d'étudiant dans le contexte d'une activité.
 
-Texte de l'étudiant : "${studentText}"
+Texte étudiant: "${studentText}"
+Contexte activité: ${activityContext || 'exercice de rédaction'}
 
 Répondez avec ce format exact :
 {
@@ -193,26 +237,28 @@ Répondez avec ce format exact :
   "hint": "indice pour corriger",
   "example": "exemple correct",
   "exercise": "exercice de consolidation",
-  "validation": false
+  "validation": true/false,
+  "confidence": 0.9
 }
 
-Instructions :
-- Sois encourageant mais précis
-- Identifie les points forts et les axes d'amélioration  
-- Propose des suggestions concrètes
-- Adapte ton niveau à un élève de collège/lycée
-        `;
+Analysez uniquement les points importants et soyez concis.`;
+
+        console.log('� Prompt construit, envoi à l\'IA...');
         
-        console.log('📏 Longueur du prompt:', prompt.length, 'caractères');
-        console.log('📞 Appel à window.demanderIA...');
+        const startTime = Date.now();
         
         try {
-            const startTime = performance.now();
-            const response = await window.demanderIA(prompt, activityContext || "Analyse linguistique");
-            const endTime = performance.now();
+            const response = await window.demanderIA(prompt, 'analysis');
+            const endTime = Date.now();
             
             console.log(`⏱️ Temps de réponse IA: ${(endTime - startTime).toFixed(2)}ms`);
             console.log('📤 Réponse IA brute:', response);
+            
+            // Validation de la réponse
+            if (!response || typeof response !== 'string') {
+                console.warn('⚠️ Réponse IA invalide');
+                throw new Error('Réponse IA invalide');
+            }
             
             const result = { errors: [], confidence: 0.7, aiResponse: response };
             console.log('📊 Résultat formaté:', result);
@@ -224,7 +270,7 @@ Instructions :
             console.log('🔄 Retour d\'erreur formatée...');
             console.log('🤖 APPEL IA EXTERNE - FIN (ERREUR)');
             
-            return { errors: [], confidence: 0.1, error: error.message };
+            return { errors: [], confidence: 0.1, error: error?.message || 'Erreur inconnue' };
         }
     }
 };

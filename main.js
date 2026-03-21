@@ -598,7 +598,7 @@ window.debugPipelineStatus = function() {
     console.log('=== ÉTAT DE L\'APPLICATION ===');
     console.log('Nom:', window.APP_CONFIG.name);
     console.log('Version:', window.APP_CONFIG.version);
-    console.log('Mode debug:', window.APP_CONFIG.debug);
+    // console.log('Mode debug:', window.APP_CONFIG.debug); // Réduit le bruit console
     console.log('Modules prêts:', areAllModulesReady());
     console.log('IA prête:', appState.iaReady);
     console.log('Statut actuel:', appState.currentStatus);

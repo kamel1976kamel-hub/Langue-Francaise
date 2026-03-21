@@ -59,18 +59,18 @@ class NLPIntegrationManager {
     waitForScripts() {
         return new Promise((resolve) => {
             const checkInterval = setInterval(() => {
-                if (typeof window.analyzeTextLocal !== 'undefined') {
+                if (typeof window.analyzeTextLocal !== 'undefined' && typeof window.analyzeTextLocal === 'function') {
                     clearInterval(checkInterval);
                     resolve();
                 }
             }, 100);
 
-            // Timeout après 5 secondes (plus rapide)
+            // Timeout après 10 secondes
             setTimeout(() => {
                 clearInterval(checkInterval);
-                console.warn('⚠️ Timeout NLP: Utilisation du fallback spaCy local');
-                resolve(); // Continue avec spaCy local
-            }, 5000);
+                console.warn('⚠️ Timeout: analyseTextLocal non disponible après 10 secondes');
+                resolve();
+            }, 10000);
         });
     }
 
@@ -102,11 +102,14 @@ class NLPIntegrationManager {
 
     getAvailableFeatures() {
         return {
-            textAnalysis: typeof window.analyzeTextLocal !== 'undefined',
-            advancedPipeline: typeof window.advancedTextAnalysis !== 'undefined',
-            groqAI: typeof window.groqAIAnalysis !== 'undefined',
-            rulesValidation: typeof window.validateRule !== 'undefined',
-            rulesLoading: typeof window.loadAllRules !== 'undefined'
+            textAnalysis: typeof window.analyzeTextLocal !== 'undefined' && typeof window.analyzeTextLocal === 'function',
+            advancedPipeline: typeof window.advancedTextAnalysis !== 'undefined' && typeof window.advancedTextAnalysis === 'function',
+            groqAI: typeof window.groqAIAnalysis !== 'undefined' && typeof window.groqAIAnalysis === 'function',
+            rulesValidation: typeof window.validateRule !== 'undefined' && typeof window.validateRule === 'function',
+            rulesLoading: typeof window.loadAllRules !== 'undefined' && typeof window.loadAllRules === 'function',
+            spacyAnalyzer: typeof window.SpacyAnalyzer !== 'undefined' && typeof window.SpacyAnalyzer.analyze === 'function',
+            integratedCorrection: typeof window.integratedCorrectionSystem !== 'undefined',
+            aiPedagogicalService: typeof window.AIPedagogicalService !== 'undefined'
         };
     }
 

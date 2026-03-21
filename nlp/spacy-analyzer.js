@@ -57,13 +57,27 @@ window.SpacyAnalyzer = {
     analyze(text) {
         console.log('🔍 SPAZY ANALYZER - DÉBUT ANALYSE');
         console.log('📝 Texte à analyser:', text);
+        
+        // Validation des entrées
+        if (!text || typeof text !== 'string') {
+            console.warn('⚠️ Texte invalide pour analyse SpacyAnalyzer');
+            return {
+                errors: [],
+                suggestions: [],
+                confidence: 0,
+                processingTime: 0,
+                source: 'spacy_analyzer'
+            };
+        }
+        
         console.log('📏 Longueur du texte:', text.length, 'caractères');
         
         const analysis = {
             errors: [],
             suggestions: [],
             confidence: 0,
-            processingTime: 0
+            processingTime: 0,
+            source: 'spacy_analyzer'
         };
         
         const startTime = performance.now();
@@ -80,33 +94,38 @@ window.SpacyAnalyzer = {
                 console.log(`  🎯 Pattern:`, rule.pattern);
                 console.log(`  📊 Confiance: ${rule.confidence}`);
                 
-                const matches = text.match(rule.pattern);
-                console.log(`  🔎 Matches trouvés:`, matches ? matches.length : 0);
-                
-                if (matches) {
-                    console.log(`  ✅ Erreurs détectées pour la règle ${rule.rule}:`);
-                    matches.forEach((match, matchIndex) => {
-                        console.log(`    📍 Match ${matchIndex + 1}: "${match}"`);
-                        
-                        const correction = typeof rule.correction === 'function' ? 
-                            rule.correction(match) : rule.correction;
-                        
-                        console.log(`    🔄 Correction: "${correction}"`);
-                        
-                        const error = {
-                            text: match,
-                            correction: correction,
-                            type: rule.type,
-                            rule: rule.rule,
-                            confidence: rule.confidence,
-                            explanation: this.getExplanation(rule.type, rule.rule)
-                        };
-                        
-                        console.log(`    📄 Erreur ajoutée:`, error);
-                        analysis.errors.push(error);
-                    });
-                } else {
-                    console.log(`  ✅ Aucune erreur détectée pour la règle ${rule.rule}`);
+                try {
+                    const matches = text.match(rule.pattern);
+                    console.log(`  🔎 Matches trouvés:`, matches ? matches.length : 0);
+                    
+                    if (matches) {
+                        console.log(`  ✅ Erreurs détectées pour la règle ${rule.rule}:`);
+                        matches.forEach((match, matchIndex) => {
+                            console.log(`    📍 Match ${matchIndex + 1}: "${match}"`);
+                            
+                            const correction = typeof rule.correction === 'function' ? 
+                                rule.correction(match) : rule.correction;
+                            
+                            console.log(`    🔄 Correction: "${correction}"`);
+                            
+                            const error = {
+                                text: match,
+                                correction: correction,
+                                type: rule.type,
+                                rule: rule.rule,
+                                confidence: rule.confidence || 0.8,
+                                explanation: this.getExplanation(rule.type, rule.rule)
+                            };
+                            
+                            console.log(`    📄 Erreur ajoutée:`, error);
+                            analysis.errors.push(error);
+                        });
+                    } else {
+                        console.log(`  ✅ Aucune erreur détectée pour la règle ${rule.rule}`);
+                    }
+                } catch (error) {
+                    console.warn(`  ⚠️ Erreur dans la règle ${rule.rule}:`, error);
+                    // Continuer avec les autres règles
                 }
             });
             
@@ -122,7 +141,7 @@ window.SpacyAnalyzer = {
             analysis.confidence = 1.0;
             console.log('✅ Confiance maximale: 1.0 (aucune erreur)');
         } else {
-            const avgConfidence = analysis.errors.reduce((sum, error) => sum + error.confidence, 0) / analysis.errors.length;
+            const avgConfidence = analysis.errors.reduce((sum, error) => sum + (error.confidence || 0.8), 0) / analysis.errors.length;
             analysis.confidence = avgConfidence;
             console.log(`📊 Confiance calculée: ${avgConfidence.toFixed(3)} (moyenne de ${analysis.errors.length} erreurs)`);
             
@@ -132,21 +151,20 @@ window.SpacyAnalyzer = {
                 if (!confidenceByType[error.type]) {
                     confidenceByType[error.type] = [];
                 }
-                confidenceByType[error.type].push(error.confidence);
+                confidenceByType[error.type].push(error.confidence || 0.8);
             });
             
-            console.log('📈 Confiance par type d\'erreur:');
             Object.keys(confidenceByType).forEach(type => {
-                const confidences = confidenceByType[type];
-                const avg = confidences.reduce((a, b) => a + b, 0) / confidences.length;
-                console.log(`  ${type}: ${avg.toFixed(3)} (${confidences.length} erreurs)`);
+                const avg = confidenceByType[type].reduce((sum, conf) => sum + conf, 0) / confidenceByType[type].length;
+                console.log(`  📊 Confiance moyenne ${type}: ${avg.toFixed(3)}`);
             });
         }
         
-        analysis.processingTime = performance.now() - startTime;
+        const endTime = performance.now();
+        analysis.processingTime = endTime - startTime;
         console.log(`⏱️ Temps de traitement: ${analysis.processingTime.toFixed(2)}ms`);
+        console.log('🔍 SPAZY ANALYZER - FIN ANALYSE');
         
-        console.log('🧠 SpacyAnalyzer - Analyse terminée:', analysis);
         console.log('📊 RÉSUMÉ ANALYSE SPAZY:');
         console.log(`  📝 Texte: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
         console.log(`  🔢 Erreurs: ${analysis.errors.length}`);
