@@ -72,7 +72,8 @@ class NLPDatabaseIntegration {
                 style: allRules.style?.length || 0,
                 vocabulaire: allRules.vocabulaire?.length || 0,
                 conjugaison: allRules.conjugaison?.length || 0,
-                orthographe: allRules.orthographe?.length || 0
+                orthographe: allRules.orthographe?.length || 0,
+                grammaire: allRules.grammaire?.length || 0
             });
             
         } catch (error) {
@@ -189,11 +190,12 @@ class NLPDatabaseIntegration {
                 style: rules.style?.length || 0,
                 vocabulaire: rules.vocabulaire?.length || 0,
                 conjugaison: rules.conjugaison?.length || 0,
-                orthographe: rules.orthographe?.length || 0
+                orthographe: rules.orthographe?.length || 0,
+                grammaire: rules.grammaire?.length || 0
             });
             
             // Appliquer les règles de chaque catégorie
-            ['style', 'vocabulaire', 'conjugaison', 'orthographe'].forEach(category => {
+            ['style', 'vocabulaire', 'conjugaison', 'orthographe', 'grammaire'].forEach(category => {
                 if (rules[category]) {
                     console.log(`🔍 Test des règles ${category}:`, rules[category].length);
                     rules[category].forEach((rule, index) => {

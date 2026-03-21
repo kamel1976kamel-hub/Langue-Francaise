@@ -359,7 +359,8 @@ class DatabaseRulesManager {
             style: [],
             vocabulaire: [],
             conjugaison: [],
-            orthographe: []
+            orthographe: [],
+            grammaire: []
         };
 
         rules.forEach(rule => {
