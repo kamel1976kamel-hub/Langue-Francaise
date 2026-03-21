@@ -51,8 +51,11 @@ class NLPDatabaseIntegration {
 
     async integrateRules() {
         try {
+            console.log('🔍 Intégration des règles depuis la base de données...');
+            
             // Charger les règles depuis la base de données
             const allRules = await this.dbManager.getAllRules();
+            console.log('📋 Règles reçues du gestionnaire:', allRules);
             
             // Intégrer dans SpacyAnalyzer si disponible
             if (window.SpacyAnalyzer && window.initializeAdvancedRules) {
@@ -65,6 +68,12 @@ class NLPDatabaseIntegration {
             window.NLPDatabase = this.dbManager;
             
             console.log('✅ Règles NLP intégrées dans l\'application');
+            console.log('📊 Détail des règles:', {
+                style: allRules.style?.length || 0,
+                vocabulaire: allRules.vocabulaire?.length || 0,
+                conjugaison: allRules.conjugaison?.length || 0,
+                orthographe: allRules.orthographe?.length || 0
+            });
             
         } catch (error) {
             console.error('❌ Erreur lors de l\'intégration des règles:', error);

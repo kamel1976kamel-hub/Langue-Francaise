@@ -18,14 +18,14 @@
     <script src="nlp/auto-nlp-installer.js?v=43"></script>
     <script src="nlp/database/init-browser-sqlite.js?v=45"></script>
     <script src="nlp/database-rules-manager.js?v=45"></script>
-    <script src="nlp/database-integration.js?v=44"></script>
+    <script src="nlp/database-integration.js?v=45"></script>
     <script src="nlp/groq-ai-analyzer.js?v=45"></script>
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=44"></script>
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=59"></script>
+    <script src="main.js?v=60"></script>
     
     // Debug script -->
     <script>
@@ -41,7 +41,22 @@
             console.log('🔍 correctTextWithDatabase disponible:', typeof window.correctTextWithDatabase);
             console.log('🔍 NLPDatabaseIntegration.isReady:', window.NLPDatabaseIntegration?.isReady);
             console.log('🔍 NLPRules:', window.NLPRules);
+            console.log('🔍 NLPDatabase:', window.NLPDatabase);
         }, 2000);
+        
+        // Attendre plus longtemps et vérifier l'intégration
+        setTimeout(() => {
+            console.log('🔍 Après 5 secondes (vérification intégration):');
+            console.log('🔍 NLPRules après intégration:', window.NLPRules);
+            if (window.NLPRules) {
+                console.log('📊 État des règles:', {
+                    style: window.NLPRules.style?.length || 0,
+                    vocabulaire: window.NLPRules.vocabulaire?.length || 0,
+                    conjugaison: window.NLPRules.conjugaison?.length || 0,
+                    orthographe: window.NLPRules.orthographe?.length || 0
+                });
+            }
+        }, 5000);
     </script>
     
     <!-- Fonctions pour le chat et l'analyse -->
