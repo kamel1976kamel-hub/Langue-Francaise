@@ -23,8 +23,8 @@
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=43"></script>
     <script src="nlp/integration-manager.js?v=43"></script>
-    <script src="nlp/integrated-correction-system.js?v=66"></script>
-    <script src="nlp/correction-integration-examples.js?v=66"></script>
+    <script src="nlp/integrated-correction-system.js?v=67"></script>
+    <script src="nlp/correction-integration-examples.js?v=67"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
     <script src="main.js?v=43"></script>
     
@@ -104,8 +104,8 @@
             if (submitButton) {
                 console.log('✅ Bouton de soumission trouvé, copie des styles...');
                 
-                // Trouver l'input associé
-                const chatInput = document.querySelector('input[placeholder*="question"], textarea[placeholder*="question"], input[placeholder*="poser"], #chatInput, input[type="text"], textarea');
+                // Trouver l'input associé (priorité au textarea de chat)
+                const chatInput = document.querySelector('textarea[placeholder*="question"], textarea[placeholder*="poser"], #chatInput, input[placeholder*="question"], input[placeholder*="poser"]');
                 if (chatInput) {
                     // S'assurer que l'input a un ID
                     if (!chatInput.id) {
@@ -170,8 +170,8 @@
         // Fonction pour envoyer le message chat (manquante)
         window.sendAIChatMessage = function() {
             try {
-                // Trouver l'input de chat
-                const chatInput = document.querySelector('textarea[placeholder*="question"], input[placeholder*="question"], #chatInput, textarea');
+                // Trouver l'input de chat (priorité au textarea)
+                const chatInput = document.querySelector('textarea[placeholder*="question"], textarea[placeholder*="poser"], #chatInput, input[placeholder*="question"], input[placeholder*="poser"]');
                 
                 if (!chatInput) {
                     console.error('❌ Input de chat non trouvé');
