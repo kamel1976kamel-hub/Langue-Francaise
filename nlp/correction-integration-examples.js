@@ -18,42 +18,18 @@ function addCorrectionButton(submitButtonId, targetInputId) {
     correctionButton.innerHTML = '🔍 Correction';
     correctionButton.dataset.target = targetInputId;
     
-    // Ajouter les classes du bouton vert pour hériter des styles de base
-    correctionButton.className = 'btn integrated-correction-btn';
+    // Ajouter les mêmes classes Tailwind que le bouton vert
+    correctionButton.className = 'px-4 py-3 rounded-lg transition-colors integrated-correction-btn';
     
-    // Appliquer uniquement la couleur différente en gardant les autres styles
+    // Appliquer les styles exacts du bouton vert avec couleur orange
     correctionButton.style.cssText = `
         background-color: #f59e0b !important;
-        border-color: #f59e0b !important;
+        color: white !important;
+        transition: all 0.2s ease !important;
     `;
     
-    // Forcer l'héritage des styles du bouton vert
-    setTimeout(() => {
-        const greenButton = document.querySelector('.btn-primary, .submit-btn, button[type="submit"]');
-        if (greenButton) {
-            const computedStyles = window.getComputedStyle(greenButton);
-            
-            // Copier tous les styles pertinents
-            const stylesToCopy = [
-                'height', 'width', 'padding', 'margin', 'border-radius',
-                'font-size', 'font-weight', 'line-height', 'display',
-                'align-items', 'justify-content', 'box-sizing', 'transition'
-            ];
-            
-            stylesToCopy.forEach(style => {
-                correctionButton.style.setProperty(style, computedStyles.getPropertyValue(style), 'important');
-            });
-            
-            console.log('🎨 Styles copiés du bouton vert:', {
-                height: computedStyles.height,
-                width: computedStyles.width,
-                padding: computedStyles.padding,
-                margin: computedStyles.margin,
-                fontSize: computedStyles.fontSize,
-                fontWeight: computedStyles.fontWeight
-            });
-        }
-    }, 100);
+    // Plus besoin de copier les styles - les classes Tailwind s'en occupent
+    console.log('🎨 Bouton de correction créé avec classes Tailwind identiques');
     
     correctionButton.addEventListener('mouseenter', () => {
         correctionButton.style.background = '#d97706';
