@@ -364,7 +364,10 @@ class DatabaseRulesManager {
 
         rules.forEach(rule => {
             if (grouped[rule.category]) {
-                grouped[rule.category].push(this.convertRuleFormat(rule));
+                const convertedRule = this.convertRuleFormat(rule);
+                if (convertedRule) {
+                    grouped[rule.category].push(convertedRule);
+                }
             }
         });
 
@@ -373,7 +376,7 @@ class DatabaseRulesManager {
 
     convertRuleFormat(dbRule) {
         const rule = {
-            id: dbRule.id,
+            id: dbRule.rule_id,
             name: dbRule.name,
             category: dbRule.category,
             pattern: dbRule.pattern,
@@ -386,16 +389,40 @@ class DatabaseRulesManager {
 
         // Conversion du pattern selon le type
         if (dbRule.pattern_type === 'regex') {
-            rule.pattern = new RegExp(dbRule.pattern, 'g');
+            try {
+                rule.pattern = new RegExp(dbRule.pattern, 'g');
+            } catch (error) {
+                console.warn(`⚠️ Pattern regex invalide pour ${rule.name}:`, dbRule.pattern, error);
+                return null;
+            }
         } else if (dbRule.pattern_type === 'function') {
-            rule.pattern = new Function('match', dbRule.pattern);
+            try {
+                // Vérifier si le pattern est une fonction valide
+                if (dbRule.pattern && typeof dbRule.pattern === 'string' && !dbRule.pattern.includes('function')) {
+                    rule.pattern = new Function('match', dbRule.pattern);
+                } else {
+                    console.warn(`⚠️ Pattern fonction invalide pour ${rule.name}:`, dbRule.pattern);
+                    return null;
+                }
+            } catch (error) {
+                console.warn(`⚠️ Erreur création fonction pattern pour ${rule.name}:`, error);
+                return null;
+            }
         } else {
             rule.pattern = dbRule.pattern;
         }
 
         // Conversion de la correction si c'est une fonction
-        if (dbRule.correction && dbRule.correction.startsWith('function')) {
-            rule.correction = new Function('match', dbRule.correction);
+        if (dbRule.correction && typeof dbRule.correction === 'string' && dbRule.correction.startsWith('function')) {
+            try {
+                rule.correction = new Function('match', dbRule.correction);
+            } catch (error) {
+                console.warn(`⚠️ Erreur création fonction correction pour ${rule.name}:`, error);
+                return null;
+            }
+        } else if (dbRule.correction === 'function') {
+            // Si la correction est juste 'function', on garde la chaîne
+            rule.correction = 'function';
         }
 
         return rule;
