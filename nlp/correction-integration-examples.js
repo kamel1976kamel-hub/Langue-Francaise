@@ -192,41 +192,17 @@ function autoIntegrateCorrection() {
     // Intégrer pour les activités
     integrateActivitiesCorrection();
     
-    // Ajouter un observateur pour les éléments dynamiques
-    setupMutationObserver();
+    // Observer désactivé pour éviter la disparition des boutons
+    // setupMutationObserver();
     
-    console.log('✅ Intégration terminée - Seul le nouveau système est actif');
+    console.log('✅ Intégration terminée - Mutation Observer désactivé');
 }
 
-// Observer les changements dans le DOM pour les éléments dynamiques
+// Observer les changements dans le DOM pour les éléments dynamiques (désactivé pour éviter les doublons)
 function setupMutationObserver() {
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        // Vérifier si de nouveaux inputs ou textareas ont été ajoutés
-                        const newInputs = node.querySelectorAll ? 
-                            node.querySelectorAll('input[type="text"], textarea, button[type="submit"]') : [];
-                        
-                        if (newInputs.length > 0) {
-                            console.log('🔄 Nouveaux éléments détectés, réintégration...');
-                            setTimeout(() => {
-                                integrateChatCorrection();
-                                integrateActivitiesCorrection();
-                            }, 100);
-                        }
-                    }
-                });
-            }
-        });
-    });
-    
-    // Observer tout le corps du document
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
+    console.log('🔍 Mutation Observer désactivé pour éviter la suppression/recréation des boutons');
+    // L'observer est désactivé car il causait la disparition des boutons de correction
+    // en les supprimant et les recréant continuellement
 }
 
 // Fonction pour créer une interface de correction manuelle
