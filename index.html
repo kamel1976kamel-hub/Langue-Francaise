@@ -25,12 +25,23 @@
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=58"></script>
+    <script src="main.js?v=59"></script>
     
-    <!-- Debug script -->
+    // Debug script -->
     <script>
         console.log('🔍 Debug: Scripts chargés');
         console.log('🔍 integratedCorrectionSystem disponible:', typeof window.integratedCorrectionSystem);
+        console.log('🔍 correctTextWithDatabase disponible:', typeof window.correctTextWithDatabase);
+        console.log('🔍 NLPDatabaseIntegration disponible:', typeof window.NLPDatabaseIntegration);
+        console.log('🔍 NLPRules disponible:', typeof window.NLPRules);
+        
+        // Attendre un peu et revérifier
+        setTimeout(() => {
+            console.log('🔍 Après 2 secondes:');
+            console.log('🔍 correctTextWithDatabase disponible:', typeof window.correctTextWithDatabase);
+            console.log('🔍 NLPDatabaseIntegration.isReady:', window.NLPDatabaseIntegration?.isReady);
+            console.log('🔍 NLPRules:', window.NLPRules);
+        }, 2000);
     </script>
     
     <!-- Fonctions pour le chat et l'analyse -->
@@ -159,7 +170,14 @@
                 correctionContent.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2" style="color: #6366f1;">Analyse en cours...</p></div>';
                 
                 // Analyser la question avec le système de correction
+                console.log('🔍 Test des systèmes disponibles:');
+                console.log('  - correctTextWithDatabase:', typeof window.correctTextWithDatabase);
+                console.log('  - analyzeTextLocal:', typeof window.analyzeTextLocal);
+                console.log('  - NLPRules:', window.NLPRules ? 'disponible' : 'non disponible');
+                console.log('  - NLPDatabaseIntegration.isReady:', window.NLPDatabaseIntegration?.isReady);
+                
                 if (window.correctTextWithDatabase) {
+                    console.log('🚀 Utilisation de la base de données');
                     window.correctTextWithDatabase(question)
                         .then(corrections => {
                             console.log('✅ Corrections reçues:', corrections);
@@ -170,6 +188,7 @@
                             displayError(error);
                         });
                 } else if (window.analyzeTextLocal) {
+                    console.log('🔄 Utilisation de l\'analyse locale');
                     const corrections = window.analyzeTextLocal(question);
                     console.log('✅ Corrections locales reçues:', corrections);
                     displayCorrections(corrections, question);
