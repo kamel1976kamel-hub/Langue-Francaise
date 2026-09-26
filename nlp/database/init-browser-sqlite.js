@@ -3151,7 +3151,9 @@ class BrowserSQLiteManager {
                 name: 'exces_je',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\bje\\b.*\\bje\\b.*\\bje\\b.*\\bje\\b',
+                // Neutralisée (ACTION 13): règle-conseil — remplace le texte par le conseil sans
+                // transformation (mesuré ACTION 12: 44 caractères détruits sur la sonde).
+                pattern: '\\bje\\b.*\\bje\\b.*\\bje\\b.*\\bje\\b(?!)',
                 correction: 'réduire l\'usage de "je"',
                 explanation: 'Un excès de "je" peut donner une impression d\'égocentrisme. Variez les formulations.',
                 example: 'Je pense que je suis compétent, je voudrais... → Mon parcours correspond au poste...',
@@ -3162,7 +3164,9 @@ class BrowserSQLiteManager {
                 name: 'formule_politesse_manquante',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '.{50,}(?!(?:je vous prie|cordialement|salutations|bien à vous|sincèrement))$',
+                // Neutralisée (ACTION 13): faux positif massif — détruisait le texte INTEGRAL de
+                // toute réponse ≥50 caractères sans formule de politesse (mesuré ACTION 12).
+                pattern: '.{50,}(?!(?:je vous prie|cordialement|salutations|bien à vous|sincèrement))$(?!)',
                 correction: 'ajouter une formule de politesse',
                 explanation: 'Une lettre se termine généralement par une formule de politesse.',
                 example: '(fin de lettre sans formule) → Je vous prie d\'agréer...',
@@ -3173,7 +3177,9 @@ class BrowserSQLiteManager {
                 name: 'pathos_excessif',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(lutter|souffrir|désespoir|détresse|misère|combat|douleur|injustice)\\b',
+                // Neutralisée (ACTION 13): conseil substitué au mot ("désespoir" →
+                // "vocabulaire plus neutre" — mesuré ACTION 12).
+                pattern: '\\b(lutter|souffrir|désespoir|détresse|misère|combat|douleur|injustice)\\b(?!)',
                 correction: 'vocabulaire plus neutre',
                 explanation: 'L\'usage de mots trop chargés émotionnellement peut indisposer le lecteur.',
                 example: 'J\'ai lutté, souffert... → J\'ai traversé des difficultés...',
@@ -3184,7 +3190,9 @@ class BrowserSQLiteManager {
                 name: 'manque_concret',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(qualité|motivation|compétence|savoir-être|relation|expérience)\\b.*\\b(qualité|motivation|compétence|savoir-être|relation|expérience)\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span ("ma qualité est la
+                // ajouter des exemples concrets" — mesuré ACTION 12).
+                pattern: '\\b(qualité|motivation|compétence|savoir-être|relation|expérience)\\b.*\\b(qualité|motivation|compétence|savoir-être|relation|expérience)\\b(?!)',
                 correction: 'ajouter des exemples concrets',
                 explanation: 'Votre texte contient beaucoup de termes abstraits sans illustration concrète.',
                 example: 'J\'ai des qualités relationnelles → J\'ai animé des ateliers pour 20 personnes...',
@@ -3195,7 +3203,8 @@ class BrowserSQLiteManager {
                 name: 'phrase_trop_longue',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '[^.?!]{100,}',
+                // Neutralisée (ACTION 13): conseil substitué au span entier (mesuré ACTION 12).
+                pattern: '[^.?!]{100,}(?!)',
                 correction: 'scinder en phrases plus courtes',
                 explanation: 'Les phrases trop longues peuvent nuire à la clarté et fatiguer le lecteur.',
                 example: 'Longue phrase complexe → Phrases plus simples et claires',
@@ -3208,7 +3217,10 @@ class BrowserSQLiteManager {
                 name: 'description_sans_point_de_vue',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '^\\w+\\s+\\w+\\s+\\w+\\s+\\w+\\s+\\w+.*\\.$',
+                // Neutralisée (ACTION 13): faux positif sur toute phrase ≥5 mots — détruisait le
+                // texte INTEGRAL ("Le chat dort sur le canapé du salon." → "intégrer un point de
+                // vue" — mesuré ACTION 12).
+                pattern: '^\\w+\\s+\\w+\\s+\\w+\\s+\\w+\\s+\\w+.*\\.$(?!)',
                 correction: 'intégrer un point de vue',
                 explanation: 'Une description gagne à être incarnée par un point de vue personnel.',
                 example: 'La maison a trois fenêtres → À mes yeux, la maison...',
@@ -3219,7 +3231,8 @@ class BrowserSQLiteManager {
                 name: 'description_sans_details',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(il y avait|c\'était|il était)\\s+\\w+\\.$',
+                // Neutralisée (ACTION 13): conseil substitué à la phrase entière (mesuré ACTION 12).
+                pattern: '\\b(il y avait|c\'était|il était)\\s+\\w+\\.$(?!)',
                 correction: 'ajouter des détails sensoriels',
                 explanation: 'Votre description manque de détails concrets. Utilisez des adjectifs précis.',
                 example: 'Il y avait un arbre → Un chêne noueux étendait ses branches...',
@@ -3230,7 +3243,9 @@ class BrowserSQLiteManager {
                 name: 'recit_sans_chronologie',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\w+\\.\\s+\\w+\\.\\s+\\w+\\.(?!.*\\b(puis|ensuite|alors|après|plus tard)\\b)',
+                // Neutralisée (ACTION 13): quasi-inerte (3 phrases d'un seul mot requises) et
+                // conseil substitué au span (mesuré ACTION 12).
+                pattern: '\\w+\\.\\s+\\w+\\.\\s+\\w+\\.(?!.*\\b(puis|ensuite|alors|après|plus tard)\\b)(?!)',
                 correction: 'ajouter des marqueurs temporels',
                 explanation: 'Un récit doit être ancré dans le temps avec des marqueurs chronologiques.',
                 example: 'Il arriva. Il vit. Il parla → Il arriva. Puis il vit. Alors il parla',
@@ -3241,7 +3256,9 @@ class BrowserSQLiteManager {
                 name: 'passif_excessif',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(été|été|été|fut|fut|fut)\\s+\\w+é\\s+par\\b.*\\b(été|été|été|fut|fut|fut)\\s+\\w+é\\s+par\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span (mesuré ACTION 12 sur
+                // "fut aimé par" ×2 — atteignabilité étroite mais réelle).
+                pattern: '\\b(été|été|été|fut|fut|fut)\\s+\\w+é\\s+par\\b.*\\b(été|été|été|fut|fut|fut)\\s+\\w+é\\s+par\\b(?!)',
                 correction: 'privilégier la voix active',
                 explanation: 'L\'usage répété du passif alourdit le style. Préférez la voix active.',
                 example: 'La décision a été prise → Le comité a pris la décision',
@@ -3270,7 +3287,9 @@ class BrowserSQLiteManager {
                 name: 'verbes_faibles',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(être|avoir|faire)\\b.*\\b(être|avoir|faire)\\b.*\\b(être|avoir|faire)\\b',
+                // Neutralisée (ACTION 13): quasi-inerte (\b devant "être" impossible — é non-mot)
+                // et conseil substitué au span (mesuré ACTION 12).
+                pattern: '\\b(être|avoir|faire)\\b.*\\b(être|avoir|faire)\\b.*\\b(être|avoir|faire)\\b(?!)',
                 correction: 'verbes plus précis',
                 explanation: 'Les verbes "être", "avoir", "faire" sont généraux. Utilisez des verbes plus spécifiques.',
                 example: 'Il a fait un travail → Il a réalisé un travail',
@@ -3281,7 +3300,8 @@ class BrowserSQLiteManager {
                 name: 'trop_adverbes_ment',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b\\w+ment\\b.*\\b\\w+ment\\b.*\\b\\w+ment\\b.*\\b\\w+ment\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span des 4 adverbes (mesuré ACTION 12).
+                pattern: '\\b\\w+ment\\b.*\\b\\w+ment\\b.*\\b\\w+ment\\b.*\\b\\w+ment\\b(?!)',
                 correction: 'varier les formulations',
                 explanation: 'L\'accumulation d\'adverbes en -ment peut rendre le style lourd.',
                 example: 'Il marcha rapidement, puis s\'arrêta brusquement → Il pressa le pas, puis s\'arrêta net',
@@ -3292,7 +3312,9 @@ class BrowserSQLiteManager {
                 name: 'cacophonie_que',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\bque\\b.{0,20}?\\bque\\b.{0,20}?\\bque\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span des 3 "que" (mesuré ACTION 12:
+                // "je crois réduire le nombre de \"que\" c'est vrai").
+                pattern: '\\bque\\b.{0,20}?\\bque\\b.{0,20}?\\bque\\b(?!)',
                 correction: 'réduire le nombre de "que"',
                 explanation: 'La répétition rapprochée de "que" crée une cacophonie.',
                 example: 'Je pense que tu crois que je sais → Je pense que tu crois savoir...',
@@ -3303,7 +3325,9 @@ class BrowserSQLiteManager {
                 name: 'abus_il_y_a',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(il y a|y a)\\b.*\\b(il y a|y a)\\b.*\\b(il y a|y a)\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span ("tournures plus directes un
+                // oiseau" — mesuré ACTION 12).
+                pattern: '\\b(il y a|y a)\\b.*\\b(il y a|y a)\\b.*\\b(il y a|y a)\\b(?!)',
                 correction: 'tournures plus directes',
                 explanation: '"Il y a" est une tournure faible. Préférez des verbes comme "exister".',
                 example: 'Il y a des gens qui pensent → Certains pensent',
@@ -3314,7 +3338,9 @@ class BrowserSQLiteManager {
                 name: 'debuts_phrase_monotones',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '^\\b(Il|Elle|On)\\b.*\\n\\b\\1\\b.*\\n\\b\\1\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span multi-lignes ("varier les
+                // débuts de phrases boit." — mesuré ACTION 12).
+                pattern: '^\\b(Il|Elle|On)\\b.*\\n\\b\\1\\b.*\\n\\b\\1\\b(?!)',
                 correction: 'varier les débuts de phrases',
                 explanation: 'Trop de phrases commencent par le même mot. Variez les constructions.',
                 example: 'Il arriva. Il vit. Il dit → Il arriva. Soudain, il vit. Alors il dit',
@@ -3325,7 +3351,8 @@ class BrowserSQLiteManager {
                 name: 'negation_lourde',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(ne|n\')\\b.*\\b(ne|n\')\\b.*\\b(ne|n\')\\b.*\\b(ne|n\')\\b',
+                // Neutralisée (ACTION 13): conseil substitué au span des 4 négations (mesuré ACTION 12).
+                pattern: '\\b(ne|n\')\\b.*\\b(ne|n\')\\b.*\\b(ne|n\')\\b.*\\b(ne|n\')\\b(?!)',
                 correction: 'formulations positives',
                 explanation: 'L\'accumulation de négations peut rendre le style pesant.',
                 example: 'Il n\'a pas vu, n\'a pas entendu → Il est resté sourd et aveugle',
