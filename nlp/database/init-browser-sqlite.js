@@ -93,6 +93,19 @@ class BrowserSQLiteManager {
                 priority: 85
             },
             {
+                // Ajoutée (ACTION 11): symétrique d'espace_avant_point pour la virgule — aucune
+                // règle ne retirait l'espace avant "," ("un , deux" restait inchangé).
+                rule_id: 'espace_avant_virgule',
+                name: 'espace_avant_virgule',
+                category: 'style',
+                pattern_type: 'regex',
+                pattern: '\\s+(,)',
+                correction: '$1',
+                explanation: 'Pas d\'espace avant la virgule.',
+                example: 'un , deux → un, deux',
+                priority: 90
+            },
+            {
                 rule_id: 'double_espace',
                 name: 'double_espace',
                 category: 'style',
@@ -130,7 +143,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_ou_où',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\bou\\b(?=\\s+(le|la|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|votre|leur))',
+                // Neutralisée (ACTION 11): fantôme — le re-remplacement sur la sous-chaîne perd
+                // le lookahead ("ou" → "ou") et le vrai correcteur est confusion_ou_ou (vocab).
+                pattern: '\\bou\\b(?=\\s+(le|la|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|votre|leur))(?!)',
                 correction: 'où',
                 explanation: 'Utiliser "où" pour le lieu, "ou" pour le choix.',
                 example: 'La maison ou je vis → La maison où je vis',
@@ -141,7 +156,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_a_à',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\ba\\b(?=\\s+(le|la|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|votre|leur|cette|ces|cet))',
+                // Neutralisée (ACTION 11): fantôme (même mécanisme de sous-chaîne que
+                // confusion_ou_où) ; la copie vocabulaire (a demi/heure/...) reste active.
+                pattern: '\\ba\\b(?=\\s+(le|la|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|votre|leur|cette|ces|cet))(?!)',
                 correction: 'à',
                 explanation: 'Utiliser "à" pour la préposition, "a" pour le verbe.',
                 example: 'Il a le livre → Il à le livre (incorrect)',
@@ -303,8 +320,8 @@ class BrowserSQLiteManager {
                 name: 'groupe_verbe_terminaison',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+er)\\b',
-                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+er)$/); if (!parts) { return match; } var subject = parts[1]; var verb = parts[2]; var ending = ""; if (subject === "je" || subject === "j\'") { ending = "e"; } else if (subject === "tu") { ending = "es"; } else if (subject === "il" || subject === "elle" || subject === "on") { ending = "e"; } else if (subject === "nous") { ending = "ons"; } else if (subject === "vous") { ending = "ez"; } else if (subject === "ils" || subject === "elles") { ending = "ent"; } return subject + " " + verb.replace(/er$/, ending); }',
+                pattern: '\\b(je|Je|tu|Tu|il|Il|elle|Elle|on|On|nous|Nous|vous|Vous|ils|Ils|elles|Elles)\\s+(\\w+er)\\b',
+                correction: 'function(match) { var parts = match.match(/^(je|Je|tu|Tu|il|Il|elle|Elle|on|On|nous|Nous|vous|Vous|ils|Ils|elles|Elles)\\s+(\\w+er)$/); if (!parts) { return match; } var subject = parts[1]; var sujet = subject.toLowerCase(); var verb = parts[2]; var ending = ""; if (sujet === "je" || sujet === "j\'") { ending = "e"; } else if (sujet === "tu") { ending = "es"; } else if (sujet === "il" || sujet === "elle" || sujet === "on") { ending = "e"; } else if (sujet === "nous") { ending = "ons"; } else if (sujet === "vous") { ending = "ez"; } else if (sujet === "ils" || sujet === "elles") { ending = "ent"; } return subject + " " + verb.replace(/er$/, ending); }',
                 explanation: 'Le verbe du 1er groupe doit être conjugué et non laissé à l\'infinitif après un sujet.',
                 example: 'je parler → je parle, tu parler → tu parles',
                 priority: 95
@@ -339,18 +356,17 @@ class BrowserSQLiteManager {
                 example: 'demain je ferais → demain je ferai',
                 priority: 85
             },
+            // Neutralisée (ACTION 11): l'exemple documenté ("il faut que tu viens → viennes") est
+            // inatteignable (le pattern exige \w+e[sz]?/ons/ez/ent et "viens" n'y entre pas), le
+            // comportement réel est une annotation destructive "(subjonctif requis)" apposée sur
+            // des subjonctifs déjà corrects. La règle est redondante avec avant_que/bien_que.
             {
                 rule_id: 'subjonctif_apres_que',
                 name: 'subjonctif_apres_que',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(il\\s+faut|bien\\s+que|avant\\s+que|pour\\s+que|sans\\s+que|afin\\s+que)\\s+(tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+e[sz]?|\\w+ons|\\w+ez|\\w+ent)\\b',
-                correction: function(match) {
-                    const locution = match[1];
-                    const subject = match[2];
-                    const verb = match[3];
-                    return locution + ' ' + subject + ' ' + verb + ' (subjonctif requis)';
-                },
+                pattern: '\\b(il\\s+faut|bien\\s+que|avant\\s+que|pour\\s+que|sans\\s+que|afin\\s+que)\\s+(tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+e[sz]?|\\w+ons|\\w+ez|\\w+ent)\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Après ces locutions, on emploie le subjonctif.',
                 example: 'il faut que tu viens → il faut que tu viennes',
                 priority: 90
@@ -498,23 +514,23 @@ class BrowserSQLiteManager {
                 name: 'verbe_eler_double_consonne',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(j\'|je|tu|il|elle)\\s+(appel|jett)\\b',
-                correction: 'function(match) { var parts = match.match(/^(j\'|je|tu|il|elle)\\s+(appel|jett)$/); if (!parts) { return match; } if (parts[2] === "appel") { return parts[1] + " appelle"; } if (parts[2] === "jett") { return parts[1] + " jette"; } return match; }',
+                pattern: '\\b(j\'|Je|je|Tu|tu|Il|il|Elle|elle)\\s+(appel|jett)\\b',
+                correction: 'function(match) { var parts = match.match(/^(j\'|Je|je|Tu|tu|Il|il|Elle|elle)\\s+(appel|jett)$/); if (!parts) { return match; } if (parts[2] === "appel") { return parts[1] + " appelle"; } if (parts[2] === "jett") { return parts[1] + " jette"; } return match; }',
                 explanation: 'Les verbes "appeler" et "jeter" doublent la consonne devant une syllabe muette.',
                 example: 'j\'appelle → j\'appelle, il jette → il jette',
                 priority: 85
             },
+            // Neutralisée (ACTION 11): exemple historique = identité ("il cède → il cède"),
+            // le pattern ne matchait que la troncature "il céd" et produisait "il cèd"
+            // (mesuré: "il céd" → "l  " sous le contrat chaîne). Aucune réparation sûre
+            // sans inventer la règle d'accentuation.
             {
                 rule_id: 'verbe_ceder_accent',
                 name: 'verbe_ceder_accent',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(j\'|je|tu|il|elle)\\s+(céd|accéd|décéd|posséd)\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const verb = match[2];
-                    return subject + ' ' + verb.replace('é', 'è');
-                },
+                pattern: '\\b(j\'|je|tu|il|elle)\\s+(céd|accéd|décéd|posséd)\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Les verbes comme "céder" changent l\'accent aigu en accent grave devant une syllabe muette.',
                 example: 'il cède → il cède',
                 priority: 85
@@ -561,22 +577,16 @@ class BrowserSQLiteManager {
                 example: 'elles sont parti → elles sont parties',
                 priority: 95
             },
+            // Neutralisée (ACTION 11): fonction désindexée (lit match[5] inexistant → charabia),
+            // exemple inatteignable (\b bloqué par le é final des participes), et "l'" ambigu
+            // (l'ami/l'amie). Réparation = refonte complète hors périmètre.
             {
                 rule_id: 'accord_participe_avoir_cod',
                 name: 'accord_participe_avoir_cod',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(l\'|la|les)\\s+que\\s+(j\'|je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+(\\w+[^es])\\b',
-                correction: function(match) {
-                    const cod = match[1];
-                    const subject = match[3];
-                    const aux = match[4];
-                    const ppe = match[5];
-                    if (cod === 'les') return match[0].replace(ppe, ppe + 's');
-                    if (cod === 'la') return match[0].replace(ppe, ppe + 'e');
-                    if (cod === 'l\'') return match[0].replace(ppe, ppe + 'e');
-                    return match[0];
-                },
+                pattern: '\\b(l\'|la|les)\\s+que\\s+(j\'|je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+(\\w+[^es])\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Avec l\'auxiliaire "avoir", le participe passé s\'accorde avec le COD placé avant.',
                 example: 'les pommes que j\'ai mangé → les pommes que j\'ai mangées',
                 priority: 90
@@ -598,7 +608,9 @@ class BrowserSQLiteManager {
                 name: 'homophone_ou_ou',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\boù\\b',
+                // Neutralisée (ACTION 11): règle 100% inerte (\b après ù impossible avant espace)
+                // et correction identique au match — jamais aucune correction utile.
+                pattern: '\\boù\\b(?!)',
                 correction: 'où',
                 explanation: '"où" avec accent circonflexe = lieu ; "ou" sans accent = coordination.',
                 example: 'ou es-tu ? → où es-tu ?',
@@ -712,7 +724,8 @@ class BrowserSQLiteManager {
                 name: 'accent_e_e',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\bé\\b',
+                // Neutralisée (ACTION 11): fantôme identitaire ("inréel" → entrée "é"→"é").
+                pattern: '\\bé\\b(?!)',
                 correction: 'é',
                 explanation: '"é" accent aigu = participe passé ; "e" sans accent = pronoms.',
                 example: 'il e → il é',
@@ -839,24 +852,16 @@ class BrowserSQLiteManager {
                 example: 'évidament → évidemment',
                 priority: 95
             },
+            // Neutralisée (ACTION 11): logique incohérente (base+'amment' double-comptait le
+            // suffixe; exemple "courament → couramment" inatteignable) et corruption mesurée
+            // ("courament" → "c"). La forme "évidament" reste couverte par terminaison_evidence.
             {
                 rule_id: 'terminaisons_adverbes_ment',
                 name: 'terminaisons_adverbes_ment',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\b(\\w+)(?:ament|emment|ément)\\b',
-                correction: function(match) {
-                    const base = match[1];
-                    const ending = match[0].slice(base.length);
-                    // Règles : -ant -> -amment, -ent -> -emment
-                    if (base.endsWith('ant') && ending === 'ament') {
-                        return base + 'amment';
-                    }
-                    if (base.endsWith('ent') && ending === 'ement') {
-                        return base + 'emment';
-                    }
-                    return match[0];
-                },
+                pattern: '\\b(\\w+)(?:ament|emment|ément)\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Les adverbes en -ment : -ant -> -amment, -ent -> -emment.',
                 example: 'courament → couramment, evident → évidemment',
                 priority: 90
@@ -885,20 +890,15 @@ class BrowserSQLiteManager {
                 example: 'des chevals → des chevaux, des journaux → des journaux',
                 priority: 90
             },
+            // Neutralisée (ACTION 11): fonction incohérente (base+'eilles' = "soleileilles";
+            // mesuré: "des soleilles" → "des eeilles") et exemples historiques = identité.
             {
                 rule_id: 'pluriel_eil_eille',
                 name: 'pluriel_eil_eille',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\bdes\\s+(\\w+eil)les\\b',
-                correction: function(match) {
-                    const base = match[1];
-                    const exceptions = ['b', 'cor', 'é', 'gouvern', 'p', 'v', 'vitr'];
-                    if (!exceptions.some(prefix => base.startsWith(prefix))) {
-                        return 'des ' + base + 'eilles';
-                    }
-                    return match[0];
-                },
+                pattern: '\\bdes\\s+(\\w+eil)les\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Certains noms en -eil font leur féminin en -eille.',
                 example: 'des conseilles → des conseilles, des orgueilles → des orgueilles',
                 priority: 85
@@ -923,10 +923,11 @@ class BrowserSQLiteManager {
                 name: 'sigle_sans_points',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\b[A-Z]\\.([A-Z]\\.){2,}\\b',
-                correction: function(match) {
-                    return match[0].replace(/\./g, '');
-                },
+                // Réparée (ACTION 11): la fonction match[0]-based ne gardait que le premier
+                // caractère ("S.N.C.F." → "SF."), et le \b final empêchait de capturer la
+                // dernière lettre-dot du sigle. Pattern réécrit pour couvrir la forme complète.
+                pattern: '\\b[A-Z]\\.(?:[A-Z]\\.){1,}[A-Z]\\.?',
+                correction: 'function(match) { return match.replace(/\\./g, ""); }',
                 explanation: 'Les sigles s\'écrivent généralement sans points.',
                 example: 'S.N.C.F. → SNCF, U.R.S.S. → URSS',
                 priority: 75
@@ -938,7 +939,9 @@ class BrowserSQLiteManager {
                 name: 'majuscule_apres_point',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\.\\s+([a-z])',
+                // Neutralisée (ACTION 11): domaine strictement inclus dans majuscule_debut_phrase
+                // ([.] ⊂ [.!?]) — double affichage mesuré de la même correction ". c"→". C".
+                pattern: '\\.\\s+([a-z])(?!)',
                 correction: 'function(match) { var parts = match.match(/^\\.\\s+([a-z])$/); if (!parts) { return match; } return ". " + parts[1].toUpperCase(); }',
                 explanation: 'Après un point, on met une majuscule.',
                 example: 'il fait beau. demain → il fait beau. Demain',
@@ -949,7 +952,10 @@ class BrowserSQLiteManager {
                 name: 'espace_avant_ponctuation_double',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '(\\w)([!?;:])',
+                // Neutralisée (ACTION 11): doublon sans lookahead de la copie style — causait
+                // "10:30" → "10 :30" (demi-espace) et un double affichage sur ! ? ; :
+                // (déjà couverts par la copie style restreinte en ACTION 9).
+                pattern: '(\\w)([!?;:])(?!)',
                 correction: '$1 $2',
                 explanation: 'Espace insécable avant la ponctuation double.',
                 example: 'Bonjour! → Bonjour !',
@@ -1175,11 +1181,12 @@ class BrowserSQLiteManager {
                 name: 'article_h_aspire',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\bl\'\\s+(haricot|hibou|héros|huit|hamac|hasard|haut|haine|hâte|haleine|hanche|hangar|harpe|haricot|héron|héros|hibou|hippopotame|hockey|hollywood|homard|homme|hôpital|horloge|horoscope|horreur|hôte|hôtel|housse|houblon|housse|houle|hourra|houx|huit|hurluberlu|hydrogène|hymne|hypocrisie|hypothèse)\\b',
-                correction: function(match) {
-                    const word = match[1];
-                    return 'le ' + word;
-                },
+            // Réparée (ACTION 11): le \s+ après l' rendait la règle inatteignable ("l'haricot"
+            // ne matchait jamais) et la liste contenait 11 mots à h MUET (l'hôtel, l'homme,
+            // l'hôpital... — élision correcte) qui auraient été corrompus une fois atteints.
+            // Liste restreinte aux h aspirés vérifiés.
+                pattern: '\\bl\'(haricot|hibou|héros|huit|hamac|hasard|haut|haine|hâte|haleine|hanche|hangar|harpe|héron|hippopotame|hockey|hollywood|homard|houblon|housse|houle|hourra|houx|hurluberlu)\\b',
+                correction: 'function(match) { return "le " + match.slice(2); }',
                 explanation: 'Devant un h aspiré, on n\'élide pas l\'article.',
                 example: 'l\'haricot → le haricot',
                 priority: 90
@@ -1268,7 +1275,9 @@ class BrowserSQLiteManager {
                 name: 'falloir_present',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\bil faut\\b',
+                // Neutralisée (ACTION 11): fantôme identitaire — la règle matche le texte CORRECT
+                // "il faut" et le "corrige" en lui-même ("il faut étudier" → fantôme affiché).
+                pattern: '\\bil faut\\b(?!)',
                 correction: 'il faut',
                 explanation: 'Le verbe falloir ne s\'utilise qu\'avec il: il faut.',
                 example: 'Il faut étudier pour réussir.',
@@ -1333,7 +1342,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_ce_se',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\bce\\b(?=\\s+(est|sont|sera|seront|était|étaient|fut|furent))',
+                // Neutralisée (ACTION 11): fantôme — le re-remplacement sur la sous-chaîne
+                // perd le lookahead ("ce est" → entrée "ce est"→"ce est" sans correction).
+                pattern: '\\bce\\b(?=\\s+(est|sont|sera|seront|était|étaient|fut|furent))(?!)',
                 correction: 'se',
                 explanation: 'Utiliser "se" pour le pronom réfléchi, "ce" pour le démonstratif.',
                 example: 'Ce lave → Se lave',
@@ -1426,8 +1437,10 @@ class BrowserSQLiteManager {
                 name: 'confusion_a_à',
                 category: 'vocabulaire',
                 pattern_type: 'regex',
-                pattern: '\\ba\\s+(?:demi|heure|peine|cause|lieu|droite|gauche|propos|contre|part)\\b',
-                correction: 'à',
+                // Réparée (ACTION 11): la correction "à" remplaçait TOUT le match ("a demi") et
+                // avalait le mot ("a demi conscient" → "à conscient"). Groupe capturant + "à $1".
+                pattern: '\\ba\\s+((?:demi|heure|peine|cause|lieu|droite|gauche|propos|contre|part))\\b',
+                correction: 'à $1',
                 explanation: 'Préposition "à" avec accent pour indiquer la direction, la destination.',
                 example: 'a demain → à demain',
                 priority: 90
@@ -2837,7 +2850,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_ver_vers_verre_vert',
                 category: 'vocabulaire',
                 pattern_type: 'regex',
-                pattern: '\\bver\\s+le\\b',
+                // Neutralisée (ACTION 11): doublon plus étroit de la copie orthographe (fonction
+                // réparée qui couvre le/la/les/un/une/des) — double affichage supprimé.
+                pattern: '\\bver\\s+le\\b(?!)',
                 correction: 'vers',
                 explanation: 'Ver = animal ; vers = préposition ; verre = récipient ; vert = couleur.',
                 example: 'ver le mur → vers le mur',
@@ -2934,7 +2949,9 @@ class BrowserSQLiteManager {
                 name: 'majuscule_apres_point',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\.\\s+([a-z])',
+                // Neutralisée (ACTION 11): doublon fantôme de la copie orthographe (fonction
+                // réparée) — produisait l'entrée ". c"→". c" à côté de la correction réelle.
+                pattern: '\\.\\s+([a-z])(?!)',
                 correction: '. $1',
                 explanation: 'Après un point, on met une majuscule pour marquer le début d\'une nouvelle phrase.',
                 example: 'Il fait beau. demain nous irons → Il fait beau. Demain nous irons',
@@ -2961,8 +2978,8 @@ class BrowserSQLiteManager {
                 // Pattern restreint (ACTION 8): "Beaucoup" seul (les autres quantificateurs
                 // étaient des no-op dans la fonction) et "est" seul (le match sur "sont"
                 // produisait des corrections fantômes sur du texte correct).
-                pattern: '\\bBeaucoup\\s+de\\s+(\\w+\\w*)\\s+est\\b',
-                correction: 'function(match) { var parts = match.match(/^Beaucoup\\s+de\\s+(\\w+\\w*)\\s+est$/); if (!parts) { return match; } if (/s$/.test(parts[1])) { return "Beaucoup de " + parts[1] + " sont"; } return match; }',
+                pattern: '\\b([Bb]eaucoup)\\s+de\\s+(\\w+\\w*)\\s+est\\b',
+                correction: 'function(match) { var parts = match.match(/^([Bb]eaucoup)\\s+de\\s+(\\w+\\w*)\\s+est$/); if (!parts) { return match; } if (/s$/.test(parts[2])) { return parts[1] + " de " + parts[2] + " sont"; } return match; }',
                 explanation: 'Avec "beaucoup de", le verbe s\'accorde généralement avec le complément qui suit.',
                 example: 'Beaucoup de gens est venu → Beaucoup de gens sont venus',
                 priority: 85
@@ -2983,7 +3000,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_ou_où',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(ou|où)\\b',
+                // Neutralisée (ACTION 11): fonction match.input (morte sous le contrat chaîne,
+                // TypeError capturée). Le correcteur réel de ou→où est confusion_ou_ou (vocab).
+                pattern: '\\b(ou|où)\\b(?!)',
                 correction: function(match) {
                     const word = match[1];
                     const context = match.input.substring(Math.max(0, match.index - 20), match.index + 20);
@@ -3007,7 +3026,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_a_à',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(a|à)\\b',
+                // Neutralisée (ACTION 11): fonction match.input (morte sous le contrat chaîne,
+                // TypeError capturée). La copie vocabulaire (a demi/heure/...) reste active.
+                pattern: '\\b(a|à)\\b(?!)',
                 correction: function(match) {
                     const word = match[1];
                     const context = match.input.substring(Math.max(0, match.index - 10), match.index + 20);
@@ -3055,10 +3076,12 @@ class BrowserSQLiteManager {
                 name: 'apres_que_indicatif',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\bAprès que\\s+.*\\b(ait|soit|ait)\\b',
-                correction: function(match) {
-                    return match[0].replace(/(ait|soit)/g, 'a');
-                },
+                // Réparée (ACTION 11): la fonction match[0]-based remplaçait tout le match par le
+                // premier caractère ("Après que Paul ait mangé" → "A mangé"). Pattern: [^.!?]*
+                // (anti traversée inter-phrase) et "ait" seul (l'indicatif de "soit" est
+                // ambigu: est/sont selon le sujet).
+                pattern: '\\bAprès que\\s+[^.!?]*\\bait\\b',
+                correction: 'function(match) { var parts = match.match(/^(Après que\\s+[^.!?]*)\\bait$/); if (!parts) { return match; } return parts[1] + "a"; }',
                 explanation: 'Après "après que", on emploie l\'indicatif, non le subjonctif.',
                 example: 'Après qu\'il ait mangé → Après qu\'il a mangé',
                 priority: 85
@@ -3073,8 +3096,8 @@ class BrowserSQLiteManager {
                 // ("Avant que Jean a fini. Il est parti" → "... Il soit"). Fonction:
                 // remplacement du verbe FINAL (l'original remplaçait la 1re occurrence
                 // brute: "Avant que Jean a" → "Avaitnt que Jean a").
-                pattern: '\\bAvant que\\s+[^.!?]*\\b(a|est|sont|est)\\b',
-                correction: 'function(match) { var parts = match.match(/^(Avant que\\s+[^.!?]*)\\b(a|est|sont)$/); if (!parts) { return match; } var map = { "a": "ait", "est": "soit", "sont": "soient" }; var verbe = map[parts[2]]; if (!verbe) { return match; } return parts[1] + verbe; }',
+                pattern: '\\b([Aa]vant) que\\s+[^.!?]*\\b(a|est|sont|est)\\b',
+                correction: 'function(match) { var parts = match.match(/^([Aa]vant que\\s+[^.!?]*)\\b(a|est|sont)$/); if (!parts) { return match; } var map = { "a": "ait", "est": "soit", "sont": "soient" }; var verbe = map[parts[2]]; if (!verbe) { return match; } return parts[1] + verbe; }',
                 explanation: 'Après "avant que", on emploie le subjonctif.',
                 example: 'Avant qu\'il part → Avant qu\'il parte',
                 priority: 85
@@ -3086,8 +3109,8 @@ class BrowserSQLiteManager {
                 pattern_type: 'regex',
                 // Pattern corrigé (ACTION 8): [^.!?]* au lieu de .* (traversée inter-phrase).
                 // Fonction: remplacement du verbe FINAL, comme pour avant_que_subjonctif.
-                pattern: '\\bBien que\\s+[^.!?]*\\b(est|sont|a|ont)\\b',
-                correction: 'function(match) { var parts = match.match(/^(Bien que\\s+[^.!?]*)\\b(est|sont|a|ont)$/); if (!parts) { return match; } var map = { "est": "soit", "sont": "soient", "a": "ait", "ont": "aient" }; var verbe = map[parts[2]]; if (!verbe) { return match; } return parts[1] + verbe; }',
+                pattern: '\\b([Bb]ien) que\\s+[^.!?]*\\b(est|sont|a|ont)\\b',
+                correction: 'function(match) { var parts = match.match(/^([Bb]ien que\\s+[^.!?]*)\\b(est|sont|a|ont)$/); if (!parts) { return match; } var map = { "est": "soit", "sont": "soient", "a": "ait", "ont": "aient" }; var verbe = map[parts[2]]; if (!verbe) { return match; } return parts[1] + verbe; }',
                 explanation: '"Bien que" est toujours suivi du subjonctif.',
                 example: 'Bien qu\'il est riche → Bien qu\'il soit riche',
                 priority: 85
@@ -3105,26 +3128,16 @@ class BrowserSQLiteManager {
                 example: 'Si j\'aurais su → Si j\'avais su',
                 priority: 90
             },
+            // Neutralisée (ACTION 11): fonction désindexée (lit match[4]/match[5] décalés) sur un
+            // pattern qui n'atteint que les formes non élidées ("je ai fini le livre") — garbage
+            // mesuré sur ces formes. Réparation = refonte complète hors périmètre.
             {
                 rule_id: 'accord_participe_passe_avoir',
                 name: 'accord_participe_passe_avoir',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(j\'|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont)\\s+(\\w+[^es])\\s+(le|la|l\'|les)\\s+(\\w+)\\b',
-                correction: function(match) {
-                    const participe = match[3];
-                    const pronoun = match[4];
-                    const cod = match[5];
-                    
-                    // Logique d'accord simplifiée
-                    if (pronoun === 'les' && !participe.endsWith('s')) {
-                        return match[0].replace(participe, participe + 's');
-                    }
-                    if ((pronoun === 'la' || pronoun === 'l\'') && !participe.endsWith('e')) {
-                        return match[0].replace(participe, participe + 'e');
-                    }
-                    return match[0];
-                },
+                pattern: '\\b(j\'|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont)\\s+(\\w+[^es])\\s+(le|la|l\'|les)\\s+(\\w+)\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Avec l\'auxiliaire "avoir", le participe passé s\'accorde avec le COD placé avant.',
                 example: 'Les pommes que j\'ai mangé → Les pommes que j\'ai mangées',
                 priority: 85
@@ -3236,12 +3249,17 @@ class BrowserSQLiteManager {
             },
             
             // Chapitre 6: Style personnel
+            // Neutralisée (ACTION 11): la rétro-référence \b(\w+)\b.{0,50}?\b\1\b matche les
+            // lettres répétées des sigles et remplace le texte par le conseil
+            // "remplacer par un synonyme" — destruction mesurée: "U.R.S.S." →
+            // "U.R.remplacer par un synonyme.". Famille des règles-conseils (15 autres)
+            // à auditer séparément (ACTION 12).
             {
                 rule_id: 'repetition_excessive',
                 name: 'repetition_excessive',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(\\w+)\\b.{0,50}?\\b\\1\\b',
+                pattern: '\\b(\\w+)\\b.{0,50}?\\b\\1\\b(?!)',
                 correction: 'remplacer par un synonyme',
                 explanation: 'La répétition d\'un même mot à courte distance peut alourdir le style.',
                 example: 'Il a dit qu\'il viendrait, mais il n\'est pas venu → Il a annoncé sa venue...',
