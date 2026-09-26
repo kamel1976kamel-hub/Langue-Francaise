@@ -299,18 +299,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+er)\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const verb = match[2];
-                    let ending = '';
-                    if (subject === 'je' || subject === 'j\'') ending = 'e';
-                    else if (subject === 'tu') ending = 'es';
-                    else if (subject === 'il' || subject === 'elle' || subject === 'on') ending = 'e';
-                    else if (subject === 'nous') ending = 'ons';
-                    else if (subject === 'vous') ending = 'ez';
-                    else if (subject === 'ils' || subject === 'elles') ending = 'ent';
-                    return subject + ' ' + verb.replace(/er$/, ending);
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(\\w+er)$/); if (!parts) { return match; } var subject = parts[1]; var verb = parts[2]; var ending = ""; if (subject === "je" || subject === "j\'") { ending = "e"; } else if (subject === "tu") { ending = "es"; } else if (subject === "il" || subject === "elle" || subject === "on") { ending = "e"; } else if (subject === "nous") { ending = "ons"; } else if (subject === "vous") { ending = "ez"; } else if (subject === "ils" || subject === "elles") { ending = "ent"; } return subject + " " + verb.replace(/er$/, ending); }',
                 explanation: 'Le verbe du 1er groupe doit être conjugué et non laissé à l\'infinitif après un sujet.',
                 example: 'je parler → je parle, tu parler → tu parles',
                 priority: 95
@@ -322,13 +311,12 @@ class BrowserSQLiteManager {
                 name: 'auxiliaire_etre_avoir',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+(allé|venu|parti|arrivé|entré|sorti|monté|descendu|né|mort|resté|tombé|retourné|passé|devenu|revenu)\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    const ppe = match[3];
-                    return subject + ' suis ' + ppe;
-                },
+                // Pattern restreint (ACTION 8): auxiliaires avoir uniquement (les formes être étaient
+                // des no-op) et participes des verbes exclusivement intransitifs (monté, sorti,
+                // entré, descendu, passé, retourné sont ambigus avec un COD). Fonction: forme
+                // d'être par sujet (l'originale codait "suis" pour tous les sujets).
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont)\\s+(allé|venu|parti|arrivé|resté|né|mort|devenu|revenu|tombé)\\b',
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont)\\s+(allé|venu|parti|arrivé|resté|né|mort|devenu|revenu|tombé)$/); if (!parts) { return match; } var etre = { "je": "suis", "tu": "es", "il": "est", "elle": "est", "on": "est", "nous": "sommes", "vous": "êtes", "ils": "sont", "elles": "sont" }; var forme = etre[parts[1]]; if (!forme) { return match; } return parts[1] + " " + forme + " " + parts[3]; }',
                 explanation: 'Les verbes de mouvement se conjuguent avec l\'auxiliaire "être" aux temps composés.',
                 example: 'j\'ai parti → je suis parti',
                 priority: 90
@@ -338,13 +326,10 @@ class BrowserSQLiteManager {
                 name: 'futur_conditionnel_confusion',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\bdemain\\s+(je|tu|il|elle|on)\\s+(\\w+ais)\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const verb = match[2];
-                    const ending = verb.replace(/ais$/, 'ai');
-                    return 'demain ' + subject + ' ' + ending;
-                },
+                // Pattern restreint (ACTION 8): (\w+rais) au lieu de (\w+ais) — la forme large
+                // corrompait les présents corrects "vais/sais/fais/connais" ("demain je vais" → "vai").
+                pattern: '\\bdemain\\s+(je|tu|il|elle|on)\\s+(\\w+rais)\\b',
+                correction: 'function(match) { var parts = match.match(/^demain\\s+(je|tu|il|elle|on)\\s+(\\w+rais)$/); if (!parts) { return match; } return "demain " + parts[1] + " " + parts[2].replace(/ais$/, "ai"); }',
                 explanation: 'Avec un indicateur de futur, on utilise le futur simple et non le conditionnel.',
                 example: 'demain je ferais → demain je ferai',
                 priority: 85
@@ -384,41 +369,36 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+ouvris?\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' ouvert';
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes)\\s+(ouvris?)$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + " ouvert"; }',
                 explanation: 'Le participe passé de "ouvrir" est "ouvert".',
                 example: 'j\'ai ouvré → j\'ai ouvert',
                 priority: 95
             },
+            // Neutralisée (ACTION 8): le pattern ne matche que la forme déjà correcte "pris"
+            // (l'erreur "prendu" est hors du pattern) — comportement prouvé identitaire sous le
+            // contrat objet-match, et corruption mesurée sous le contrat chaîne ("tu as pris"
+            // → "u   pris"). Lookahead (?!): la règle ne matche plus jamais.
             {
                 rule_id: 'participe_passe_irregulier_prendre',
                 name: 'participe_passe_irregulier_prendre',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+pris\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' pris';
-                },
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+pris\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Le participe passé de "prendre" est "pris".',
                 example: 'j\'ai prendu → j\'ai pris',
                 priority: 95
             },
+            // Neutralisée (ACTION 8): même cas que "prendre" — le pattern ne matche que la forme
+            // déjà correcte "mis", comportement prouvé identitaire, corruption mesurée sous le
+            // contrat chaîne ("il a mis" → "l   mis").
             {
                 rule_id: 'participe_passe_irregulier_mettre',
                 name: 'participe_passe_irregulier_mettre',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+mis\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' mis';
-                },
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+mis\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Le participe passé de "mettre" est "mis".',
                 example: 'j\'ai met → j\'ai mis',
                 priority: 95
@@ -429,11 +409,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+dis\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' dit';
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes)\\s+(dis)$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + " dit"; }',
                 explanation: 'Le participe passé de "dire" est "dit".',
                 example: 'j\'ai di → j\'ai dit',
                 priority: 95
@@ -443,12 +419,12 @@ class BrowserSQLiteManager {
                 name: 'participe_passe_irregulier_ecrire',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+écrits?\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' écrit';
-                },
+                // Pattern corrigé (ACTION 8): l'original (écrits?) ne matchait que les formes
+                // déjà correctes ("écrit") — la forme erronée documentée "écris" était hors du
+                // pattern (écrits? exige le t) et le comportement résultant était un fantôme
+                // sur texte correct. Restreint à l'erreur réelle: écris → écrit après auxiliaire.
+                pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+écris\\b',
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes)\\s+(écris)$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + " écrit"; }',
                 explanation: 'Le participe passé de "écrire" est "écrit".',
                 example: 'j\'ai écris → j\'ai écrit',
                 priority: 95
@@ -459,11 +435,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+vus\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' vu';
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes)\\s+(vus)$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + " vu"; }',
                 explanation: 'Le participe passé de "voir" est "vu".',
                 example: 'j\'ai vi → j\'ai vu',
                 priority: 95
@@ -474,11 +446,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+voulus?\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' voulu';
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes)\\s+(voulus?)$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + " voulu"; }',
                 explanation: 'Le participe passé de "vouloir" est "voulu".',
                 example: 'j\'ai voulus → j\'ai voulu',
                 priority: 95
@@ -489,11 +457,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes|sont)\\s+pus\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    return subject + ' ' + aux + ' pu';
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on|nous|vous|ils|elles)\\s+(ai|as|a|avons|avez|ont|suis|es|est|sommes|sont|êtes)\\s+(pus)$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + " pu"; }',
                 explanation: 'Le participe passé de "pouvoir" est "pu".',
                 example: 'j\'ai pus → j\'ai pu',
                 priority: 95
@@ -530,13 +494,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(j\'|je|tu|il|elle)\\s+(appel|jett)\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const verb = match[2];
-                    if (verb === 'appel') return subject + ' appelle';
-                    if (verb === 'jett') return subject + ' jette';
-                    return match[0];
-                },
+                correction: 'function(match) { var parts = match.match(/^(j\'|je|tu|il|elle)\\s+(appel|jett)$/); if (!parts) { return match; } if (parts[2] === "appel") { return parts[1] + " appelle"; } if (parts[2] === "jett") { return parts[1] + " jette"; } return match; }',
                 explanation: 'Les verbes "appeler" et "jeter" doublent la consonne devant une syllabe muette.',
                 example: 'j\'appelle → j\'appelle, il jette → il jette',
                 priority: 85
@@ -561,12 +519,11 @@ class BrowserSQLiteManager {
                 name: 'verbe_yer_y_i',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(j\'|je|tu|il|elle)\\s+(nettoy|envoy|employ)\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const verb = match[2];
-                    return subject + ' ' + verb.replace('y', 'i');
-                },
+                // Pattern corrigé (ACTION 8): l'original (nettoy|envoy|employ)\b ne matchait jamais
+                // la forme erronée documentée ("il nettoye" — \b bloqué par le e final) et ne
+                // produisait que du charabia sur les troncatures ("il nettoy" → "il nettoi").
+                pattern: '\\b(j\'|je|tu|il|elle)\\s+(nettoy|envoy|employ)e\\b',
+                correction: 'function(match) { var parts = match.match(/^(j\'|je|tu|il|elle)\\s+(nettoy|envoy|employ)e$/); if (!parts) { return match; } return parts[1] + " " + parts[2].replace("y", "i") + "e"; }',
                 explanation: 'Les verbes comme "nettoyer" changent le y en i devant un e muet.',
                 example: 'il nettoye → il nettoie',
                 priority: 85
@@ -577,11 +534,7 @@ class BrowserSQLiteManager {
                 category: 'conjugaison',
                 pattern_type: 'regex',
                 pattern: '\\b(je|tu|il|elle|on)\\s+(cour|mour)\\ai\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const verb = match[2];
-                    return subject + ' ' + verb + 'rrai';
-                },
+                correction: 'function(match) { var parts = match.match(/^(je|tu|il|elle|on)\\s+(cour|mour)ai$/); if (!parts) { return match; } return parts[1] + " " + parts[2] + "rai"; }',
                 explanation: 'Les verbes "courir" et "mourir" doublent le r au futur.',
                 example: 'je courai → je courrai, je mourai → je mourrai',
                 priority: 90
@@ -593,13 +546,12 @@ class BrowserSQLiteManager {
                 name: 'accord_participe_etre',
                 category: 'conjugaison',
                 pattern_type: 'regex',
-                pattern: '\\b(elles|ils)\\s+(sont|sont)\\s+(\\w+[^es])\\b',
-                correction: function(match) {
-                    const subject = match[1];
-                    const aux = match[2];
-                    const ppe = match[3];
-                    return subject + ' ' + aux + ' ' + ppe + 's';
-                },
+                // Pattern restreint (ACTION 8): liste fermée de participes en -i. La classe large
+                // (\w+[^es]) corrompait les adverbes/prénoms ("elles sont ici" → "icies",
+                // "loin" → "loines") et la fonction historique ajoutait "s" même au féminin
+                // ("elles sont parti" → "partis", contredisant son propre exemple).
+                pattern: '\\b(elles|ils)\\s+sont\\s+(fini|dormi|senti|servi|sorti|menti|puni|grandi|parti|souri|garanti)\\b',
+                correction: 'function(match) { var parts = match.match(/^(elles|ils)\\s+sont\\s+(fini|dormi|senti|servi|sorti|menti|puni|grandi|parti|souri|garanti)$/); if (!parts) { return match; } if (parts[1] === "elles") { return parts[1] + " sont " + parts[2] + "es"; } return parts[1] + " sont " + parts[2] + "s"; }',
                 explanation: 'Avec l\'auxiliaire "être", le participe passé s\'accorde en nombre avec le sujet.',
                 example: 'elles sont parti → elles sont parties',
                 priority: 95
@@ -761,21 +713,18 @@ class BrowserSQLiteManager {
                 example: 'il e → il é',
                 priority: 85
             },
+            // Neutralisée (ACTION 8): sous le contrat objet-match, la fonction renvoyait
+            // PROVATOIREMENT toujours le mot inchangé (la liste tréma ne contient que des mots
+            // accentués, inatteignables par (\w+es) ASCII — mesuré: exec("les") → "les"), donc la
+            // règle n'a jamais pu corriger quoi que ce soit ; sous le contrat chaîne elle
+            // corrompait ("les" → "e", "mais" → "a"). Lookahead (?!): plus aucun match.
             {
                 rule_id: 'accent_es_ets',
                 name: 'accent_es_ets',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\b(\\w+es)\\b',
-                correction: function(match) {
-                    const word = match[1];
-                    // Liste des mots qui doivent prendre un tréma
-                    const tremaWords = ['maïs', 'noël', 'coincïder', 'ambigü', 'argüer', 'canöe', 'goéland', 'héréditaire', 'inchoatif', 'jaoïe', 'maïs', 'naïf', 'païen', 'reïterer', 'saoul', 'zaïre'];
-                    if (tremaWords.includes(word)) {
-                        return word.replace(/([aeiou])i([aeiou])/, '$1ï$2');
-                    }
-                    return word;
-                },
+                pattern: '\\b(\\w+es)\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Certains mots prennent un tréma sur les voyelles.',
                 example: 'mais → maïs, noel → noël',
                 priority: 80
@@ -823,11 +772,7 @@ class BrowserSQLiteManager {
                 category: 'orthographe',
                 pattern_type: 'regex',
                 pattern: '\\bin([pbm])\\w+\\b',
-                correction: function(match) {
-                    const letter = match[1];
-                    const rest = match.input.slice(match.index + 3);
-                    return 'im' + letter + rest;
-                },
+                correction: 'function(match) { return "im" + match.slice(2); }',
                 explanation: 'Le préfixe "in-" devient "im-" devant p, b, m.',
                 example: 'inpossible → impossible, inmangeable → immangeable',
                 priority: 90
@@ -837,11 +782,12 @@ class BrowserSQLiteManager {
                 name: 'prefixe_in_il',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\binl\\w+\\b',
-                correction: function(match) {
-                    const rest = match.input.slice(match.index + 3);
-                    return 'il' + rest;
-                },
+                // Pattern restreint (ACTION 8): liste fermée des erreurs inl→il réelles.
+                // Le pattern large \binl\w+ corrompait les mots corrects ("inlassable" →
+                // "illassable"). La fonction reconstruit le mot depuis le match seul (le
+                // match.input/.index historique ne servait qu'à trancher dans le mot).
+                pattern: '\\b(inlogique|inlégal|inlimité|inlisible|inlicite)\\b',
+                correction: 'function(match) { return "il" + match.slice(2); }',
                 explanation: 'Le préfixe "in-" devient "il-" devant l.',
                 example: 'inlogique → illogique',
                 priority: 90
@@ -851,11 +797,11 @@ class BrowserSQLiteManager {
                 name: 'prefixe_in_ir',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\binr\\w+\\b',
-                correction: function(match) {
-                    const rest = match.input.slice(match.index + 3);
-                    return 'ir' + rest;
-                },
+                // Pattern restreint (ACTION 8): liste fermée des erreurs inr→ir réelles.
+                // Le pattern large \binr\w+ corrompait les mots corrects ("inratable" →
+                // "iratable").
+                pattern: '\\b(inréel|inrégulier|inréalisable|inrémédiable|inréductible)\\b',
+                correction: 'function(match) { return "ir" + match.slice(2); }',
                 explanation: 'Le préfixe "in-" devient "ir-" devant r.',
                 example: 'inréel → irréel',
                 priority: 90
@@ -867,15 +813,12 @@ class BrowserSQLiteManager {
                 name: 'terminaison_tion_ssion',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\b(\\w+)tion\\b',
-                correction: function(match) {
-                    const base = match[1];
-                    const ssionWords = ['ab', 'ad', 'ag', 'ap', 'as', 'at', 'av', 'col', 'comp', 'con', 'cor', 'd', 'dis', 'div', 'em', 'exp', 'ext', 'imp', 'int', 'mis', 'ob', 'op', 'op', 'perc', 'perm', 'pers', 'pos', 'pr', 'prof', 'proj', 'prop', 'prot', 'r', 're', 'rep', 'rép', 'res', 'rév', 's', 'suc', 'sup', 'sus', 'tr', 'trans'];
-                    if (ssionWords.some(prefix => base.startsWith(prefix))) {
-                        return base + 'ssion';
-                    }
-                    return match[0];
-                },
+                // Pattern restreint (ACTION 8): seule la famille -mi(tion) → -mission est
+                // mécaniquement correcte (permi+ssion = permission). La liste historique ('con',
+                // 'd', 'dis'...) produisait du charabia sur des mots corrects ("contention" →
+                // "contenssion") et sur son propre exemple ("disution" → "disussion").
+                pattern: '\\b(permi|admi|transmi|soumi|commi|démi|omi)tion\\b',
+                correction: 'function(match) { return match.slice(0, match.length - 4) + "ssion"; }',
                 explanation: 'Certains mots prennent "ssion" au lieu de "tion".',
                 example: 'disution → discussion, permission → permission',
                 priority: 85
@@ -932,14 +875,7 @@ class BrowserSQLiteManager {
                 category: 'orthographe',
                 pattern_type: 'regex',
                 pattern: '\\bdes\\s+(\\w+al)s\\b',
-                correction: function(match) {
-                    const word = match[1];
-                    const exceptions = ['aval', 'bal', 'carnaval', 'festival', 'chacal', 'cérémonial', 'étal', 'idéal', 'mistral', 'narval', 'pal', 'récital', 'régal', 'rorqual', 'serval', 'sisal'];
-                    if (!exceptions.includes(word)) {
-                        return 'des ' + word.replace(/al$/, 'aux');
-                    }
-                    return match[0];
-                },
+                correction: 'function(match) { var parts = match.match(/^des\\s+(\\w+al)s$/); if (!parts) { return match; } var word = parts[1]; var exceptions = ["aval", "bal", "carnaval", "festival", "chacal", "cérémonial", "étal", "idéal", "mistral", "narval", "pal", "récital", "régal", "rorqual", "serval", "sisal"]; if (exceptions.indexOf(word) === -1) { return "des " + word.replace(/al$/, "aux"); } return match; }',
                 explanation: 'La plupart des noms en -al font leur pluriel en -aux.',
                 example: 'des chevals → des chevaux, des journaux → des journaux',
                 priority: 90
@@ -998,9 +934,7 @@ class BrowserSQLiteManager {
                 category: 'orthographe',
                 pattern_type: 'regex',
                 pattern: '\\.\\s+([a-z])',
-                correction: function(match) {
-                    return '. ' + match[1].toUpperCase();
-                },
+                correction: 'function(match) { var parts = match.match(/^\\.\\s+([a-z])$/); if (!parts) { return match; } return ". " + parts[1].toUpperCase(); }',
                 explanation: 'Après un point, on met une majuscule.',
                 example: 'il fait beau. demain → il fait beau. Demain',
                 priority: 90
@@ -1213,13 +1147,7 @@ class BrowserSQLiteManager {
                 category: 'orthographe',
                 pattern_type: 'regex',
                 pattern: '\\bver\\s+(le|la|les|un|une|des)\\b',
-                correction: function(match) {
-                    const article = match[1];
-                    if (article === 'le' || article === 'un') {
-                        return 'verre ' + article;
-                    }
-                    return 'vers ' + article;
-                },
+                correction: 'function(match) { var parts = match.match(/^ver\\s+(le|la|les|un|une|des)$/); if (!parts) { return match; } return "vers " + parts[1]; }',
                 explanation: '"ver" = vers ; "vers" = préposition ; "verre" = récipient ; "vert" = couleur.',
                 example: 'ver le mur → vers le mur',
                 priority: 85
@@ -3021,18 +2949,11 @@ class BrowserSQLiteManager {
                 name: 'accord_sujet_verbe_beaucoup',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(Beaucoup|Peu|La plupart|Une partie|La moitié|Le reste)\\s+de\\s+(\\w+\\w*)\\s+(est|sont)\\b',
-                correction: function(match) {
-                    const quant = match[1];
-                    const complement = match[2];
-                    const verb = match[3];
-                    
-                    // Logique d'accord simplifiée
-                    if (quant === 'Beaucoup' && complement.match(/s$/)) {
-                        return `${quant} de ${complement} sont`;
-                    }
-                    return match[0];
-                },
+                // Pattern restreint (ACTION 8): "Beaucoup" seul (les autres quantificateurs
+                // étaient des no-op dans la fonction) et "est" seul (le match sur "sont"
+                // produisait des corrections fantômes sur du texte correct).
+                pattern: '\\bBeaucoup\\s+de\\s+(\\w+\\w*)\\s+est\\b',
+                correction: 'function(match) { var parts = match.match(/^Beaucoup\\s+de\\s+(\\w+\\w*)\\s+est$/); if (!parts) { return match; } if (/s$/.test(parts[1])) { return "Beaucoup de " + parts[1] + " sont"; } return match; }',
                 explanation: 'Avec "beaucoup de", le verbe s\'accorde généralement avec le complément qui suit.',
                 example: 'Beaucoup de gens est venu → Beaucoup de gens sont venus',
                 priority: 85
@@ -3138,16 +3059,13 @@ class BrowserSQLiteManager {
                 name: 'avant_que_subjonctif',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\bAvant que\\s+.*\\b(a|est|sont|est)\\b',
-                correction: function(match) {
-                    const verb = match[1];
-                    const subjonctifMap = {
-                        'a': 'ait',
-                        'est': 'soit',
-                        'sont': 'soient'
-                    };
-                    return match[0].replace(verb, subjonctifMap[verb] || verb);
-                },
+                // Pattern corrigé (ACTION 8): [^.!?]* au lieu de .* — le point-gourmand
+                // traversait la frontière de phrase et corrompait la phrase suivante
+                // ("Avant que Jean a fini. Il est parti" → "... Il soit"). Fonction:
+                // remplacement du verbe FINAL (l'original remplaçait la 1re occurrence
+                // brute: "Avant que Jean a" → "Avaitnt que Jean a").
+                pattern: '\\bAvant que\\s+[^.!?]*\\b(a|est|sont|est)\\b',
+                correction: 'function(match) { var parts = match.match(/^(Avant que\\s+[^.!?]*)\\b(a|est|sont)$/); if (!parts) { return match; } var map = { "a": "ait", "est": "soit", "sont": "soient" }; var verbe = map[parts[2]]; if (!verbe) { return match; } return parts[1] + verbe; }',
                 explanation: 'Après "avant que", on emploie le subjonctif.',
                 example: 'Avant qu\'il part → Avant qu\'il parte',
                 priority: 85
@@ -3157,17 +3075,10 @@ class BrowserSQLiteManager {
                 name: 'bien_que_subjonctif',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\bBien que\\s+.*\\b(est|sont|a|ont)\\b',
-                correction: function(match) {
-                    const verb = match[1];
-                    const subjonctifMap = {
-                        'est': 'soit',
-                        'sont': 'soient',
-                        'a': 'ait',
-                        'ont': 'aient'
-                    };
-                    return match[0].replace(verb, subjonctifMap[verb] || verb);
-                },
+                // Pattern corrigé (ACTION 8): [^.!?]* au lieu de .* (traversée inter-phrase).
+                // Fonction: remplacement du verbe FINAL, comme pour avant_que_subjonctif.
+                pattern: '\\bBien que\\s+[^.!?]*\\b(est|sont|a|ont)\\b',
+                correction: 'function(match) { var parts = match.match(/^(Bien que\\s+[^.!?]*)\\b(est|sont|a|ont)$/); if (!parts) { return match; } var map = { "est": "soit", "sont": "soient", "a": "ait", "ont": "aient" }; var verbe = map[parts[2]]; if (!verbe) { return match; } return parts[1] + verbe; }',
                 explanation: '"Bien que" est toujours suivi du subjonctif.',
                 example: 'Bien qu\'il est riche → Bien qu\'il soit riche',
                 priority: 85
