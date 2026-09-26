@@ -2890,7 +2890,9 @@ class BrowserSQLiteManager {
                 name: 'virgule_apres_cc',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(Hier|Aujourd\'hui|Demain|Ce matin|Ce soir|Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi|Dimanche)\\s+(\\w+)\\b',
+                // Étendue (ACTION 15): variantes minuscules ([Hh]ier...) — les CC en tête de
+                // phrase peuvent être écrits en minuscules par les étudiants.
+                pattern: '\\b([Hh]ier|[Aa]ujourd\'hui|[Dd]emain|[Cc]e matin|[Cc]e soir|[Ll]undi|[Mm]ardi|[Mm]ercredi|[Jj]eudi|[Vv]endredi|[Ss]amedi|[Dd]imanche)\\s+(\\w+)\\b',
                 correction: '$1, $2',
                 explanation: 'Un complément circonstanciel (temps, lieu, manière...) en tête de phrase est généralement suivi d\'une virgule.',
                 example: 'Hier je suis allé au cinéma → Hier, je suis allé au cinéma',
@@ -2916,7 +2918,11 @@ class BrowserSQLiteManager {
                 name: 'point_interrogation_manquant',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(Est-ce que|Qui|Que|Quoi|Quel|Quelle|Quels|Quelles|Comment|Pourquoi|Quand|Où)\\s+.+[^?!.]$',
+                // Réécrite (ACTION 15): couverture minuscule + ancrage en début de phrase
+                // (l'original sans ancre matchait les mots interrogatifs n'importe où, et
+                // l'ajout de " ?" en mi-phrase aurait corrompu des déclaratives
+                // ("je sais que tu viens" → "... ?"). [^.?!] évite la traversée de phrase.
+                pattern: '(?:^|[.!?]\\s+)([Ee]st-ce que|[Qq]ui|[Qq]ue|[Qq]uoi|[Qq]uel|[Qq]uelle|[Qq]uels|[Qq]uelles|[Cc]omment|[Pp]ourquoi|[Qq]uand|[Oo]ù)\\s+[^.?!]+$',
                 correction: '$& ?',
                 explanation: 'Une phrase interrogative doit se terminer par un point d\'interrogation.',
                 example: 'Tu viens → Tu viens ?',
@@ -2989,8 +2995,12 @@ class BrowserSQLiteManager {
                 name: 'c_est_ce_sont',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: "\\bC'est\\s+(les|des|mes|tes|ses|nos|vos|leurs)\\s+\\w+s\\b",
-                correction: 'Ce sont',
+                // Réparée (ACTION 15): P1 — la correction "Ce sont" remplaçait TOUT le match
+                // ("C'est les enfants" → "Ce sont": le nom était avalé, mesuré à la baseline)
+                // et la forme minuscule "c'est les" n'était pas couverte. Match restreint à
+                // C'est/c'est + déterminant pluriel, correction "$1e sont $2".
+                pattern: '\\b([Cc])\'est\\s+(les|des|mes|tes|ses|nos|vos|leurs)\\b',
+                correction: '$1e sont $2',
                 explanation: 'Avec un nom pluriel, on utilise "ce sont" au lieu de "c\'est".',
                 example: 'C\'est les enfants → Ce sont les enfants',
                 priority: 80
@@ -3052,7 +3062,9 @@ class BrowserSQLiteManager {
                 name: 'confusion_et_est',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(et|est)\\b',
+                // Neutralisée (ACTION 15): fonction match.input (morte sous le contrat chaîne —
+                // TypeError par occurrence de "et"/"est", bruit console mesuré ACTION 14).
+                pattern: '\\b(et|est)\\b(?!)',
                 correction: function(match) {
                     const word = match[1];
                     const context = match.input.substring(Math.max(0, match.index - 10), match.index + 10);
@@ -3080,8 +3092,9 @@ class BrowserSQLiteManager {
                 // premier caractère ("Après que Paul ait mangé" → "A mangé"). Pattern: [^.!?]*
                 // (anti traversée inter-phrase) et "ait" seul (l'indicatif de "soit" est
                 // ambigu: est/sont selon le sujet).
-                pattern: '\\bAprès que\\s+[^.!?]*\\bait\\b',
-                correction: 'function(match) { var parts = match.match(/^(Après que\\s+[^.!?]*)\\bait$/); if (!parts) { return match; } return parts[1] + "a"; }',
+                // Étendue (ACTION 15): variante minuscule "après que".
+                pattern: '\\b[Aa]près que\\s+[^.!?]*\\bait\\b',
+                correction: 'function(match) { var parts = match.match(/^([Aa]près que\\s+[^.!?]*)\\bait$/); if (!parts) { return match; } return parts[1] + "a"; }',
                 explanation: 'Après "après que", on emploie l\'indicatif, non le subjonctif.',
                 example: 'Après qu\'il ait mangé → Après qu\'il a mangé',
                 priority: 85
