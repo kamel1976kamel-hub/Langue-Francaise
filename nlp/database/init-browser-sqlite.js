@@ -2892,7 +2892,10 @@ class BrowserSQLiteManager {
                 pattern_type: 'regex',
                 // Étendue (ACTION 15): variantes minuscules ([Hh]ier...) — les CC en tête de
                 // phrase peuvent être écrits en minuscules par les étudiants.
-                pattern: '\\b([Hh]ier|[Aa]ujourd\'hui|[Dd]emain|[Cc]e matin|[Cc]e soir|[Ll]undi|[Mm]ardi|[Mm]ercredi|[Jj]eudi|[Vv]endredi|[Ss]amedi|[Dd]imanche)\\s+(\\w+)\\b',
+                // Garde ajouté (ACTION 17): (?!et\b) — sans lui, la règle ajoutait une virgule
+                // devant "et" que virgule_avant_et retirait ensuite: oscillation infinie
+                // période 2 mesurée ACTION 16 ("hier et il céd" ↻ "hier, et il céd").
+                pattern: '\\b([Hh]ier|[Aa]ujourd\'hui|[Dd]emain|[Cc]e matin|[Cc]e soir|[Ll]undi|[Mm]ardi|[Mm]ercredi|[Jj]eudi|[Vv]endredi|[Ss]amedi|[Dd]imanche)\\s+(?!et\\b)(\\w+)\\b',
                 correction: '$1, $2',
                 explanation: 'Un complément circonstanciel (temps, lieu, manière...) en tête de phrase est généralement suivi d\'une virgule.',
                 example: 'Hier je suis allé au cinéma → Hier, je suis allé au cinéma',
