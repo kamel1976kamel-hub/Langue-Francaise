@@ -416,7 +416,7 @@ class DatabaseRulesManager {
         // Conversion de la correction si c'est une fonction
         if (dbRule.correction && typeof dbRule.correction === 'string' && dbRule.correction.startsWith('function')) {
             try {
-                rule.correction = new Function('match', dbRule.correction);
+                rule.correction = new Function('return ' + dbRule.correction)();
             } catch (error) {
                 console.warn(`⚠️ Erreur création fonction correction pour ${rule.name}:`, error);
                 return null;
