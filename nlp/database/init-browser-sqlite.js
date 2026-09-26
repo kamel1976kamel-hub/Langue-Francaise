@@ -81,7 +81,12 @@ class BrowserSQLiteManager {
                 name: 'espace_avant_point',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\s+([.!?])',
+                // Pattern restreint (ACTION 9): [.!?] → [.]. La classe large retirait l'espace
+                // avant ! et ? (obligatoire en typographie française) et entrait en oscillation
+                // infinie (période 2, mesurée) avec espace_avant_ponctuation_double qui les
+                // rajoute. Chaque signe a désormais une seule autorité : "." → cette règle,
+                // "!?;:" → espace_avant_ponctuation_double.
+                pattern: '\\s+([.])',
                 correction: '$1',
                 explanation: 'Pas d\'espace avant la ponctuation finale.',
                 example: 'Bonjour . → Bonjour.',
@@ -2881,7 +2886,11 @@ class BrowserSQLiteManager {
                 name: 'espace_avant_ponctuation_double',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '(\\w)([;:!?.])(?=\\s|$)',
+                // Pattern restreint (ACTION 9): le point retiré de la classe ([;:!?.] → [;:!?]).
+                // Il ajoutait une espace avant "." en contradiction avec la typographie
+                // française et en oscillation infinie (période 2, mesurée) avec
+                // espace_avant_point. La copie orthographe n'a jamais couvert le point.
+                pattern: '(\\w)([;:!?])(?=\\s|$)',
                 correction: '$1 $2',
                 explanation: 'En typographie française, on met une espace insécable avant les signes de ponctuation double (; : ! ?).',
                 example: 'Bonjour! → Bonjour !',
