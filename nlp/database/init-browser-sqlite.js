@@ -102,9 +102,9 @@ class BrowserSQLiteManager {
                 rule_id: 'majuscule_debut_phrase',
                 name: 'majuscule_debut_phrase',
                 category: 'style',
-                pattern_type: 'function',
+                pattern_type: 'regex',
                 pattern: '([.!?]\\s+)([a-z])',
-                correction: 'function',
+                correction: 'function(match) { return match.slice(0, -1) + match.slice(-1).toUpperCase(); }',
                 explanation: 'Commencer chaque phrase par une majuscule.',
                 example: 'bonjour. comment allez-vous? → Bonjour. Comment allez-vous?',
                 priority: 95
@@ -114,8 +114,8 @@ class BrowserSQLiteManager {
                 name: 'accord_être_adjectif',
                 category: 'style',
                 pattern_type: 'regex',
-                pattern: '\\b(ils|elles)\\s+(est|sont)\\s+(\\w+)(s?)\\b',
-                correction: 'function',
+                pattern: '\\b(ils|Ils|elles|Elles)\\s+est\\s+(\\w+)(s?)\\b(?![A-Za-zÀ-ÿ])',
+                correction: 'function(match) { var parts = match.split(/\\s+/); if (parts.length < 3) { return match; } var mot = parts[2]; var pluriel = mot; var fin = mot.length >= 2 ? mot.substring(mot.length - 2) : ""; if (fin === "al") { pluriel = mot.substring(0, mot.length - 2) + "aux"; } else { var dernier = mot.charAt(mot.length - 1); if (dernier !== "s" && dernier !== "x") { pluriel = (mot.length >= 3 && mot.substring(mot.length - 3) === "eau") ? mot + "x" : mot + "s"; } } return parts[0] + " sont " + pluriel; }',
                 explanation: 'Accord sujet-verbe-adjectif avec être.',
                 example: 'Ils est grand → Ils sont grands',
                 priority: 90
@@ -146,9 +146,9 @@ class BrowserSQLiteManager {
                 rule_id: 'accord_participe_passé',
                 name: 'accord_participe_passé',
                 category: 'style',
-                pattern_type: 'function',
-                pattern: '\\b(elle|la|cette)\\s+(a|as|avons|avez|ont|aurai|auras|aura|aurons|aurez|auront|avais|avais|avait|avions|aviez|avaient|eus|eûmes|eûtes|eurent)\\s+(\\w+é)\\b',
-                correction: 'function',
+                pattern_type: 'regex',
+                pattern: '\\b(elle|Elle|la|La|cette|Cette)\\s+(a|as|avons|avez|ont|aurai|auras|aura|aurons|aurez|auront|avais|avais|avait|avions|aviez|avaient|eus|eûmes|eûtes|eurent)\\s+(allé|arrivé|venu|parti|resté|né|mort|décédé)(?![A-Za-zÀ-ÿ])',
+                correction: 'function(match) { var parts = match.split(/\\s+/); if (parts.length < 3) { return match; } var participe = parts[2]; var dernier = participe.charAt(participe.length - 1); if (dernier === "e") { return match; } return parts[0] + " " + parts[1] + " " + participe + "e"; }',
                 explanation: 'Accorder le participe passé avec le sujet féminin.',
                 example: 'Elle a arrivé → Elle a arrivée',
                 priority: 85
@@ -1343,13 +1343,17 @@ class BrowserSQLiteManager {
             },
 
             // RÈGLES D'ORTHOGRAPHE
+            // Doublon d'accord_être_adjectif (style): même pattern, même correction historique.
+            // Neutralisé au niveau de la donnée (lookahead (?!): le pattern ne matche jamais) pour
+            // éviter deux corrections identiques sur la même occurrence. Le correcteur actif est
+            // accord_être_adjectif (catégorie style, parcourue en premier par database-integration.js).
             {
                 rule_id: 'accord_être_nom',
                 name: 'accord_être_nom',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\b(ils|elles)\\s+(est|sont)\\s+(\\w+)(s?)\\b',
-                correction: 'function',
+                pattern: '\\b(ils|elles)\\s+(est|sont)\\s+(\\w+)(s?)\\b(?!)',
+                correction: 'function(match) { return match; }',
                 explanation: 'Accord sujet-verbe avec être.',
                 example: 'Ils est content → Ils sont contents',
                 priority: 90
@@ -1359,32 +1363,36 @@ class BrowserSQLiteManager {
                 name: 'accord_avoir_nom',
                 category: 'orthographe',
                 pattern_type: 'regex',
-                pattern: '\\b(ils|elles)\\s+(a|as|avons|avez|ont)\\s+(\\w+)(s?)\\b',
-                correction: 'function',
+                pattern: '\\b(ils|Ils|elles|Elles)\\s+a\\s+(\\w+)(s?)\\b',
+                correction: 'function(match) { var parts = match.split(/\\s+/); if (parts.length < 3) { return match; } return parts[0] + " ont " + parts[2]; }',
                 explanation: 'Accord sujet-auxiliaire avec avoir.',
                 example: 'Ils a les livres → Ils ont les livres',
                 priority: 90
             },
+            // accord_adjectif_feminin / accord_adjectif_pluriel : patterns restreints à une liste
+            // fermée d'adjectifs réguliers. Le pattern historique (\w+ générique) transformait des
+            // auxiliaires/verbes en adjectifs (« este », « sonts ») et tronquait les mots accentués
+            // (« frères » → « frs »). Voir rapport ACTION 7.
             {
                 rule_id: 'accord_adjectif_feminin',
                 name: 'accord_adjectif_feminin',
                 category: 'orthographe',
-                pattern_type: 'function',
-                pattern: '\\b(la|cette|une|ma|ta|sa)\\s+(\\w+)\\s+(\\w+?)(s?)\\b',
-                correction: 'function',
+                pattern_type: 'regex',
+                pattern: '\\b(la|La|cette|Cette|une|Une|ma|Ma|ta|Ta|sa|Sa)\\s+(\\w+)\\s+(petit|grand|joli|vert|gris|bleu|noir|content|fin|chaud|froid|haut|lent|plein|prochain|fort|laid|charmant|dur)\\b(?![A-Za-zÀ-ÿ])',
+                correction: 'function(match) { var parts = match.split(/\\s+/); if (parts.length < 3) { return match; } return parts[0] + " " + parts[1] + " " + parts[2] + "e"; }',
                 explanation: 'Accord de l\'adjectif avec le nom féminin.',
-                example: 'La maison est beau → La maison est belle',
+                example: 'une voiture gris → une voiture grise',
                 priority: 85
             },
             {
                 rule_id: 'accord_adjectif_pluriel',
                 name: 'accord_adjectif_pluriel',
                 category: 'orthographe',
-                pattern_type: 'function',
-                pattern: '\\b(les|des|mes|tes|ses|nos|vos|leurs)\\s+(\\w+)\\s+(\\w+?)\\b',
-                correction: 'function',
+                pattern_type: 'regex',
+                pattern: '\\b(les|Les|des|Des|mes|Mes|tes|Tes|ses|Ses|nos|Nos|vos|Vos|leurs|Leurs)\\s+(\\w+)\\s+(petit|grand|joli|vert|bleu|noir|fin|bon|chaud|froid|court|haut|lent|plein|prochain|dernier|cher|dur|long|fort|laid|charmant)\\b(?![A-Za-zÀ-ÿ])',
+                correction: 'function(match) { var parts = match.split(/\\s+/); if (parts.length < 3) { return match; } return parts[0] + " " + parts[1] + " " + parts[2] + "s"; }',
                 explanation: 'Accord de l\'adjectif au pluriel.',
-                example: 'Les chats est petit → Les chats sont petits',
+                example: 'des voitures vert → des voitures verts',
                 priority: 85
             },
             {
