@@ -188,7 +188,7 @@ def build():
               "Le ton et le contexte peuvent renverser ces valeurs (emphase, ironie, "
               "antiphrase).",
               "Le tableau des actualisateurs résume tout le système du français."]:
-        st.append(Paragraph(b, BUL, bullet="•"))
+        st.append(Paragraph("•  " + b, BUL))
     st.append(Spacer(1, 6))
     st.append(Paragraph("Vidéo associée : <i>Les actualisateurs du substantif</i> — format "
                         "complet chapitré (générique, chapitres I–III, travaux pratiques, "
