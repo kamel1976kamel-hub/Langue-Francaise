@@ -82,6 +82,7 @@ async function groqRequest(env, messages, fetchImpl, a22bStep, callMetrics) {
         max_tokens: a22bStep ? MAX_A22B_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS,
         temperature: 0.3
     };
+    if (a22bStep) payload.reasoning_effort = 'low';
     const payloadBody = JSON.stringify(payload);
     const payloadLength = payloadBody.length;
     let rawResponseLength = 'unknown';
