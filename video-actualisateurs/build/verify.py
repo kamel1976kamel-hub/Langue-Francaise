@@ -60,7 +60,7 @@ def main(paths):
         try:
             if size == 0:
                 raise ValueError("vide")
-            if p.lower().endswith((".mp4", ".m4a", ".mp3", ".wav", ".aac")):
+            if p.lower().endswith((".mp4", ".m4a", ".mp3", ".wav", ".aac", ".dat")) and media_info(p):
                 info = media_info(p)
                 if not info:
                     raise ValueError("illisible par ffmpeg")
