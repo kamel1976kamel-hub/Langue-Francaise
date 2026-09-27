@@ -28,7 +28,7 @@ window.APP_CONFIG = window.APP_CONFIG || {
         timeout: 30000,
         retryAttempts: 3,
         retryDelay: 1000,
-        workerUrl: '/worker/ai-pipeline-worker.js'
+        workerUrl: 'https://langue-francaise-ia.chellouaikamel50.workers.dev'
     }
 };
 
@@ -695,7 +695,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         }
         
         // SEC-003 : Worker-only — aucun appel direct à Groq depuis le navigateur
-        const workerUrl = window.APP_CONFIG?.api?.workerUrl || '/worker/ai-pipeline-worker.js';
+        const workerUrl = window.APP_CONFIG?.api?.workerUrl || 'https://langue-francaise-ia.chellouaikamel50.workers.dev';
         if (window.antiRafaleProtection && window.antiRafaleProtection.isThrottled('ia-request')) {
             console.warn('⚠️ Requête IA throttled (anti-rafale)');
             return { analysis: 'Trop de requêtes en cours. Veuillez patienter.', corrections: [], explanations: [], suggestions: [], throttled: true };
