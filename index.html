@@ -6284,7 +6284,6 @@
       // Fonction pour lire le texte de la réponse
       window.speakAnswerText = function(chapterId, activityId) {
         const sourceId = `answer-${chapterId}-${activityId}`;
-        const activity = activityContent[chapterId]?.[activityId];
         
         // Si on clique sur la même source qui est en cours de lecture, on arrête
         if (window.currentAudioSource === sourceId && window.isSpeaking()) {
@@ -6296,18 +6295,10 @@
         window.stopAllAudio();
         window.currentAudioSource = sourceId;
         
-        // Si c'est une activité avec tableau, lire le contenu du tableau
-        if (activity && activity.hasTable) {
-          const text = window.getActivityAnswer(chapterId, activityId, true);
-          if (text && text !== '{}') {
-            window.speakText(text);
-          }
-        } else {
-          // Sinon, lire le textarea (ou le tableau d'inputs)
-          const answerText = getActivityAnswerText(chapterId, activityId);
-          if (answerText) {
-            window.speakText(answerText);
-          }
+        // Lire la réponse (textarea ou tableau d'inputs) via le helper unique
+        const answerText = getActivityAnswerText(chapterId, activityId);
+        if (answerText) {
+          window.speakText(answerText);
         }
       };
       

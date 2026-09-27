@@ -174,6 +174,82 @@ console.log('\n📋 Test 9 : INPUT direct');
     assertEq(getActivityAnswerText('ch7', 'act1'), 'réponse directe', 'INPUT direct : valeur trimmée');
 }
 
+// ─── Tests TTS speakAnswerText (régression window.getActivityAnswer) ───
+
+// TEST 10 : TTS textarea — le texte est récupéré et serait transmis à speakText
+console.log('\n📋 Test 10 : TTS textarea — texte récupéré pour speakText');
+{
+    const ta = makeElement('textarea', 'activity-answer-ch1-act5', { value: 'Mon texte à lire à voix haute' });
+    global.document = makeDoc({ 'activity-answer-ch1-act5': ta });
+    const answerText = getActivityAnswerText('ch1', 'act5');
+    assert(!!answerText, 'TTS textarea : texte non vide (sera transmis à speakText)');
+    assertEq(answerText, 'Mon texte à lire à voix haute', 'TTS textarea : contenu exact');
+}
+
+// TEST 11 : TTS tableau — les valeurs des inputs sont récupérées et transmises
+console.log('\n📋 Test 11 : TTS tableau — valeurs inputs récupérées pour speakText');
+{
+    const div = makeElement('div', 'activity-answer-ch4-act1');
+    div.children = [
+        makeInput('text', 'Le récit du tonnerre'),
+        makeInput('text', 'Raconter un événement'),
+        makeInput('text', 'Décrire le phénomène')
+    ];
+    global.document = makeDoc({ 'activity-answer-ch4-act1': div });
+    const answerText = getActivityAnswerText('ch4', 'act1');
+    assert(!!answerText, 'TTS tableau : texte non vide (sera transmis à speakText)');
+    assertEq(answerText, 'Le récit du tonnerre Raconter un événement Décrire le phénomène',
+        'TTS tableau : concaténation correcte pour lecture vocale');
+}
+
+// TEST 12 : TTS activité vide — aucun appel speakText ne serait fait
+console.log('\n📋 Test 12 : TTS activité vide — pas d\'appel speakText');
+{
+    const ta = makeElement('textarea', 'activity-answer-ch2-act3', { value: '' });
+    global.document = makeDoc({ 'activity-answer-ch2-act3': ta });
+    const answerText = getActivityAnswerText('ch2', 'act3');
+    assert(!answerText, 'TTS vide : chaîne vide (falsy) → speakText ne sera pas appelé');
+}
+
+// TEST 13 : Aucune référence active à window.getActivityAnswer ne subsiste
+console.log('\n📋 Test 13 : Aucune référence active à window.getActivityAnswer');
+{
+    const fs = require('fs');
+    const path = require('path');
+    const indexPath = path.join(__dirname, '..', 'index.html');
+    let noReference = true;
+    let matchCount = 0;
+    if (fs.existsSync(indexPath)) {
+        const content = fs.readFileSync(indexPath, 'utf8');
+        const matches = content.match(/window\.getActivityAnswer(?!Text)/g);
+        if (matches) {
+            matchCount = matches.length;
+            noReference = false;
+        }
+    }
+    assert(noReference, 'Aucun appel window.getActivityAnswer dans index.html (trouvés : ' + matchCount + ')');
+}
+
+// TEST 14 : Pas de crash TypeError sur le chemin TTS (régression exacte du bug)
+console.log('\n📋 Test 14 : Régression — pas de TypeError getActivityAnswer sur chemin TTS');
+{
+    const div = makeElement('div', 'activity-answer-ch5-act11');
+    div.children = [makeInput('text', 'réponse élève')];
+    global.document = makeDoc({ 'activity-answer-ch5-act11': div });
+    let crashed = false;
+    let errorMsg = '';
+    try {
+        const answerText = getActivityAnswerText('ch5', 'act11');
+        if (answerText) {
+            // window.speakText(answerText) serait appelé ici
+        }
+    } catch (e) {
+        crashed = true;
+        errorMsg = e.message;
+    }
+    assert(!crashed, 'Pas de TypeError sur le chemin TTS corrigé' + (errorMsg ? ' : ' + errorMsg : ''));
+}
+
 // ─── Résumé ───
 console.log('\n' + '='.repeat(60));
 console.log('📊 Résultats : ' + pass + ' pass, ' + fail + ' échec(s)');
