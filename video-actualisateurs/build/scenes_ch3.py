@@ -186,10 +186,10 @@ def s33(spec, sc):
     for i, t in enumerate(virt):
         sc.add(Track(chip_img(t, TEAL_D, WHITE, size=26, kind="sans"), (140, 300 + i * 90),
                      0.8 + i * 0.5, appear="fade"))
-    reel = [("un, des", "présente"), ("le, les", "notoire"), ("du, des", "non nombrable"),
-            ("mon, ma", "possesseur"), ("ce, cet", "montre (geste)"),
+    reel = [("un, des", "présente"), ("le, les", "notoire"), ("du, des", "partitif"),
+            ("mon, ma", "possesseur"), ("ce, cet", "geste"),
             ("lequel", "reprend"), ("quel ?", "questionne"),
-            ("chaque, plusieurs", "mesure"), ("deux, trois", "compte")]
+            ("chaque", "mesure"), ("deux, trois", "compte")]
     for i, (fo, val) in enumerate(reel):
         x = 610 + (i % 3) * 400
         y = 290 + (i // 3) * 160
