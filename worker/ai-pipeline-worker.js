@@ -5,7 +5,7 @@ const MAX_INPUT_LENGTH = 12000;
 const MAX_OUTPUT_TOKENS = 500;
 const MAX_OUTPUT_LENGTH = 4000;
 const MAX_INTERMEDIATE_LENGTH = 6000;
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'openai/gpt-oss-20b';
 let activePipelines = 0;
 
 function json(data, status, headers) {
