@@ -657,17 +657,9 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
     console.log('📝 Contexte activité:', activityContext);
     
     try {
-        // Appel API Groq RÉELLE avec timeout et vérification de clé
+        // Appel API Groq RÉELLE avec timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-        
-        // Vérifier si la clé API est valide
-        const apiKey = ''; // ACTION 19: aucune clé côté client (SPA publique) — l'accès IA futur passera par un proxy serveur.
-        if (!apiKey || apiKey.trim() === '') {
-            throw new Error('Clé API Groq manquante ou vide');
-        }
-        
-        // (ACTION 19) journal de clé supprimé — aucun secret côté client.
         
         // Déterminer le type de prompt selon le contexte
         let systemPrompt;
@@ -1168,27 +1160,9 @@ window.CacheManager = {
     
     // Forcer le rechargement des scripts
     forceScriptReload() {
-        const scripts = document.querySelectorAll('script[src*="?v="]');
-        const currentVersion = Date.now();
-        
-        scripts.forEach(script => {
-            const src = script.src;
-            const newSrc = src.replace(/\?v=\d+/, `?v=${currentVersion}`);
-            
-            if (src !== newSrc) {
-                console.log(`🔄 CacheManager - Rechargement du script (mode développement): ${src}`);
-                
-                // Créer un nouveau script
-                const newScript = document.createElement('script');
-                newScript.src = newSrc;
-                newScript.async = false;
-                
-                // Remplacer l'ancien script
-                if (script.parentNode) {
-                    script.parentNode.replaceChild(newScript, script);
-                }
-            }
-        });
+        // DÉSACTIVÉ en production : ne pas réinjecter les scripts déjà exécutés
+        // pour éviter les erreurs de déclarations dupliquées (const/class)
+        // console.log('🔄 CacheManager - forceScriptReload désactivé en production');
     },
     
     // Arrêter le système

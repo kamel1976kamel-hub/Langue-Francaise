@@ -1,0 +1,18 @@
+# Configuration Wrangler pour le Worker IA Pipeline
+# ====================================================
+# Déploiement : wrangler deploy --config worker/wrangler.toml
+#
+# SECRET REQUIS (à définir via le dashboard Cloudflare ou CLI) :
+#   wrangler secret put GROQ_API_KEY
+# La clé Groq ne figure JAMAIS dans ce fichier ni dans le dépôt.
+
+name = "langue-francaise-ia"
+main = "ai-pipeline-worker.js"
+compatibility_date = "2024-12-01"
+
+# Pas de route publique automatique — le Worker est appelé
+# directement par son URL *.workers.dev depuis main.js.
+# routes = []
+
+# Le secret GROQ_API_KEY est bind automatiquement par l'environnement
+# Cloudflare Workers. Aucun token/secret en clair dans ce fichier.
