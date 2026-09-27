@@ -654,12 +654,12 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
         // Vérifier si la clé API est valide
-        const apiKey = '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';
+        const apiKey = ''; // ACTION 19: aucune clé côté client (SPA publique) — l'accès IA futur passera par un proxy serveur.
         if (!apiKey || apiKey.trim() === '') {
             throw new Error('Clé API Groq manquante ou vide');
         }
         
-        console.log('🔑 Clé API Groq:', apiKey.substring(0, 10) + '...');
+        // (ACTION 19) journal de clé supprimé — aucun secret côté client.
         
         // Déterminer le type de prompt selon le contexte
         let systemPrompt;
