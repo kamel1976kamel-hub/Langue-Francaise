@@ -33,31 +33,77 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function groqRequest(env, messages, fetchImpl) {
-    const response = await fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + env.GROQ_API_KEY
-        },
-        body: JSON.stringify({
-            model: MODEL,
-            messages: messages,
-            max_tokens: MAX_OUTPUT_TOKENS,
-            temperature: 0.3
-        })
-    });
-    if (!response.ok) {
-        const error = new Error('Groq HTTP ' + response.status);
-        error.status = response.status;
-        error.retryAfter = retryAfterSeconds(response);
+function diagnosticErrorCategory(error) {
+    if (error && Number.isInteger(error.status)) return 'http';
+    if (error && (error.name === 'AbortError' || error.name === 'TimeoutError' || error.code === 'ETIMEDOUT' || error.code === 'ERR_TIMEOUT')) return 'timeout';
+    if (error && error.diagnosticCategory) return error.diagnosticCategory;
+    if (error instanceof SyntaxError) return 'parse';
+    return 'exception';
+}
+
+async function groqRequest(env, messages, fetchImpl, a22bStep) {
+    const startedAt = Date.now();
+    const payload = {
+        model: MODEL,
+        messages: messages,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: 0.3
+    };
+    const payloadBody = JSON.stringify(payload);
+    const payloadLength = payloadBody.length;
+    let rawResponseLength = 'unknown';
+    let status = 'none';
+    try {
+        const response = await fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + env.GROQ_API_KEY
+            },
+            body: payloadBody
+        });
+        status = response.status;
+        const rawResponse = await response.text();
+        rawResponseLength = rawResponse.length;
+        if (!response.ok) {
+            const error = new Error('Groq HTTP ' + response.status);
+            error.status = response.status;
+            error.retryAfter = retryAfterSeconds(response);
+            throw error;
+        }
+        let data;
+        try {
+            data = JSON.parse(rawResponse);
+        } catch (error) {
+            error.diagnosticCategory = 'parse';
+            throw error;
+        }
+        const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!content) {
+            const error = new Error('Réponse Groq vide');
+            error.diagnosticCategory = 'empty';
+            throw error;
+        }
+        if (typeof content !== 'string') {
+            const error = new Error('Contenu Groq non parsable');
+            error.diagnosticCategory = 'parse';
+            throw error;
+        }
+        if (content.length > MAX_OUTPUT_LENGTH) {
+            const error = new Error('Réponse Groq trop longue');
+            error.diagnosticCategory = 'output_limit';
+            throw error;
+        }
+        if (a22bStep) {
+            console.log('A22B step ' + a22bStep + ' success status=' + status + ' category=none raw_response_length=' + rawResponseLength + ' payload_length=' + payloadLength + ' message_count=' + messages.length + ' duration_ms=' + (Date.now() - startedAt));
+        }
+        return content;
+    } catch (error) {
+        if (a22bStep) {
+            console.warn('A22B step ' + a22bStep + ' failure category=' + diagnosticErrorCategory(error) + ' status=' + status + ' raw_response_length=' + rawResponseLength + ' payload_length=' + payloadLength + ' message_count=' + messages.length + ' duration_ms=' + (Date.now() - startedAt));
+        }
         throw error;
     }
-    const data = await response.json();
-    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!content) throw new Error('Réponse Groq vide');
-    if (content.length > MAX_OUTPUT_LENGTH) throw new Error('Réponse Groq trop longue');
-    return content;
 }
 
 function localRequired(reason) {
@@ -104,12 +150,13 @@ async function handleRequest(request, env, options) {
                 'Rédige la réponse finale, concise et encourageante.'
             ];
             let intermediate = body.userPrompt || studentAnswer;
-            for (const stage of stages) {
+            for (let index = 0; index < stages.length; index += 1) {
+                const stage = stages[index];
                 const messages = [
                     { role: 'system', content: body.systemPrompt || 'Tu es un tuteur de français concis et pédagogique.' },
                     { role: 'user', content: stage + '\n\nDonnées:\n' + intermediate.slice(0, MAX_INTERMEDIATE_LENGTH) }
                 ];
-                intermediate = await groqRequest(env, messages, fetchImpl);
+                intermediate = await groqRequest(env, messages, fetchImpl, index + 1);
             }
             return json({ source: 'remote_a22b', result: intermediate });
         } catch (a22bError) {
