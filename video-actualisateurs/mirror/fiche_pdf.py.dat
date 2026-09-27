@@ -55,6 +55,7 @@ def det(txt, d):
 
 
 def build():
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     doc = BaseDocTemplate(OUT, pagesize=A4, title="Les actualisateurs du substantif",
                           author="Atelier de français — Biskra")
     fr = Frame(14 * mm, 12 * mm, A4[0] - 28 * mm, A4[1] - 24 * mm, id="f")
