@@ -1,0 +1,16 @@
+# Artefacts de production vidéo (lourds, régénérables) — hors Git & hors snapshot
+audio/
+frames/
+out/
+*.mp4
+*.wav
+*.m4a
+*.srt
+*.pdf
+
+# Conservés dans Git : sources éditoriales, outillage, voix synthétisée (coûteuse
+# à régénérer : quota par tour) sous forme .dat dans audio-keep/
+audio-keep/!
+!SOURCE-cours.md
+!NARRATION-complet.md
+!build/**
