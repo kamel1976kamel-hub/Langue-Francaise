@@ -32,7 +32,8 @@ def media_info(path):
         return None
     h, mi, s = dur.groups()
     secs = int(h) * 3600 + int(mi) * 60 + float(s)
-    streams = re.findall(r"Stream #\d+:\d+(?:\([^)]*\))?: (\w+): (\S+)", err)
+    streams = re.findall(
+        r"Stream #\d+:\d+(?:\[0x[\da-fA-F]+\])?(?:\([^)]*\))?: (\w+): ([\w./-]+)", err)
     return secs, streams
 
 
