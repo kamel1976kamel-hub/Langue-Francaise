@@ -117,7 +117,10 @@ async function runFourModelPipelineWithFallback(studentAnswer, activityContext, 
         if (typeof window.runFourModelPipeline === 'function') {
             setIaStatus("IA : traitement intelligent...", "bg-purple-500", 50);
             const result = await window.runFourModelPipeline(studentAnswer, activityContext, activityType);
-            setIaStatus("IA : analyse terminée", "bg-emerald-500", 100);
+            // ACTION 20: distinguer l'origine — le repli local est retourné sans exception
+            // quand l'IA distante n'est pas configurée.
+            var isLocalAnalysis = !!(result && result.source === 'locale');
+            setIaStatus(isLocalAnalysis ? "IA distante indisponible — analyse locale" : "IA : analyse terminée", isLocalAnalysis ? "bg-amber-500" : "bg-emerald-500", 100);
             return result;
         }
         
@@ -223,7 +226,11 @@ window.demanderIA = async function(prompt, contexte) {
             }
         }
         
+        // ACTION 20: remonter le marqueur d'origine locale au niveau supérieur
+        // (le repli retourne un objet; l'UI lit improvedResult.analysis pour le contenu).
+        var isLocalResult = typeof improvedResult === 'object' && improvedResult && improvedResult.source === 'locale';
         return {
+            source: isLocalResult ? 'locale' : undefined,
             analysis: improvedResult,
             corrections: corrections,
             explanations: explanations,
@@ -772,7 +779,8 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const hasVerbs = /[a-zA-Z]+er\b|[a-zA-Z]+é\b|[a-zA-Z]+és\b|[a-zA-Z]+ée\b|[a-zA-Z]+ées\b/.test(studentAnswer);
         
         let feedback = {
-            analysis: "Analyse locale effectuée.",
+            source: 'locale',
+            analysis: "Analyse locale (IA distante non configurée).",
             error_type: "structure",
             rule: "développement",
             hint: "Développez votre réponse",
@@ -796,6 +804,10 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             feedback.hint = "Organisez votre réponse en paragraphes logiques.";
         }
         
+        // ACTION 20: le marqueur d'origine locale doit survivre aux heuristiques de longueur
+        // (l'IA distante n'est pas configurée — l'analyse est produite localement).
+        feedback.analysis = "Analyse locale (IA distante non configurée) — " + feedback.analysis;
+        
         if (!hasStructure) {
             feedback.rule = "ponctuation";
             feedback.hint = "Utilisez des points et des virgules pour structurer votre texte.";
@@ -808,7 +820,9 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         }
         
         console.log('📊 Feedback généré:', feedback);
-        return JSON.stringify(feedback);
+        // ACTION 20: retourner l'objet (et non JSON.stringify) afin que `source: 'locale'`
+        // survive jusqu'à l'UI — l'interface déballe déjà response.analysis objet (index.html).
+        return feedback;
     }
 };
 
