@@ -36,13 +36,37 @@ function sleep(ms) {
 function diagnosticErrorCategory(error) {
     if (error && Number.isInteger(error.status)) return 'http';
     if (error && (error.name === 'AbortError' || error.name === 'TimeoutError' || error.code === 'ETIMEDOUT' || error.code === 'ERR_TIMEOUT')) return 'timeout';
-    if (error && error.diagnosticCategory) return error.diagnosticCategory;
+    if (error && ['parse', 'empty', 'output_limit'].includes(error.diagnosticCategory)) return error.diagnosticCategory;
     if (error instanceof SyntaxError) return 'parse';
     return 'exception';
 }
 
-async function groqRequest(env, messages, fetchImpl, a22bStep) {
+function diagnosticId() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    }
+    return Math.random().toString(36).slice(2, 14).padEnd(12, '0');
+}
+
+function createDiagnostic(pipeline, values) {
+    const data = values || {};
+    const categories = ['http', 'timeout', 'parse', 'empty', 'output_limit', 'exception'];
+    return {
+        diagnosticId: diagnosticId(),
+        pipeline: pipeline,
+        failedStep: Number.isInteger(data.failedStep) ? data.failedStep : null,
+        category: categories.includes(data.category) ? data.category : null,
+        httpStatus: Number.isInteger(data.httpStatus) ? data.httpStatus : null,
+        payloadChars: Number.isFinite(data.payloadChars) ? data.payloadChars : null,
+        responseChars: Number.isFinite(data.responseChars) ? data.responseChars : null,
+        messageCount: Number.isInteger(data.messageCount) ? data.messageCount : null,
+        durationMs: Number.isFinite(data.durationMs) ? data.durationMs : null
+    };
+}
+
+async function groqRequest(env, messages, fetchImpl, a22bStep, callMetrics) {
     const startedAt = Date.now();
+    const metrics = callMetrics || {};
     const payload = {
         model: MODEL,
         messages: messages,
@@ -53,6 +77,11 @@ async function groqRequest(env, messages, fetchImpl, a22bStep) {
     const payloadLength = payloadBody.length;
     let rawResponseLength = 'unknown';
     let status = 'none';
+    metrics.payloadChars = payloadLength;
+    metrics.responseChars = null;
+    metrics.httpStatus = null;
+    metrics.messageCount = messages.length;
+    metrics.durationMs = null;
     try {
         const response = await fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -63,8 +92,10 @@ async function groqRequest(env, messages, fetchImpl, a22bStep) {
             body: payloadBody
         });
         status = response.status;
+        metrics.httpStatus = Number.isInteger(status) ? status : null;
         const rawResponse = await response.text();
         rawResponseLength = rawResponse.length;
+        metrics.responseChars = rawResponseLength;
         if (!response.ok) {
             const error = new Error('Groq HTTP ' + response.status);
             error.status = response.status;
@@ -103,15 +134,18 @@ async function groqRequest(env, messages, fetchImpl, a22bStep) {
             console.warn('A22B step ' + a22bStep + ' failure category=' + diagnosticErrorCategory(error) + ' status=' + status + ' raw_response_length=' + rawResponseLength + ' payload_length=' + payloadLength + ' message_count=' + messages.length + ' duration_ms=' + (Date.now() - startedAt));
         }
         throw error;
+    } finally {
+        metrics.durationMs = Date.now() - startedAt;
     }
 }
 
-function localRequired(reason) {
+function localRequired(reason, diagnostic) {
     return json({
         source: 'local_requis',
         fallback: 'local',
         reason: reason,
-        message: 'Service distant momentanément indisponible.'
+        message: 'Service distant momentanément indisponible.',
+        diagnostic: diagnostic || createDiagnostic('a22b')
     }, 503);
 }
 
@@ -132,16 +166,18 @@ async function handleRequest(request, env, options) {
     try {
         body = await request.json();
     } catch (error) {
-        return json({ source: 'local_requis', error: 'JSON invalide' }, 400);
+        return json({ source: 'local_requis', error: 'JSON invalide', diagnostic: createDiagnostic('a22b', { category: 'parse' }) }, 400);
     }
     const studentAnswer = typeof body.studentAnswer === 'string' ? body.studentAnswer.trim() : '';
-    if (!studentAnswer) return json({ source: 'local_requis', error: 'Message vide' }, 400);
-    if (studentAnswer.length > MAX_INPUT_LENGTH) return json({ source: 'local_requis', error: 'Message trop long' }, 413);
-    if (!env || !env.GROQ_API_KEY) return json({ source: 'local_requis', error: 'Configuration distante indisponible' }, 503);
-    if (activePipelines >= MAX_CONCURRENT) return localRequired('instance_saturation');
+    if (!studentAnswer) return json({ source: 'local_requis', error: 'Message vide', diagnostic: createDiagnostic('a22b', { category: 'empty' }) }, 400);
+    if (studentAnswer.length > MAX_INPUT_LENGTH) return json({ source: 'local_requis', error: 'Message trop long', diagnostic: createDiagnostic('a22b', { category: 'output_limit' }) }, 413);
+    if (!env || !env.GROQ_API_KEY) return json({ source: 'local_requis', error: 'Configuration distante indisponible', diagnostic: createDiagnostic('a22b', { category: 'exception' }) }, 503);
+    if (activePipelines >= MAX_CONCURRENT) return localRequired('instance_saturation', createDiagnostic('a22b', { category: 'exception' }));
 
     activePipelines += 1;
     const fetchImpl = options && options.fetchImpl ? options.fetchImpl : fetch;
+    let failedA22B = null;
+    let successfulA22B = null;
     try {
         try {
             const stages = [
@@ -156,15 +192,29 @@ async function handleRequest(request, env, options) {
                     { role: 'system', content: body.systemPrompt || 'Tu es un tuteur de français concis et pédagogique.' },
                     { role: 'user', content: stage + '\n\nDonnées:\n' + intermediate.slice(0, MAX_INTERMEDIATE_LENGTH) }
                 ];
-                intermediate = await groqRequest(env, messages, fetchImpl, index + 1);
+                const callMetrics = {};
+                try {
+                    intermediate = await groqRequest(env, messages, fetchImpl, index + 1, callMetrics);
+                    successfulA22B = callMetrics;
+                } catch (error) {
+                    failedA22B = createDiagnostic('a22b', Object.assign({}, callMetrics, {
+                        failedStep: index + 1,
+                        category: diagnosticErrorCategory(error)
+                    }));
+                    throw error;
+                }
             }
-            return json({ source: 'remote_a22b', result: intermediate });
+            return json({
+                source: 'remote_a22b',
+                result: intermediate,
+                diagnostic: createDiagnostic('a22b', successfulA22B)
+            });
         } catch (a22bError) {
             if (a22bError.status !== undefined && !isTransient(a22bError.status) && a22bError.name !== 'AbortError') {
-                return json({ source: 'local_requis', error: 'Erreur distante permanente' }, 502);
+                return json({ source: 'local_requis', error: 'Erreur distante permanente', diagnostic: failedA22B || createDiagnostic('a22b', { category: diagnosticErrorCategory(a22bError), httpStatus: a22bError.status }) }, 502);
             }
             if (a22bError.status === 429) {
-                if (a22bError.retryAfter === null || a22bError.retryAfter > 10) return localRequired('rate_limited');
+                if (a22bError.retryAfter === null || a22bError.retryAfter > 10) return localRequired('rate_limited', failedA22B);
                 await sleep(a22bError.retryAfter * 1000);
             }
             try {
@@ -173,9 +223,16 @@ async function handleRequest(request, env, options) {
                     { role: 'user', content: studentAnswer + '\nContexte: ' + (body.activityContext || '') }
                 ];
                 const content = await groqRequest(env, compactMessages, fetchImpl);
-                return json({ source: 'remote_a22_fallback', result: content });
+                return json({
+                    source: 'remote_a22_fallback',
+                    result: content,
+                    diagnostic: createDiagnostic('a22_fallback', failedA22B)
+                });
             } catch (a22Error) {
-                return localRequired('remote_fallback_failed');
+                return localRequired('remote_fallback_failed', createDiagnostic('a22_fallback', {
+                    category: diagnosticErrorCategory(a22Error),
+                    httpStatus: a22Error && a22Error.status
+                }));
             }
         }
     } finally {
