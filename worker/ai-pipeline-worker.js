@@ -3,6 +3,7 @@
 const MAX_CONCURRENT = 10;
 const MAX_INPUT_LENGTH = 12000;
 const MAX_OUTPUT_TOKENS = 500;
+const MAX_A22B_OUTPUT_TOKENS = 800;
 const MAX_OUTPUT_LENGTH = 4000;
 const MAX_INTERMEDIATE_LENGTH = 6000;
 const MODEL = 'openai/gpt-oss-20b';
@@ -78,7 +79,7 @@ async function groqRequest(env, messages, fetchImpl, a22bStep, callMetrics) {
     const payload = {
         model: MODEL,
         messages: messages,
-        max_tokens: MAX_OUTPUT_TOKENS,
+        max_tokens: a22bStep ? MAX_A22B_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS,
         temperature: 0.3
     };
     const payloadBody = JSON.stringify(payload);
@@ -142,6 +143,11 @@ async function groqRequest(env, messages, fetchImpl, a22bStep, callMetrics) {
                 ? (finishReasons.includes(finishReason) ? finishReason : 'other')
                 : null
         });
+        if (finishReason === 'length') {
+            const error = new Error('Réponse Groq interrompue par la limite de sortie');
+            error.diagnosticCategory = 'output_limit';
+            throw error;
+        }
         if (!content) {
             const error = new Error('Réponse Groq vide');
             error.diagnosticCategory = 'empty';
@@ -213,9 +219,9 @@ async function handleRequest(request, env, options) {
     try {
         try {
             const stages = [
-                'Analyse les erreurs et les points forts de la réponse.',
-                'Transforme cette analyse en explication pédagogique claire.',
-                'Rédige la réponse finale, concise et encourageante.'
+                'Analyse de façon structurée et concise les erreurs et les points forts de la réponse.',
+                'Transforme cette analyse en tutoriel pédagogique concis et clair.',
+                'Rédige un cours final concis et encourageant.'
             ];
             let intermediate = body.userPrompt || studentAnswer;
             for (let index = 0; index < stages.length; index += 1) {
