@@ -6,28 +6,13 @@
  * =================================================================
  */
 
-// Configuration
-const CONFIG = {
-    EMAIL_DOMAINS: {
-        teacher: 'enseignant.fr',
-        student: 'etudiant.fr'
-    },
-    PASSWORD_FORMAT: {
-        teacher: (prenom) => `${prenom}@2024!`,
-        student: (prenom) => `${prenom}2024!`
-    }
-};
-
-// Base de données des utilisateurs avec profils intégrés
+// Profils d'apprentissage non authentifiants; login data is never shipped here.
 const utilisateurs = [
     {
-        // === DONNÉES AUTHENTIFICATION ===
+        // === IDENTIFIANT INTERNE DE PROFIL ===
         id: 'teacher_001',
         nom: "CHELLOUAI",
         prenom: "KAMEL",
-        username: "kamel.chellouai",
-        password: "Kamel@2024!",
-        email: "kamel.chellouai@enseignant.fr",
         role: "teacher",
         displayName: "KAMEL CHELLOUAI",
         actif: true,
@@ -59,9 +44,6 @@ const utilisateurs = [
         id: 'student_001',
         nom: "HAMDAOUI",
         prenom: "AMIRA CHAHD",
-        username: "amira.hamdaoui",
-        password: "Amira2024!",
-        email: "amira.hamdaoui@etudiant.fr",
         role: "student",
         displayName: "AMIRA CHAHD HAMDAOUI",
         actif: true,
@@ -92,9 +74,6 @@ const utilisateurs = [
         id: 'student_002',
         nom: "HAMZA",
         prenom: "WISSAL",
-        username: "wissal.hamza",
-        password: "Wissal2024!",
-        email: "wissal.hamza@etudiant.fr",
         role: "student",
         displayName: "WISSAL HAMZA",
         actif: true,
@@ -125,9 +104,6 @@ const utilisateurs = [
         id: 'student_003',
         nom: "HERZALLAH",
         prenom: "ISRA",
-        username: "isra.herzallah",
-        password: "Isra2024!",
-        email: "isra.herzallah@etudiant.fr",
         role: "student",
         displayName: "ISRA HERZALLAH",
         actif: true,
@@ -158,9 +134,6 @@ const utilisateurs = [
         id: 'student_004',
         nom: "KABOUCHE",
         prenom: "RYM",
-        username: "rym.kabouche",
-        password: "Rym2024!",
-        email: "rym.kabouche@etudiant.fr",
         role: "student",
         displayName: "RYM KABOUCHE",
         actif: true,
@@ -191,9 +164,6 @@ const utilisateurs = [
         id: 'student_005',
         nom: "LAIB",
         prenom: "LOUBNA HIBATERRAHMANE",
-        username: "loubna.laib",
-        password: "Loubna2024!",
-        email: "loubna.laib@etudiant.fr",
         role: "student",
         displayName: "LOUBNA HIBATERRAHMANE LAIB",
         actif: true,
@@ -224,9 +194,6 @@ const utilisateurs = [
         id: 'student_006',
         nom: "MAGHNI",
         prenom: "HIBAT ERRAHMANE",
-        username: "hibat.maghi",
-        password: "Hibat2024!",
-        email: "hibat.maghi@etudiant.fr",
         role: "student",
         displayName: "HIBAT ERRAHMANE MAGHNI",
         actif: true,
@@ -257,9 +224,6 @@ const utilisateurs = [
         id: 'student_007',
         nom: "METLOUG",
         prenom: "CHOUROUK",
-        username: "chourouk.metlou",
-        password: "Chourouk2024!",
-        email: "chourouk.metlou@etudiant.fr",
         role: "student",
         displayName: "CHOUROUK METLOUG",
         actif: true,
@@ -290,9 +254,6 @@ const utilisateurs = [
         id: 'student_008',
         nom: "OUAMANE",
         prenom: "ALAIE",
-        username: "alaie.ouamane",
-        password: "Alaie2024!",
-        email: "alaie.ouamane@etudiant.fr",
         role: "student",
         displayName: "ALAIE OUAMANE",
         actif: true,
@@ -323,9 +284,6 @@ const utilisateurs = [
         id: 'student_009',
         nom: "REHOUMA",
         prenom: "CHAHD",
-        username: "chahd.rehouma",
-        password: "Chahd2024!",
-        email: "chahd.rehouma@etudiant.fr",
         role: "student",
         displayName: "CHAHD REHOUMA",
         actif: true,
@@ -356,9 +314,6 @@ const utilisateurs = [
         id: 'student_010',
         nom: "SAADI",
         prenom: "SALSABIL",
-        username: "salsabil.saadi",
-        password: "Salsabil2024!",
-        email: "salsabil.saadi@etudiant.fr",
         role: "student",
         displayName: "SALSABIL SAADI",
         actif: true,
@@ -389,9 +344,6 @@ const utilisateurs = [
         id: 'student_011',
         nom: "SASSOUI",
         prenom: "FATMA ZOHRA AROUA",
-        username: "fatma.sassoui",
-        password: "Fatma2024!",
-        email: "fatma.sassoui@etudiant.fr",
         role: "student",
         displayName: "FATMA ZOHRA AROUA SASSOUI",
         actif: true,
@@ -422,9 +374,6 @@ const utilisateurs = [
         id: 'student_012',
         nom: "SEID",
         prenom: "DJAMILA",
-        username: "djamila.seid",
-        password: "Djamila2024!",
-        email: "djamila.seid@etudiant.fr",
         role: "student",
         displayName: "DJAMILA SEID",
         actif: true,
@@ -455,9 +404,6 @@ const utilisateurs = [
         id: 'student_013',
         nom: "SERRAOUI",
         prenom: "AYAT ERRAHMANE",
-        username: "ayat.serraoui",
-        password: "Ayat2024!",
-        email: "ayat.serraoui@etudiant.fr",
         role: "student",
         displayName: "AYAT ERRAHMANE SERRAOUI",
         actif: true,
@@ -488,9 +434,6 @@ const utilisateurs = [
         id: 'student_014',
         nom: "TAGHZOUT",
         prenom: "CHAIMA",
-        username: "chaima.taghzout",
-        password: "Chaima2024!",
-        email: "chaima.taghzout@etudiant.fr",
         role: "student",
         displayName: "CHAIMA TAGHZOUT",
         actif: true,
@@ -521,9 +464,6 @@ const utilisateurs = [
         id: 'student_015',
         nom: "TOUAMI",
         prenom: "SERINE LEILA",
-        username: "serine.touami",
-        password: "Serine2024!",
-        email: "serine.touami@etudiant.fr",
         role: "student",
         displayName: "SERINE LEILA TOUAMI",
         actif: true,
@@ -554,9 +494,6 @@ const utilisateurs = [
         id: 'student_016',
         nom: "ZEGAR",
         prenom: "SARA",
-        username: "sara.zegar",
-        password: "Sara2024!",
-        email: "sara.zegar@etudiant.fr",
         role: "student",
         displayName: "SARA ZEGAR",
         actif: true,
@@ -587,9 +524,6 @@ const utilisateurs = [
         id: 'student_017',
         nom: "ZERROUAK",
         prenom: "SAFAA NOUR ELYAKINE",
-        username: "safaa.zerrouak",
-        password: "Safaa2024!",
-        email: "safaa.zerrouak@etudiant.fr",
         role: "student",
         displayName: "SAFAA NOUR ELYAKINE ZERROUAK",
         actif: true,
@@ -620,9 +554,6 @@ const utilisateurs = [
         id: 'student_018',
         nom: "ZIOUCHI",
         prenom: "FATIMA",
-        username: "fatima.ziouchi",
-        password: "Fatima2024!",
-        email: "fatima.ziouchi@etudiant.fr",
         role: "student",
         displayName: "FATIMA ZIOUCHI",
         actif: true,
@@ -700,37 +631,11 @@ class StudentProfileManager {
     /**
      * Vérifie la connexion
      */
-    verifierConnexion(username, password) {
-        const utilisateur = this.utilisateurs.find(u => u.username === username);
-        
-        if (!utilisateur) {
-            return {
-                success: false,
-                message: "Nom d'utilisateur incorrect",
-                utilisateur: null
-            };
-        }
-        
-        if (utilisateur.password !== password) {
-            return {
-                success: false,
-                message: "Mot de passe incorrect",
-                utilisateur: null
-            };
-        }
-        
-        if (!utilisateur.actif) {
-            return {
-                success: false,
-                message: "Compte désactivé",
-                utilisateur: null
-            };
-        }
-        
+    verifierConnexion() {
         return {
-            success: true,
-            message: "Connexion réussie",
-            utilisateur: utilisateur
+            success: false,
+            message: "Authentication requires a trusted server-side service.",
+            utilisateur: null
         };
     }
     
@@ -738,11 +643,8 @@ class StudentProfileManager {
      * Recherche un utilisateur
      */
     rechercherUtilisateur(critere) {
-        return this.utilisateurs.find(u => 
-            u.username.toLowerCase() === critere.toLowerCase() ||
-            u.email.toLowerCase() === critere.toLowerCase() ||
-            u.id.toLowerCase() === critere.toLowerCase()
-        ) || null;
+        const normalizedCriteria = String(critere || '').toLowerCase();
+        return this.utilisateurs.find(u => u.id.toLowerCase() === normalizedCriteria) || null;
     }
     
     // ======== FONCTIONS PROFIL D'APPRENTISSAGE ========
@@ -917,7 +819,7 @@ class StudentProfileManager {
      * Exporte les données au format CSV
      */
     genererCSV() {
-        const headers = ['ID', 'Nom', 'Prénom', 'Email', 'Username', 'Password', 'Role', 'Actif', 'TotalActivities', 'ErrorRate', 'ImprovementRate'];
+        const headers = ['ID', 'Nom', 'Prénom', 'Role', 'Actif', 'TotalActivities', 'ErrorRate', 'ImprovementRate'];
         let csv = headers.join(',') + '\n';
         
         this.utilisateurs.forEach(u => {
@@ -928,9 +830,6 @@ class StudentProfileManager {
                 u.id,
                 u.nom,
                 u.prenom,
-                u.email,
-                u.username,
-                u.password,
                 u.role,
                 u.actif,
                 stats.totalActivities || 0,
@@ -955,7 +854,6 @@ class StudentProfileManager {
             utilisateurs: this.utilisateurs.map(u => ({
                 id: u.id,
                 displayName: u.displayName,
-                username: u.username,
                 role: u.role,
                 profile: this.profiles.get(u.id)
             }))

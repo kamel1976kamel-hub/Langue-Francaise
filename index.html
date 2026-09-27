@@ -1911,30 +1911,7 @@
           </button>
         </form>
         
-        <div class="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-          <p class="font-medium text-slate-700 mb-1">Comptes disponibles :</p>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-            <div><span class="font-mono bg-slate-200 px-1 rounded">kamel.chellouai</span> / <span class="font-mono bg-slate-200 px-1 rounded">Kamel@2024!</span> (Enseignant)</div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">amira.hamdaoui</span> / <span class="font-mono bg-slate-200 px-1 rounded">Amira2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">wissal.hamza</span> / <span class="font-mono bg-slate-200 px-1 rounded">Wissal2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">isra.herzallah</span> / <span class="font-mono bg-slate-200 px-1 rounded">Isra2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">rym.kabouche</span> / <span class="font-mono bg-slate-200 px-1 rounded">Rym2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">loubna.laib</span> / <span class="font-mono bg-slate-200 px-1 rounded">Loubna2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">hibat.maghi</span> / <span class="font-mono bg-slate-200 px-1 rounded">Hibat2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">chourouk.metlou</span> / <span class="font-mono bg-slate-200 px-1 rounded">Chourouk2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">alaie.ouamane</span> / <span class="font-mono bg-slate-200 px-1 rounded">Alaie2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">chahd.rehouma</span> / <span class="font-mono bg-slate-200 px-1 rounded">Chahd2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">salsabil.saadi</span> / <span class="font-mono bg-slate-200 px-1 rounded">Salsabil2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">fatma.sassoui</span> / <span class="font-mono bg-slate-200 px-1 rounded">Fatma2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">djamila.seid</span> / <span class="font-mono bg-slate-200 px-1 rounded">Djamila2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">ayat.serraoui</span> / <span class="font-mono bg-slate-200 px-1 rounded">Ayat2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">chaima.taghzout</span> / <span class="font-mono bg-slate-200 px-1 rounded">Chaima2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">serine.touami</span> / <span class="font-mono bg-slate-200 px-1 rounded">Serine2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">sara.zegar</span> / <span class="font-mono bg-slate-200 px-1 rounded">Sara2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">safaa.zerrouak</span> / <span class="font-mono bg-slate-200 px-1 rounded">Safaa2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">fatima.ziouchi</span> / <span class="font-mono bg-slate-200 px-1 rounded">Fatima2024!</span></div>
-          </div>
-        </div>
+
       </div>
     </div>
 
@@ -5603,28 +5580,8 @@
         LOCKOUT_DURATION: 15 * 60 * 1000 // 15 minutes
       };
 
-      // Base de données utilisateurs (optimisée)
-      const users = [
-        { id: 'teacher_001', username: "kamel.chellouai", password: "Kamel@2024!", role: "teacher", displayName: "KAMEL CHELLOUAI", actif: true },
-        { id: 'student_001', username: "amira.hamdaoui", password: "Amira2024!", role: "student", displayName: "AMIRA CHAHD HAMDAOUI", actif: true },
-        { id: 'student_002', username: "wissal.hamza", password: "Wissal2024!", role: "student", displayName: "WISSAL HAMZA", actif: true },
-        { id: 'student_003', username: "isra.herzallah", password: "Isra2024!", role: "student", displayName: "ISRA HERZALLAH", actif: true },
-        { id: 'student_004', username: "rym.kabouche", password: "Rym2024!", role: "student", displayName: "RYM KABOUCHE", actif: true },
-        { id: 'student_005', username: "loubna.laib", password: "Loubna2024!", role: "student", displayName: "LOUBNA HIBATERRAHMANE LAIB", actif: true },
-        { id: 'student_006', username: "hibat.maghi", password: "Hibat2024!", role: "student", displayName: "HIBAT ERRAHMANE MAGHNI", actif: true },
-        { id: 'student_007', username: "chourouk.metlou", password: "Chourouk2024!", role: "student", displayName: "CHOUROUK METLOUG", actif: true },
-        { id: 'student_008', username: "alaie.ouamane", password: "Alaie2024!", role: "student", displayName: "ALAIE OUAMANE", actif: true },
-        { id: 'student_009', username: "chahd.rehouma", password: "Chahd2024!", role: "student", displayName: "CHAHD REHOUMA", actif: true },
-        { id: 'student_010', username: "salsabil.saadi", password: "Salsabil2024!", role: "student", displayName: "SALSABIL SAADI", actif: true },
-        { id: 'student_011', username: "fatma.sassoui", password: "Fatma2024!", role: "student", displayName: "FATMA ZOHRA AROUA SASSOUI", actif: true },
-        { id: 'student_012', username: "djamila.seid", password: "Djamila2024!", role: "student", displayName: "DJAMILA SEID", actif: true },
-        { id: 'student_013', username: "ayat.serraoui", password: "Ayat2024!", role: "student", displayName: "AYAT ERRAHMANE SERRAOUI", actif: true },
-        { id: 'student_014', username: "chaima.taghzout", password: "Chaima2024!", role: "student", displayName: "CHAIMA TAGHZOUT", actif: true },
-        { id: 'student_015', username: "serine.touami", password: "Serine2024!", role: "student", displayName: "SERINE LEILA TOUAMI", actif: true },
-        { id: 'student_016', username: "sara.zegar", password: "Sara2024!", role: "student", displayName: "SARA ZEGAR", actif: true },
-        { id: 'student_017', username: "safaa.zerrouak", password: "Safaa2024!", role: "student", displayName: "SAFAA NOUR ELYAKINE ZERROUAK", actif: true },
-        { id: 'student_018', username: "fatima.ziouchi", password: "Fatima2024!", role: "student", displayName: "FATIMA ZIOUCHI", actif: true }
-      ];
+      // Authentication requires a trusted server; no accounts are stored in the public client.
+      const users = [];
 
       // État de l'authentification
       let currentUser = null;
@@ -5669,48 +5626,16 @@
             this.createSession(result.user);
             this.redirectToApp();
           } else {
-            this.handleLoginFailure(username, result);
+            event.target.reset();
+            this.showLoginError(result.message);
           }
         }
 
-        authenticate(username, password) {
-          // Vérifier si le compte est verrouillé
-          if (this.isAccountLocked(username)) {
-            return {
-              success: false,
-              code: 'ACCOUNT_LOCKED',
-              message: 'Compte temporairement verrouillé. Veuillez réessayer plus tard.'
-            };
-          }
-
-          // Rechercher l'utilisateur
-          const user = this.users.find(u => u.username === username && u.actif);
-          
-          if (!user) {
-            return {
-              success: false,
-              code: 'USER_NOT_FOUND',
-              message: 'Nom d\'utilisateur ou mot de passe incorrect'
-            };
-          }
-
-          // Vérifier le mot de passe
-          if (user.password !== password) {
-            return {
-              success: false,
-              code: 'INVALID_PASSWORD',
-              message: 'Nom d\'utilisateur ou mot de passe incorrect'
-            };
-          }
-
+        authenticate() {
           return {
-            success: true,
-            user: {
-              id: user.id,
-              username: user.username,
-              displayName: user.displayName,
-              role: user.role
-            }
+            success: false,
+            code: 'AUTH_UNAVAILABLE',
+            message: 'La connexion sécurisée est indisponible. Un service d’authentification serveur doit être configuré.'
           };
         }
 
@@ -5752,24 +5677,7 @@
         }
 
         restoreSession() {
-          try {
-            const sessionData = localStorage.getItem(this.config.SESSION_KEY);
-            if (sessionData) {
-              const session = JSON.parse(sessionData);
-              
-              // Vérifier l'expiration de la session
-              if (Date.now() - session.loginTime > this.config.SESSION_TIMEOUT) {
-                this.destroySession();
-                return;
-              }
-
-              this.currentUser = session.user;
-              this.updateUIForUser();
-            }
-          } catch (error) {
-            console.error('Erreur lors de la restauration de session:', error);
-            this.destroySession();
-          }
+          this.destroySession();
         }
 
         destroySession() {
@@ -9306,38 +9214,7 @@
         document.getElementById('loginForm').reset();
       };
 
-      function login(username, password) {
-        console.log("Tentative de connexion:", username, password);
-        const user = users.find(u => u.username === username && u.password === password);
-        console.log("User trouvé:", user);
-        if (user) {
-          currentUser = user;
-          try {
-            hideLoginError();
-            if (authModal) authModal.classList.add("hidden");
-            if (typeof updateUserHeader === 'function') updateUserHeader(user);
-            localStorage.setItem("currentUser", JSON.stringify(user));
-            if (mainApp) {
-              mainApp.classList.remove("hidden");
-              console.log("mainApp affiché avec succès");
-            } else {
-              console.error("mainApp non trouvé!");
-            }
-            
-            // Mettre à jour le badge des annonces après connexion
-            if (typeof updateAnnouncementsBadge === 'function') {
-              updateAnnouncementsBadge();
-            }
-            
-            return true;
-          } catch (err) {
-            console.error("Erreur lors du login:", err);
-            // En cas d'erreur, afficher quand même l'application
-            if (mainApp) mainApp.classList.remove("hidden");
-            if (authModal) authModal.classList.add("hidden");
-            return true;
-          }
-        }
+      function login() {
         return false;
       }
 
@@ -9351,77 +9228,17 @@
       }
 
       function checkExistingSession() {
-        const savedUser = localStorage.getItem("currentUser");
-        if (savedUser) {
-          try {
-            const user = JSON.parse(savedUser);
-            const validUser = users.find(u => u.username === user.username);
-            if (validUser) {
-              currentUser = validUser;
-              authModal.classList.add("hidden");
-              mainApp.classList.remove("hidden");
-              
-              // Mettre à jour le badge des annonces pour la session existante
-              if (typeof updateAnnouncementsBadge === 'function') {
-                updateAnnouncementsBadge();
-              }
-              
-              return true;
-            }
-          } catch (e) {
-            localStorage.removeItem("currentUser");
-          }
-        }
+        localStorage.removeItem("currentUser");
+        currentUser = null;
         return false;
       }
-
-      loginForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value;
-        
-        if (!username || !password) {
-          showLoginError("Veuillez remplir tous les champs.");
-          return;
-        }
-
-        if (!login(username, password)) {
-          showLoginError("Nom d'utilisateur ou mot de passe incorrect.");
-        }
-      });
 
       // Vérifier s'il y a une session existante au chargement
       try {
         checkExistingSession();
       } catch (err) {
         console.error("Erreur lors du chargement:", err);
-        // En cas d'erreur, afficher quand même l'application
-        if (mainApp) mainApp.classList.remove("hidden");
-        if (authModal) authModal.classList.add("hidden");
       }
-    </script>
-    
-    <!-- Script de secours pour garantir l'affichage -->
-    <script>
-    (function() {
-      // Attendre que tout soit chargé
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          var mainApp = document.getElementById('mainApp');
-          var authModal = document.getElementById('authModal');
-          var savedUser = localStorage.getItem('currentUser');
-          
-          // Si une session existe mais que l'app n'est pas visible, forcer l'affichage
-          if (savedUser && mainApp && authModal) {
-            if (mainApp.classList.contains('hidden')) {
-              console.log('Script de secours: affichage forcé de l\'interface');
-              authModal.classList.add('hidden');
-              mainApp.classList.remove('hidden');
-            }
-          }
-        }, 500);
-      });
-    })();
     </script>
     
     <!-- Script pour détecter le type d'appareil -->

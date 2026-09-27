@@ -1,7 +1,6 @@
 'use strict';
 
-// Configure uniquement après déploiement effectif du Worker.
-// Laisser vide désactive les appels distants et conserve le fallback local.
+// Public Worker endpoint. Never place credentials or provider secrets in browser config.
 window.AI_WORKER_CONFIG = window.AI_WORKER_CONFIG || {
-    workerUrl: ''
+    workerUrl: 'https://langue-francaise-ai-pipeline.chellouaikamel50.workers.dev'
 };

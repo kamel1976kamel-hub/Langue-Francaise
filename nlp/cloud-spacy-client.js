@@ -4,75 +4,17 @@
 console.log('☁️ Initialisation du client spaCy Cloud');
 
 class SpacyCloudClient {
-    constructor(apiKey = null) {
-        this.apiKey = apiKey; // Token Hugging Face
-        this.baseUrl = 'https://api-inference.huggingface.co/models';
+    constructor() {
         this.model = 'spacy/fr_core_news_sm';
         this.isAvailable = false;
-        this.checkAvailability();
     }
 
     async checkAvailability() {
-        if (!this.apiKey) {
-            console.warn('⚠️ Clé API Hugging Face non fournie');
-            this.isAvailable = false;
-            return false;
-        }
-
-        try {
-            const response = await fetch(`${this.baseUrl}/${this.model}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ inputs: "test" })
-            });
-
-            this.isAvailable = response.ok;
-            console.log('☁️ spaCy Cloud disponible:', this.isAvailable);
-            return this.isAvailable;
-        } catch (error) {
-            console.warn('⚠️ spaCy Cloud non disponible:', error.message);
-            this.isAvailable = false;
-            return false;
-        }
+        return false;
     }
 
-    async analyzeText(text, options = {}) {
-        if (!this.isAvailable) {
-            await this.checkAvailability();
-            if (!this.isAvailable) {
-                throw new Error('spaCy Cloud non disponible');
-            }
-        }
-
-        try {
-            const response = await fetch(`${this.baseUrl}/${this.model}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    inputs: text,
-                    options: {
-                        // Options Hugging Face si nécessaire
-                        wait_for_model: true
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return this.formatSpacyCloudResponse(data, text);
-        } catch (error) {
-            console.error('❌ Erreur analyse spaCy Cloud:', error);
-            throw error;
-        }
+    async analyzeText() {
+        throw new Error('spaCy Cloud requires a trusted server-side service.');
     }
 
     formatSpacyCloudResponse(data, originalText) {
@@ -157,49 +99,9 @@ class SpacyCloudClient {
     }
 }
 
-// Configuration du client spaCy Cloud
+// Cloud inference is disabled in the browser; configure a trusted server-side service first.
 window.setupSpacyCloud = async function() {
-    console.log('☁️ Configuration de spaCy Cloud...');
-    
-    // Obtenir la clé API
-    const apiKey = SpacyCloudClient.getApiKey();
-    if (!apiKey) {
-        console.warn('⚠️ Pas de clé API, spaCy Cloud non disponible');
-        return false;
-    }
-    
-    // Créer le client
-    window.spacyCloudClient = new SpacyCloudClient(apiKey);
-    
-    // Intégrer dans le pipeline
-    if (window.hybridPipeline && window.hybridPipeline.modules.spacy) {
-        const originalSpacy = window.hybridPipeline.modules.spacy;
-        
-        // Remplacer la méthode process
-        window.hybridPipeline.modules.spacy.process = async function(text) {
-            const startTime = Date.now();
-            
-            try {
-                // Utiliser spaCy Cloud
-                const result = await window.spacyCloudClient.analyzeText(text);
-                const processingTime = Date.now() - startTime;
-                
-                return {
-                    ...result,
-                    processingTime: processingTime
-                };
-            } catch (error) {
-                console.warn('⚠️ Erreur spaCy Cloud, fallback vers simulation:', error.message);
-                
-                // Fallback vers la simulation originale
-                return await originalSpacy.process(text);
-            }
-        };
-        
-        console.log('✅ spaCy Cloud intégré dans le pipeline');
-        return true;
-    }
-    
+    console.warn('spaCy Cloud is unavailable in the browser; local analysis remains active.');
     return false;
 };
 

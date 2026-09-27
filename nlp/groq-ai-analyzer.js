@@ -3,16 +3,7 @@
 
 console.log('🧠 Initialisation du module IA Groq pour analyse linguistique');
 
-// Configuration de l'API Groq
-const GROQ_CONFIG = {
-    apiKey: '', // ACTION 19: aucune clé côté client (SPA publique) — callGroqAPI retourne null et le repli local s'applique.
-    baseURL: 'https://api.groq.com/openai/v1',
-    model: 'llama-3.1-8b-instant', // modèle valide et disponible
-    maxTokens: 500,
-    temperature: 0.3
-};
-
-// Fonction pour appeler l'API Groq
+// Fonction historique conservée pour compatibilité; l'IA distante passe par le Worker.
 async function callGroqAPI(prompt) {
     // Contrat historique conservé : les consommateurs reçoivent [] quand aucun
     // service distant n'est configuré. Les règles locales restent actives.
