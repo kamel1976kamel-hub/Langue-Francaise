@@ -227,11 +227,21 @@ window.demanderIA = async function(prompt, contexte) {
             }
         }
         
-        // ACTION 20: remonter le marqueur d'origine locale au niveau supérieur
+        // ACTION 20: remonter le marqueur d'origine au niveau supérieur
         // (le repli retourne un objet; l'UI lit improvedResult.analysis pour le contenu).
-        var isLocalResult = typeof improvedResult === 'object' && improvedResult && improvedResult.source === 'locale';
+        // Le champ source peut venir du Worker (remote_a22b, remote_a22_fallback, local_requis)
+        // ou du fallback local (locale).
+        var resultSource = undefined;
+        if (typeof result === 'object' && result && result.source) {
+            resultSource = result.source;
+        } else if (typeof result === 'string') {
+            try {
+                var parsed = JSON.parse(result);
+                if (parsed && parsed.source) resultSource = parsed.source;
+            } catch (e) { /* pas de source si pas JSON */ }
+        }
         return {
-            source: isLocalResult ? 'locale' : undefined,
+            source: resultSource,
             analysis: improvedResult,
             corrections: corrections,
             explanations: explanations,
@@ -690,7 +700,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const workerUrl = window.APP_CONFIG?.api?.workerUrl || 'https://langue-francaise-ia.chellouaikamel50.workers.dev';
         if (window.antiRafaleProtection && window.antiRafaleProtection.isThrottled('ia-request')) {
             console.warn('⚠️ Requête IA throttled (anti-rafale)');
-            return { analysis: 'Trop de requêtes en cours. Veuillez patienter.', corrections: [], explanations: [], suggestions: [], throttled: true };
+            return { source: 'throttled', analysis: 'Trop de requêtes en cours. Veuillez patienter.', corrections: [], explanations: [], suggestions: [], throttled: true };
         }
         const response = await fetch(workerUrl, {
             method: 'POST',
@@ -709,12 +719,14 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         if (!response.ok) { throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`); }
         const data = await response.json();
         const aiResponse = data.choices?.[0]?.message?.content || data.analysis || 'Réponse IA non disponible';
-        console.log('✅ Réponse Worker reçue:', aiResponse);
+        const workerSource = data.source || 'remote_unknown';
+        console.log('✅ Réponse Worker reçue:', { source: workerSource, length: aiResponse.length });
         
         // Traiter la réponse selon le contexte
         if (activityContext === 'chat' || activityContext.includes('chat')) {
             // Mode chat : retourner la réponse directement
             return {
+                source: workerSource,
                 analysis: aiResponse,
                 corrections: [],
                 explanations: [],
@@ -724,6 +736,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         } else if (activityContext === 'activité') {
             // Mode activité : retourner la réponse naturelle
             return {
+                source: workerSource,
                 analysis: aiResponse,
                 corrections: [],
                 explanations: [],
@@ -735,10 +748,11 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             try {
                 const parsedResponse = JSON.parse(aiResponse);
                 console.log('📊 Réponse parsée:', parsedResponse);
-                return JSON.stringify(parsedResponse);
+                return JSON.stringify({ ...parsedResponse, source: workerSource });
             } catch (parseError) {
                 // console.log('⚠️ Réponse non-JSON, retour formaté'); // Réduit le bruit console
                 return JSON.stringify({
+                    source: workerSource,
                     analysis: aiResponse.substring(0, 200),
                     error_type: "général",
                     rule: "expression",

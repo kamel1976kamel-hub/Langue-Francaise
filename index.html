@@ -651,13 +651,31 @@
             console.warn('⚠️ Speech Synthesis non supporté par ce navigateur');
         }
         
+        // Helper : lire la réponse d'une activité (textarea ou tableau d'inputs)
+        // Quand hasTable est true, l'élément est un <div> contenant des <input> ;
+        // sinon c'est un <textarea>. Sans ce helper, .value est undefined sur un <div>.
+        function getActivityAnswerText(chapterId, activityId) {
+            var el = document.getElementById('activity-answer-' + chapterId + '-' + activityId);
+            if (!el) return '';
+            if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+                return el.value.trim();
+            }
+            // Tableau : collecter les valeurs des <input> non vides
+            var inputs = el.querySelectorAll('input[type="text"]');
+            var parts = [];
+            for (var i = 0; i < inputs.length; i++) {
+                var v = inputs[i].value.trim();
+                if (v) parts.push(v);
+            }
+            return parts.join(' ');
+        }
+
         // Fonctions pour la correction des activités
         window.analyzeAndSubmitActivity = async function(chapterId, activityId) {
             try {
                 console.log('🔍 analyzeAndSubmitActivity appelé pour', chapterId, activityId);
                 
-                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-                const answer = textarea.value.trim();
+                const answer = getActivityAnswerText(chapterId, activityId);
                 
                 if (!answer) {
                     console.log('⚠️ Réponse vide');
@@ -732,9 +750,11 @@
                     });
                 }
                 
-                // Mettre à jour le textarea avec le texte corrigé
-                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-                textarea.value = correctedText;
+                // Mettre à jour le textarea avec le texte corrigé (seulement si c'est un vrai textarea)
+                const answerEl = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
+                if (answerEl && (answerEl.tagName === 'TEXTAREA' || answerEl.tagName === 'INPUT')) {
+                    answerEl.value = correctedText;
+                }
                 
                 console.log('🚀 Soumission automatique de l\'activité corrigée:', correctedText);
                 
@@ -868,8 +888,7 @@
             try {
                 console.log('🔍 analyzeActivityAnswer appelé pour', chapterId, activityId);
                 
-                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-                const answer = textarea.value.trim();
+                const answer = getActivityAnswerText(chapterId, activityId);
                 
                 if (!answer) {
                     console.log('⚠️ Réponse vide');
@@ -1048,8 +1067,7 @@
             try {
                 console.log('🚀 submitCorrectedActivity appelé pour', chapterId, activityId);
                 
-                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-                const answer = textarea.value.trim();
+                const answer = getActivityAnswerText(chapterId, activityId);
                 
                 if (!answer) {
                     console.log('⚠️ Réponse vide');
@@ -1251,8 +1269,7 @@
             try {
                 console.log('🚀 submitActivity appelé pour', chapterId, activityId);
                 
-                const textarea = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-                const answer = textarea.value.trim();
+                const answer = getActivityAnswerText(chapterId, activityId);
                 
                 if (!answer) {
                     alert('⚠️ Veuillez d\'abord écrire une réponse.');
@@ -6286,10 +6303,10 @@
             window.speakText(text);
           }
         } else {
-          // Sinon, lire le textarea
-          const answerEl = document.getElementById(`activity-answer-${chapterId}-${activityId}`);
-          if (answerEl && answerEl.value.trim()) {
-            window.speakText(answerEl.value.trim());
+          // Sinon, lire le textarea (ou le tableau d'inputs)
+          const answerText = getActivityAnswerText(chapterId, activityId);
+          if (answerText) {
+            window.speakText(answerText);
           }
         }
       };
