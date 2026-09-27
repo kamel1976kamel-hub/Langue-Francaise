@@ -9309,23 +9309,23 @@
             typeChar();
         };
 
-        // L'assistant d'écriture est déjà chargé via writing-assistant-grammalecte.js
-        console.log('✅ Assistant d\'écriture déjà chargé');
+        // Assistant d'écriture chargé
+        console.log('✅ Assistant d\'écriture chargé');
         
-        console.log("Script de compatibilité IA chargé");
+        console.log("Script IA chargé");
     </script>
     <script>
       // Démarrer l'IA au chargement
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function() {
-          console.log("Application chargée avec le pipeline à 4 modèles");
+          console.log("Application chargée — pipeline IA Worker");
           // Configurer l'analyse en temps réel pour les chats
           if (typeof setupRealTimeCorrectionForChat === 'function') {
             setupRealTimeCorrectionForChat();
           }
         });
       } else {
-        console.log("Application chargée avec le pipeline à 4 modèles");
+        console.log("Application chargée — pipeline IA Worker");
         // Configurer l'analyse en temps réel pour les chats
         if (typeof setupRealTimeCorrectionForChat === 'function') {
           setupRealTimeCorrectionForChat();
@@ -9346,22 +9346,11 @@
     <!-- <script src="spacy-rule-examples.js"></script> -->
     <!-- <script src="writing-assistant-spacy-lg.js"></script> -->
     
-    <!-- Script de détection et initialisation de spaCy lg -->
-    <script>
-      // Approche simplifiée - sans scripts conflictuels
-      (function() {
-        console.log('🧠 Début du chargement de spaCy lg (Large)...');
-        
-        // Attendre un peu pour l'initialisation
-        setTimeout(() => {
-          console.log('✅ spaCy lg (Large) détecté !');
-          console.log('🎯 Modèle: fr_core_news_lg - Précision: 94.7%');
-          console.log('📊 Capacités: Analyse syntaxique, NER, Morphologie, Dépendances, Lemmatisation, Vecteurs sémantiques');
-          console.log('📝 Mode: Fallback avancé (émulation spaCy lg)');
-          console.log('🔧 Règles personnalisées: 15+ règles actives');
-          console.log('🔄 Initialisation de l\'assistant avec spaCy lg (Large)...');
-        }, 1000);
-      })();
-    </script>
+    <!-- Scripts spaCy lg désactivés -->
+    <!-- <script src="spacy-lg-interface.js"></script> -->
+    <!-- <script src="spacy-custom-rules.js"></script> -->
+    <!-- <script src="spacy-rule-examples.js"></script> -->
+    <!-- <script src="writing-assistant-spacy-lg.js"></script> -->
+    
   </body>
 </html>

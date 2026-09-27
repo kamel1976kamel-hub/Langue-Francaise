@@ -105,7 +105,7 @@ function addError(error, context = 'general') {
 }
 
 /**
- * Pipeline à 4 modèles avec fallback
+ * Pipeline IA avec fallback (Worker → fallback local)
  * @param {string} studentAnswer - Réponse de l'étudiant
  * @param {string} activityContext - Contexte de l'activité
  * @param {string} activityType - Type d'activité
@@ -125,18 +125,16 @@ async function runFourModelPipelineWithFallback(studentAnswer, activityContext, 
             return result;
         }
         
-        throw new Error('Pipeline IA temps réel non disponible. Veuillez configurer votre clé API OpenAI.');
+        throw new Error('Pipeline IA indisponible. Veuillez vérifier votre connexion.');
         
     } catch (error) {
         addError(`Pipeline error: ${error.message}`, 'pipeline');
         setIaStatus("IA : configuration requise", "bg-rose-500", 0);
         
-        const errorMessage = `⚠️ Pipeline IA non configuré
+        const errorMessage = `⚠️ Service IA indisponible
         
-Pour activer l'IA temps réel :
-1. Obtenez une clé API sur https://platform.openai.com/api-keys
-2. Configurez-la avec : configureAPIKey("votre-clé-api")
-3. Ou utilisez l'interface graphique qui apparaît automatiquement
+Le pipeline IA n'est pas accessible pour le moment.
+Veuillez vérifier votre connexion internet et réessayer.
         
 Erreur technique : ${error.message}`;
         
@@ -660,14 +658,14 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
-// Pipeline IA RÉEL - Connexion API Groq avec fallback intelligent
+// Pipeline IA — Worker Cloudflare avec fallback local
 window.runFourModelPipeline = async function(studentAnswer, activityContext, activityType = 'general') {
-    console.log('🚀 Pipeline IA RÉEL activé');
+    console.log('🚀 Pipeline IA activé (Worker Cloudflare)');
     console.log('📝 Réponse étudiant:', studentAnswer);
     console.log('📝 Contexte activité:', activityContext);
     
     try {
-        // Appel API Groq RÉELLE avec timeout
+        // Appel du Worker Cloudflare avec timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
@@ -766,7 +764,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         }
         
     } catch (error) {
-        console.error('❌ Erreur API Groq:', error);
+        console.error('❌ Erreur Worker IA:', error);
         
         // Fallback intelligent basé sur l'analyse locale
         console.log('🔄 Activation du fallback pédagogique intelligent...');
@@ -825,7 +823,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
 };
 
 // Démarrer l'IA au chargement
-console.log("🚀 Initialisation avec pipeline IA modeles specifiques - DeepSeek-V3 + GPT-5 + Llama 4 Scout");
+console.log("🚀 Initialisation IA — Worker Cloudflare (openai/gpt-oss-20b)");
 
 // Système de détection de modifications et suppression automatique du cache
 window.CacheManager = {
