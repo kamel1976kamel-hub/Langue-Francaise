@@ -17,7 +17,6 @@ class BrowserSQLiteManager {
             
             // Insérer les règles directement
             await this.insertRules();
-            
             this.isReady = true;
             console.log('✅ Base de données SQLite navigateur prête');
             
@@ -3415,7 +3414,8 @@ class BrowserSQLiteManager {
             style: [],
             vocabulaire: [],
             conjugaison: [],
-            orthographe: []
+            orthographe: [],
+            grammaire: []
         };
 
         rules.forEach(rule => {

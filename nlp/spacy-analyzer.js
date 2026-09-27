@@ -400,11 +400,16 @@ window.applyRules = function(text, options = {}) {
     const errors = [];
     const explanations = [];
     const suggestions = [];
+    const ruleCategories = ['style', 'vocabulaire', 'conjugaison', 'orthographe', 'grammaire'];
+    const suppliedRules = options && typeof options === 'object' ? options : {};
+    const rulesByCategory = ruleCategories.some(category => Array.isArray(suppliedRules[category]))
+        ? suppliedRules
+        : window.SpacyAnalyzer.patterns;
     
     try {
         // Appliquer les règles de style
-        if (window.SpacyAnalyzer.patterns.style && window.SpacyAnalyzer.patterns.style.length > 0) {
-            window.SpacyAnalyzer.patterns.style.forEach(rule => {
+        if (rulesByCategory.style && rulesByCategory.style.length > 0) {
+            rulesByCategory.style.forEach(rule => {
                 try {
                     if (rule.pattern && rule.correction) {
                         let pattern;
@@ -448,10 +453,10 @@ window.applyRules = function(text, options = {}) {
             });
         }
         
-        // Appliquer les autres catégories de règles (vocabulaire, conjugaison, orthographe)
-        ['vocabulaire', 'conjugaison', 'orthographe'].forEach(category => {
-            if (window.SpacyAnalyzer.patterns[category] && window.SpacyAnalyzer.patterns[category].length > 0) {
-                window.SpacyAnalyzer.patterns[category].forEach(rule => {
+        // Appliquer les autres catégories de règles
+        ruleCategories.filter(category => category !== 'style').forEach(category => {
+            if (rulesByCategory[category] && rulesByCategory[category].length > 0) {
+                rulesByCategory[category].forEach(rule => {
                     try {
                         if (rule.pattern && rule.correction) {
                             let pattern;
@@ -512,7 +517,7 @@ window.applyRules = function(text, options = {}) {
 // ---------------------------------------------------------------------
 
 // Fonction pour intégrer les règles avancées si disponibles
-window.initializeAdvancedRules = async function() {
+async function initializeAdvancedRulesOnce() {
     let rulesIntegrated = 0;
     
     // Essayer de charger depuis la base de données d'abord
@@ -544,6 +549,12 @@ window.initializeAdvancedRules = async function() {
                 window.SpacyAnalyzer.patterns.conjugaison = allRules.conjugaison;
                 rulesIntegrated += allRules.conjugaison.length;
                 console.log(`✅ ${allRules.conjugaison.length} règles de conjugaison intégrées`);
+            }
+
+            if (allRules.grammaire && allRules.grammaire.length > 0) {
+                window.SpacyAnalyzer.patterns.grammaire = allRules.grammaire;
+                rulesIntegrated += allRules.grammaire.length;
+                console.log(`✅ ${allRules.grammaire.length} règles de grammaire intégrées`);
             }
             
             console.log(`✅ Total: ${rulesIntegrated} règles intégrées depuis la base de données`);
@@ -589,6 +600,12 @@ window.initializeAdvancedRules = async function() {
         window.SpacyAnalyzer.patterns.conjugaison = window.conjugaisonRules;
         rulesIntegrated += window.conjugaisonRules.length;
     }
+
+    if (window.grammaireRules && Array.isArray(window.grammaireRules) && window.grammaireRules.length > 0) {
+        console.log(`📖 Intégration de ${window.grammaireRules.length} règles de grammaire...`);
+        window.SpacyAnalyzer.patterns.grammaire = window.grammaireRules;
+        rulesIntegrated += window.grammaireRules.length;
+    }
     
     if (rulesIntegrated > 0) {
         // Fusionner avec les règles existantes
@@ -597,13 +614,21 @@ window.initializeAdvancedRules = async function() {
         }, 0);
         
         console.log(`📊 Total des règles disponibles : ${totalRules}`);
-        console.log('🎯 Règles de style, vocabulaire, orthographe et conjugaison intégrées avec succès !');
+        console.log('🎯 Règles de style, vocabulaire, orthographe, conjugaison et grammaire intégrées avec succès !');
         
         return true;
     } else {
         console.log('⚠️ Règles de style non disponibles - Utilisation des règles de base uniquement');
         return false;
     }
+}
+
+let advancedRulesInitializationPromise = null;
+window.initializeAdvancedRules = function() {
+    if (!advancedRulesInitializationPromise) {
+        advancedRulesInitializationPromise = initializeAdvancedRulesOnce();
+    }
+    return advancedRulesInitializationPromise;
 };
 
 // Auto-initialisation quand les règles de style sont chargées

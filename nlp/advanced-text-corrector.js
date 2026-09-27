@@ -6,6 +6,9 @@ console.log('🚀 Initialisation du pipeline avancé de correction');
 // État global du pipeline
 const pipelineState = {
     rulesLoaded: false,
+    rules: null,
+    rulesPromise: null,
+    initializationPromise: null,
     aiReady: false,
     cache: new Map(),
     stats: {
@@ -15,6 +18,26 @@ const pipelineState = {
         averageTime: 0
     }
 };
+
+function loadRulesOnce() {
+    if (pipelineState.rules) return Promise.resolve(pipelineState.rules);
+    if (pipelineState.rulesPromise) return pipelineState.rulesPromise;
+    if (typeof window.loadAllRules !== 'function') return Promise.resolve(null);
+
+    pipelineState.rulesPromise = Promise.resolve()
+        .then(() => window.loadAllRules())
+        .then(rules => {
+            pipelineState.rules = rules;
+            pipelineState.rulesLoaded = true;
+            return rules;
+        })
+        .catch(error => {
+            pipelineState.rulesPromise = null;
+            throw error;
+        });
+
+    return pipelineState.rulesPromise;
+}
 
 // Fusion des suggestions avec priorisation
 window.mergeSuggestions = function(ruleResults, aiResults) {
@@ -143,12 +166,17 @@ window.advancedTextAnalysis = async function(text, options = {}) {
         let aiResults = [];
         
         // 1. Analyse par règles linguistiques
-        if (opts.enableRules && pipelineState.rulesLoaded) {
+        if (opts.enableRules && typeof window.applyRules === 'function') {
             try {
-                const rules = window.loadAllRules();
-                ruleResults = window.applyRules(text, rules);
-                pipelineState.stats.ruleMatches += ruleResults.length;
-                console.log(`📝 Règles linguistiques: ${ruleResults.length} corrections`);
+                const rules = await loadRulesOnce();
+                if (rules) {
+                    const appliedRules = window.applyRules(text, rules);
+                    ruleResults = Array.isArray(appliedRules)
+                        ? appliedRules
+                        : (appliedRules && Array.isArray(appliedRules.errors) ? appliedRules.errors : []);
+                    pipelineState.stats.ruleMatches += ruleResults.length;
+                    console.log(`📝 Règles linguistiques: ${ruleResults.length} corrections`);
+                }
             } catch (error) {
                 console.warn('⚠️ Erreur lors de l\'analyse par règles:', error.message);
             }
@@ -235,16 +263,24 @@ window.advancedTextAnalysis = async function(text, options = {}) {
 };
 
 // Initialisation du pipeline
-window.initializeAdvancedPipeline = async function() {
+window.initializeAdvancedPipeline = function() {
+    if (pipelineState.initializationPromise) return pipelineState.initializationPromise;
+
+    pipelineState.initializationPromise = initializeAdvancedPipelineOnce();
+    return pipelineState.initializationPromise;
+};
+
+async function initializeAdvancedPipelineOnce() {
     console.log('🔧 Initialisation du pipeline avancé...');
     
     try {
         // 1. Charger les règles
         if (typeof window.loadAllRules === 'function') {
-            const rules = window.loadAllRules();
-            const totalRules = Object.values(rules).reduce((sum, cat) => sum + cat.length, 0);
+            const rules = await loadRulesOnce();
+            const totalRules = Object.values(rules || {}).reduce((sum, categoryRules) => {
+                return sum + (Array.isArray(categoryRules) ? categoryRules.length : 0);
+            }, 0);
             console.log(`📚 ${totalRules} règles linguistiques chargées`);
-            pipelineState.rulesLoaded = true;
         }
         
         // 2. Tester l'IA
@@ -266,15 +302,19 @@ window.initializeAdvancedPipeline = async function() {
         
     } catch (error) {
         console.error('❌ Erreur lors de l\'initialisation:', error);
+        pipelineState.initializationPromise = null;
         return false;
     }
-};
+}
 
 // Obtenir les statistiques du pipeline
 window.getPipelineStats = function() {
     return {
         ...pipelineState.stats,
         cache_size: pipelineState.cache.size,
+        rules_count: Object.values(pipelineState.rules || {}).reduce((sum, categoryRules) => {
+            return sum + (Array.isArray(categoryRules) ? categoryRules.length : 0);
+        }, 0),
         rules_loaded: pipelineState.rulesLoaded,
         ai_ready: pipelineState.aiReady
     };

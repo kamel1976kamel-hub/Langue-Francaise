@@ -6,6 +6,7 @@ class NLPIntegrationManager {
         this.isReady = false;
         this.initializationPromise = null;
         this.fallbackMode = false;
+        this.rules = null;
         this.initialize();
     }
 
@@ -39,8 +40,8 @@ class NLPIntegrationManager {
 
             // Valider les règles
             if (window.loadAllRules) {
-                const rules = await window.loadAllRules();
-                console.log('📊 Règles chargées:', rules);
+                this.rules = await window.loadAllRules();
+                console.log('📊 Règles chargées:', this.rules);
             }
 
             this.isReady = true;
@@ -190,13 +191,15 @@ class NLPIntegrationManager {
         }
 
         const features = this.getAvailableFeatures();
-        const rules = window.loadAllRules ? window.loadAllRules() : null;
+        const rules = this.rules;
 
         return {
             status: 'ready',
             features: features,
             rules: rules ? {
-                total: Object.values(rules).reduce((sum, cat) => sum + (cat?.length || 0), 0),
+                total: Object.values(rules).reduce((sum, categoryRules) => {
+                    return sum + (Array.isArray(categoryRules) ? categoryRules.length : 0);
+                }, 0),
                 categories: Object.keys(rules).reduce((obj, key) => {
                     obj[key] = rules[key]?.length || 0;
                     return obj;
