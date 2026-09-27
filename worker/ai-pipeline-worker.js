@@ -60,7 +60,15 @@ function createDiagnostic(pipeline, values) {
         payloadChars: Number.isFinite(data.payloadChars) ? data.payloadChars : null,
         responseChars: Number.isFinite(data.responseChars) ? data.responseChars : null,
         messageCount: Number.isInteger(data.messageCount) ? data.messageCount : null,
-        durationMs: Number.isFinite(data.durationMs) ? data.durationMs : null
+        durationMs: Number.isFinite(data.durationMs) ? data.durationMs : null,
+        hasChoices: typeof data.hasChoices === 'boolean' ? data.hasChoices : null,
+        choicesCount: Number.isInteger(data.choicesCount) ? data.choicesCount : null,
+        hasMessage: typeof data.hasMessage === 'boolean' ? data.hasMessage : null,
+        hasContent: typeof data.hasContent === 'boolean' ? data.hasContent : null,
+        contentType: ['string', 'null', 'number', 'boolean', 'object', 'undefined'].includes(data.contentType) ? data.contentType : null,
+        contentChars: Number.isInteger(data.contentChars) ? data.contentChars : null,
+        hasFinishReason: typeof data.hasFinishReason === 'boolean' ? data.hasFinishReason : null,
+        finishReason: ['stop', 'length', 'tool_calls', 'function_call', 'content_filter', 'other'].includes(data.finishReason) ? data.finishReason : null
     };
 }
 
@@ -110,6 +118,30 @@ async function groqRequest(env, messages, fetchImpl, a22bStep, callMetrics) {
             throw error;
         }
         const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        const choices = data && Array.isArray(data.choices) ? data.choices : null;
+        const firstChoice = choices && choices.length > 0 ? choices[0] : null;
+        const message = firstChoice && firstChoice.message && typeof firstChoice.message === 'object'
+            ? firstChoice.message
+            : null;
+        const finishReason = firstChoice && firstChoice.finish_reason;
+        const contentType = content === null
+            ? 'null'
+            : Array.isArray(content)
+                ? 'object'
+                : typeof content;
+        const finishReasons = ['stop', 'length', 'tool_calls', 'function_call', 'content_filter'];
+        Object.assign(metrics, {
+            hasChoices: Array.isArray(data && data.choices),
+            choicesCount: choices ? choices.length : null,
+            hasMessage: Boolean(message),
+            hasContent: Boolean(message && Object.prototype.hasOwnProperty.call(message, 'content')),
+            contentType: ['string', 'null', 'number', 'boolean', 'object', 'undefined'].includes(contentType) ? contentType : 'undefined',
+            contentChars: typeof content === 'string' ? content.length : null,
+            hasFinishReason: finishReason !== undefined && finishReason !== null,
+            finishReason: typeof finishReason === 'string'
+                ? (finishReasons.includes(finishReason) ? finishReason : 'other')
+                : null
+        });
         if (!content) {
             const error = new Error('Réponse Groq vide');
             error.diagnosticCategory = 'empty';
