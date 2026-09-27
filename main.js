@@ -26,10 +26,16 @@ window.APP_CONFIG = window.APP_CONFIG || {
     },
     api: {
         timeout: 30000,
-        retryAttempts: 3,
-        retryDelay: 1000
+        retryAttempts: 0,
+        retryDelay: 1000,
+        workerUrl: ''
     }
 };
+
+if (window.APP_CONFIG.api && !window.APP_CONFIG.api.workerUrl &&
+    window.AI_WORKER_CONFIG && typeof window.AI_WORKER_CONFIG.workerUrl === 'string') {
+    window.APP_CONFIG.api.workerUrl = window.AI_WORKER_CONFIG.workerUrl;
+}
 
 // État de l'application (protection globale)
 window.appState = window.appState || {
@@ -108,18 +114,48 @@ function addError(error, context = 'general') {
  * @param {string} studentAnswer - Réponse de l'étudiant
  * @param {string} activityContext - Contexte de l'activité
  * @param {string} activityType - Type d'activité
- * @returns {Promise<string>} Réponse de l'IA
+ * @returns {Promise<Object|string>} Résultat IA avec sa provenance
  */
 async function runFourModelPipelineWithFallback(studentAnswer, activityContext, activityType = 'general') {
+    var now = Date.now();
+    var guard = window.remoteAiGuard || (window.remoteAiGuard = {
+        active: false,
+        lastStartedAt: 0,
+        minimumIntervalMs: 5000
+    });
+
+    if (guard.active) {
+        return {
+            source: 'local_requis',
+            analysis: "Une analyse distante est déjà en cours. L'analyse locale va être utilisée.",
+            error_type: 'busy',
+            validation: false
+        };
+    }
+
+    if (guard.lastStartedAt && now - guard.lastStartedAt < guard.minimumIntervalMs) {
+        return {
+            source: 'local_requis',
+            analysis: "Veuillez patienter quelques secondes avant une nouvelle analyse distante.",
+            error_type: 'rate_limited_client',
+            validation: false
+        };
+    }
+
+    guard.active = true;
+    guard.lastStartedAt = now;
+
     try {
         setIaStatus("IA : analyse en cours...", "bg-blue-500", 25);
         
         if (typeof window.runFourModelPipeline === 'function') {
             setIaStatus("IA : traitement intelligent...", "bg-purple-500", 50);
+            var jitterMs = Math.floor(Math.random() * 3001);
+            await new Promise(function(resolve) { setTimeout(resolve, jitterMs); });
             const result = await window.runFourModelPipeline(studentAnswer, activityContext, activityType);
             // ACTION 20: distinguer l'origine — le repli local est retourné sans exception
             // quand l'IA distante n'est pas configurée.
-            var isLocalAnalysis = !!(result && result.source === 'locale');
+            var isLocalAnalysis = !!(result && (result.source === 'locale' || result.source === 'local_requis'));
             setIaStatus(isLocalAnalysis ? "IA distante indisponible — analyse locale" : "IA : analyse terminée", isLocalAnalysis ? "bg-amber-500" : "bg-emerald-500", 100);
             return result;
         }
@@ -140,6 +176,8 @@ Pour activer l'IA temps réel :
 Erreur technique : ${error.message}`;
         
         return errorMessage;
+    } finally {
+        guard.active = false;
     }
 }
 
@@ -179,7 +217,7 @@ async function initIA() {
  * Fonction globale pour demander à l'IA
  * @param {string} prompt - Prompt pour l'IA
  * @param {string} contexte - Contexte de la demande
- * @returns {Promise<string>} Réponse de l'IA
+ * @returns {Promise<Object>} Réponse IA, corrections et provenance
  */
 window.demanderIA = async function(prompt, contexte) {
     try {
@@ -228,9 +266,9 @@ window.demanderIA = async function(prompt, contexte) {
         
         // ACTION 20: remonter le marqueur d'origine locale au niveau supérieur
         // (le repli retourne un objet; l'UI lit improvedResult.analysis pour le contenu).
-        var isLocalResult = typeof improvedResult === 'object' && improvedResult && improvedResult.source === 'locale';
+        var resultSource = typeof improvedResult === 'object' && improvedResult ? improvedResult.source : undefined;
         return {
-            source: isLocalResult ? 'locale' : undefined,
+            source: resultSource,
             analysis: improvedResult,
             corrections: corrections,
             explanations: explanations,
@@ -655,16 +693,14 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
     console.log('📝 Réponse étudiant:', studentAnswer);
     console.log('📝 Contexte activité:', activityContext);
     
+    let timeoutId;
     try {
-        // Appel API Groq RÉELLE avec timeout et vérification de clé
+        // Le navigateur ne contacte jamais Groq directement : seul le Worker peut le faire.
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
-        // Vérifier si la clé API est valide
-        const apiKey = ''; // ACTION 19: aucune clé côté client (SPA publique) — l'accès IA futur passera par un proxy serveur.
-        if (!apiKey || apiKey.trim() === '') {
-            throw new Error('Clé API Groq manquante ou vide');
-        }
+        // Vérifier si l'URL du Worker est configurée.
+        if (!window.APP_CONFIG.api.workerUrl) throw new Error('Worker IA non configuré');
         
         // (ACTION 19) journal de clé supprimé — aucun secret côté client.
         
@@ -693,45 +729,49 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             userPrompt = `Texte de l'étudiant : "${studentAnswer}"`;
         }
         
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const response = await fetch(window.APP_CONFIG.api.workerUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.1-8b-instant', // Modèle plus rapide et stable
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt
-                    },
-                    {
-                        role: 'user',
-                        content: userPrompt
-                    }
-                ],
-                max_tokens: activityContext === 'chat' ? 500 : 300, // Plus de tokens pour le chat
-                temperature: 0.7
+                studentAnswer: studentAnswer,
+                activityContext: activityContext,
+                activityType: activityType,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt
             }),
             signal: controller.signal
         });
         
         clearTimeout(timeoutId);
         
-        if (!response.ok) {
-            throw new Error(`Erreur API: ${response.status} ${response.statusText}`);
-        }
-        
         const data = await response.json();
-        const aiResponse = data.choices[0].message.content;
+        if (data.source === 'local_requis') {
+            return {
+                source: 'local_requis',
+                analysis: 'IA distante indisponible — analyse locale. ' +
+                    (data.message || data.error || 'Le service distant est indisponible.'),
+                reason: data.reason,
+                corrections: [],
+                explanations: [],
+                suggestions: []
+            };
+        }
+        if (!response.ok) throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`);
+        const aiResponse = data.result || (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content);
+        if (!aiResponse) throw new Error('Réponse Worker invalide');
+        const sourceLabel = data.source === 'remote_a22b'
+            ? 'Analyse IA — mode pédagogique'
+            : 'Analyse IA — mode simplifié';
         console.log('✅ Réponse API Groq reçue:', aiResponse);
         
         // Traiter la réponse selon le contexte
         if (activityContext === 'chat' || activityContext.includes('chat')) {
             // Mode chat : retourner la réponse directement
             return {
-                analysis: aiResponse,
+                source: data.source,
+                analysis: sourceLabel + ' — ' + aiResponse,
                 corrections: [],
                 explanations: [],
                 suggestions: [],
@@ -740,7 +780,8 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         } else if (activityContext === 'activité') {
             // Mode activité : retourner la réponse naturelle
             return {
-                analysis: aiResponse,
+                source: data.source,
+                analysis: sourceLabel + ' — ' + aiResponse,
                 corrections: [],
                 explanations: [],
                 suggestions: [],
@@ -751,11 +792,14 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             try {
                 const parsedResponse = JSON.parse(aiResponse);
                 console.log('📊 Réponse parsée:', parsedResponse);
-                return JSON.stringify(parsedResponse);
+                parsedResponse.analysis = sourceLabel + ' — ' + (parsedResponse.analysis || aiResponse);
+                parsedResponse.source = data.source;
+                return parsedResponse;
             } catch (parseError) {
                 // console.log('⚠️ Réponse non-JSON, retour formaté'); // Réduit le bruit console
-                return JSON.stringify({
-                    analysis: aiResponse.substring(0, 200),
+                return {
+                    source: data.source,
+                    analysis: sourceLabel + ' — ' + aiResponse.substring(0, 200),
                     error_type: "général",
                     rule: "expression",
                     hint: "Continuez vos efforts",
@@ -763,7 +807,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
                     exercise: "Pratiquez régulièrement",
                     validation: true,
                     confidence: 0.8
-                });
+                };
             }
         }
         
@@ -779,7 +823,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         const hasVerbs = /[a-zA-Z]+er\b|[a-zA-Z]+é\b|[a-zA-Z]+és\b|[a-zA-Z]+ée\b|[a-zA-Z]+ées\b/.test(studentAnswer);
         
         let feedback = {
-            source: 'locale',
+            source: 'local_requis',
             analysis: "Analyse locale (IA distante non configurée).",
             error_type: "structure",
             rule: "développement",
@@ -806,7 +850,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         
         // ACTION 20: le marqueur d'origine locale doit survivre aux heuristiques de longueur
         // (l'IA distante n'est pas configurée — l'analyse est produite localement).
-        feedback.analysis = "Analyse locale (IA distante non configurée) — " + feedback.analysis;
+        feedback.analysis = "IA distante indisponible — analyse locale. " + feedback.analysis;
         
         if (!hasStructure) {
             feedback.rule = "ponctuation";
@@ -823,6 +867,8 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         // ACTION 20: retourner l'objet (et non JSON.stringify) afin que `source: 'locale'`
         // survive jusqu'à l'UI — l'interface déballe déjà response.analysis objet (index.html).
         return feedback;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
 };
 

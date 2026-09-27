@@ -7,7 +7,7 @@ import requests
 import json
 
 # Configuration
-HUGGINGFACE_TOKEN = "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"
+HUGGINGFACE_TOKEN = "hf_REPLACE_WITH_ENV_TOKEN"
 
 # Modèles NLP français à tester
 MODELS_TO_TEST = [

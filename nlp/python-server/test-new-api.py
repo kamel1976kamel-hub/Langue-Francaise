@@ -7,7 +7,7 @@ import requests
 import json
 
 # Configuration
-HUGGINGFACE_TOKEN = "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"
+HUGGINGFACE_TOKEN = "hf_REPLACE_WITH_ENV_TOKEN"
 
 # Nouveaux formats d'URL à tester
 URL_FORMATS = [

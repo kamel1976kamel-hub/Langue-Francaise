@@ -15,7 +15,7 @@ CORS(app)  # Active CORS pour toutes les routes
 
 # Configuration
 HUGGINGFACE_API_URL = "https://router.huggingface.co/spacy/fr_core_news_sm"
-HUGGINGFACE_TOKEN = "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"
+HUGGINGFACE_TOKEN = "hf_REPLACE_WITH_ENV_TOKEN"
 
 # Test de l'API Hugging Face
 def test_huggingface_api():

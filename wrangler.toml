@@ -1,0 +1,6 @@
+name = "langue-francaise-ai-pipeline"
+main = "worker/ai-pipeline-worker.js"
+compatibility_date = "2026-09-27"
+
+# Ce Worker utilise volontairement la syntaxe Service Worker (addEventListener).
+# Le secret GROQ_API_KEY est configuré séparément via Wrangler, jamais dans ce fichier.

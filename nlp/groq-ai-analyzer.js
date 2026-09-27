@@ -14,64 +14,11 @@ const GROQ_CONFIG = {
 
 // Fonction pour appeler l'API Groq
 async function callGroqAPI(prompt) {
-    try {
-        // Vérifier si la clé API est valide
-        if (!GROQ_CONFIG.apiKey || GROQ_CONFIG.apiKey.length < 20) {
-            console.warn('⚠️ Clé API Groq invalide ou manquante. Utilisation du fallback.');
-            return null;
-        }
-
-        const payload = {
-            model: GROQ_CONFIG.model,
-            messages: [
-                {
-                    role: 'system',
-                    content: 'Tu es un expert linguistique français. Analyse les textes et propose des améliorations de style, de fluidité et de formulation. Retourne uniquement des suggestions structurées en JSON.'
-                },
-                {
-                    role: 'user',
-                    content: prompt
-                }
-            ],
-            max_tokens: GROQ_CONFIG.maxTokens,
-            temperature: GROQ_CONFIG.temperature
-        };
-
-        console.log('🧠 Payload envoyé à Groq:', payload);
-        console.log('🌐 URL:', GROQ_CONFIG.baseURL);
-        console.log('🔑 Clé API (premiers caractères):', GROQ_CONFIG.apiKey.substring(0, 10) + '...');
-
-        const response = await fetch(GROQ_CONFIG.baseURL + '/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        console.log('📊 Status HTTP:', response.status);
-        console.log('📋 Headers:', response.headers);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('💥 Détail de l\'erreur:', errorText);
-            if (response.status === 401) {
-                console.warn('⚠️ Erreur 401: Clé API invalide. Utilisation du fallback spaCy local.');
-                return null;
-            }
-            throw new Error(`Erreur HTTP: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('✅ Réponse Groq:', data);
-        return data;
-    } catch (error) {
-        console.error('❌ Erreur API Groq:', error);
-        return null;
-    }
+    // Contrat historique conservé : les consommateurs reçoivent [] quand aucun
+    // service distant n'est configuré. Les règles locales restent actives.
+    console.warn('Analyse distante indisponible; résultat neutre local.', prompt ? '' : '');
+    return null;
 }
-
 // Analyse IA complète du texte
 window.groqAIAnalysis = async function(text) {
     if (!text || text.length < 10) {
