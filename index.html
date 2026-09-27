@@ -16,16 +16,16 @@
     
     <!-- Système NLP avec Base de Données (ordre critique) -->
     <script src="nlp/auto-nlp-installer.js?v=43"></script>
-    <script src="nlp/database/init-browser-sqlite.js?v=53"></script>
+    <script src="nlp/database/init-browser-sqlite.js?v=55"></script>
     <script src="nlp/database-rules-manager.js?v=47"></script>
     <script src="nlp/database-integration.js?v=46"></script>
-    <script src="nlp/groq-ai-analyzer.js?v=46"></script>
+    <script src="nlp/groq-ai-analyzer.js?v=47"></script>
     <script src="nlp/advanced-text-corrector.js?v=43"></script>
     <script src="nlp/spacy-analyzer.js?v=44"></script>
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
-    <script src="memory/student-profile-unified.js?v=43"></script>
-    <script src="main.js?v=72"></script>
+    <script src="memory/student-profile-unified.js?v=44"></script>
+    <script src="main.js?v=75"></script>
     
     // Debug script -->
     <script>
@@ -175,7 +175,7 @@
         }
         
         // Fonctions pour l'analyse et la correction des questions
-        window.analyzeQuestion = function() {
+        window.analyzeQuestion = async function() {
             try {
                 console.log('🔍 analyzeQuestion appelé');
                 
@@ -216,7 +216,7 @@
                         });
                 } else if (window.analyzeTextLocal) {
                     console.log('🔄 Utilisation de l\'analyse locale');
-                    const corrections = window.analyzeTextLocal(question);
+                    const corrections = await window.analyzeTextLocal(question);
                     console.log('✅ Corrections locales reçues:', corrections);
                     displayCorrections(corrections, question);
                 } else {
@@ -652,7 +652,7 @@
         }
         
         // Fonctions pour la correction des activités
-        window.analyzeAndSubmitActivity = function(chapterId, activityId) {
+        window.analyzeAndSubmitActivity = async function(chapterId, activityId) {
             try {
                 console.log('🔍 analyzeAndSubmitActivity appelé pour', chapterId, activityId);
                 
@@ -689,7 +689,7 @@
                         });
                 } else if (window.analyzeTextLocal) {
                     console.log('🔄 Utilisation de l\'analyse locale pour l\'activité');
-                    const corrections = window.analyzeTextLocal(answer);
+                    const corrections = await window.analyzeTextLocal(answer);
                     console.log('✅ Corrections locales reçues pour l\'activité:', corrections);
                     processActivityCorrections(corrections, answer, chapterId, activityId);
                 } else {
@@ -864,7 +864,7 @@
             }
         }
         
-        window.analyzeActivityAnswer = function(chapterId, activityId) {
+        window.analyzeActivityAnswer = async function(chapterId, activityId) {
             try {
                 console.log('🔍 analyzeActivityAnswer appelé pour', chapterId, activityId);
                 
@@ -900,7 +900,7 @@
                         });
                 } else if (window.analyzeTextLocal) {
                     console.log('🔄 Utilisation de l\'analyse locale pour l\'activité');
-                    const corrections = window.analyzeTextLocal(answer);
+                    const corrections = await window.analyzeTextLocal(answer);
                     console.log('✅ Corrections locales reçues pour l\'activité:', corrections);
                     displayActivityCorrections(corrections, answer, chapterId, activityId);
                 } else {
@@ -1870,69 +1870,41 @@
       <div class="w-full max-w-md rounded-lg border p-6 shadow-xl" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
         <div class="mb-6 text-center">
           <h2 class="text-xl font-semibold" style="color: var(--bs-body-color);">Atelier de rédaction</h2>
-          <p class="mt-1 text-sm" style="color: var(--bs-text-muted);">Connectez-vous pour accéder aux modules</p>
+          <p class="mt-1 text-sm" style="color: var(--bs-text-muted);">Sélectionnez votre profil</p>
         </div>
-        
+
         <form id="loginForm" class="space-y-4">
           <div>
-            <label for="username" class="block text-sm font-medium text-slate-700">Nom d'utilisateur</label>
-            <input 
-              type="text" 
-              id="username" 
-              name="username" 
-              required 
+            <label for="username" class="block text-sm font-medium text-slate-700">Votre nom</label>
+            <select
+              id="username"
+              name="username"
+              required
               class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-              placeholder="Entrez votre nom d'utilisateur"
             >
+              <option value="" disabled selected>— Choisissez votre nom —</option>
+            </select>
           </div>
-          
-          <div>
-            <label for="password" class="block text-sm font-medium text-slate-700">Mot de passe</label>
-            <input 
-              type="password" 
-              id="password" 
-              name="password" 
-              required 
-              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-              placeholder="Entrez votre mot de passe"
-            >
-          </div>
-          
+
           <div id="loginError" class="hidden rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
-            Nom d'utilisateur ou mot de passe incorrect.
+            Profil non reconnu.
           </div>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             class="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
           >
-            Se connecter
+            Continuer
           </button>
         </form>
-        
+
+        <div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+          <p class="font-medium mb-1">⚠️ Ceci n'est pas une authentification sécurisée.</p>
+          <p class="text-amber-700">La sélection de profil est uniquement pour charger vos données personnelles. Aucune vérification par mot de passe.</p>
+        </div>
+
         <div class="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-          <p class="font-medium text-slate-700 mb-1">Comptes disponibles :</p>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-            <div><span class="font-mono bg-slate-200 px-1 rounded">kamel.chellouai</span> / <span class="font-mono bg-slate-200 px-1 rounded">Kamel@2024!</span> (Enseignant)</div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">amira.hamdaoui</span> / <span class="font-mono bg-slate-200 px-1 rounded">Amira2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">wissal.hamza</span> / <span class="font-mono bg-slate-200 px-1 rounded">Wissal2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">isra.herzallah</span> / <span class="font-mono bg-slate-200 px-1 rounded">Isra2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">rym.kabouche</span> / <span class="font-mono bg-slate-200 px-1 rounded">Rym2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">loubna.laib</span> / <span class="font-mono bg-slate-200 px-1 rounded">Loubna2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">hibat.maghi</span> / <span class="font-mono bg-slate-200 px-1 rounded">Hibat2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">chourouk.metlou</span> / <span class="font-mono bg-slate-200 px-1 rounded">Chourouk2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">alaie.ouamane</span> / <span class="font-mono bg-slate-200 px-1 rounded">Alaie2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">chahd.rehouma</span> / <span class="font-mono bg-slate-200 px-1 rounded">Chahd2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">salsabil.saadi</span> / <span class="font-mono bg-slate-200 px-1 rounded">Salsabil2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">fatma.sassoui</span> / <span class="font-mono bg-slate-200 px-1 rounded">Fatma2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">djamila.seid</span> / <span class="font-mono bg-slate-200 px-1 rounded">Djamila2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">ayat.serraoui</span> / <span class="font-mono bg-slate-200 px-1 rounded">Ayat2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">chaima.taghzout</span> / <span class="font-mono bg-slate-200 px-1 rounded">Chaima2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">serine.touami</span> / <span class="font-mono bg-slate-200 px-1 rounded">Serine2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">sara.zegar</span> / <span class="font-mono bg-slate-200 px-1 rounded">Sara2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">safaa.zerrouak</span> / <span class="font-mono bg-slate-200 px-1 rounded">Safaa2024!</span></div>
-            <div><span class="font-mono bg-slate-200 px-1 rounded">fatima.ziouchi</span> / <span class="font-mono bg-slate-200 px-1 rounded">Fatima2024!</span></div>
-          </div>
+          <p class="text-center">Sélectionnez votre nom dans la liste ci-dessus pour continuer.</p>
         </div>
       </div>
     </div>
@@ -5592,285 +5564,156 @@
         openActivityWindow(chapterId, activityId);
       });
 
-      // ============ SYSTÈME D'AUTHENTIFICATION OPTIMISÉ ============
-      
-      // Configuration du système d'authentification
-      const AUTH_CONFIG = {
-        SESSION_KEY: 'currentUser',
-        SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24 heures
-        MAX_ATTEMPTS: 3,
-        LOCKOUT_DURATION: 15 * 60 * 1000 // 15 minutes
-      };
+      // ============ SYSTÈME DE SÉLECTION DE PROFIL (SEC-003) ============
 
-      // Base de données utilisateurs (optimisée)
+      // Base de données utilisateurs (SEC-003 : sans mots de passe)
       const users = [
-        { id: 'teacher_001', username: "kamel.chellouai", password: "Kamel@2024!", role: "teacher", displayName: "KAMEL CHELLOUAI", actif: true },
-        { id: 'student_001', username: "amira.hamdaoui", password: "Amira2024!", role: "student", displayName: "AMIRA CHAHD HAMDAOUI", actif: true },
-        { id: 'student_002', username: "wissal.hamza", password: "Wissal2024!", role: "student", displayName: "WISSAL HAMZA", actif: true },
-        { id: 'student_003', username: "isra.herzallah", password: "Isra2024!", role: "student", displayName: "ISRA HERZALLAH", actif: true },
-        { id: 'student_004', username: "rym.kabouche", password: "Rym2024!", role: "student", displayName: "RYM KABOUCHE", actif: true },
-        { id: 'student_005', username: "loubna.laib", password: "Loubna2024!", role: "student", displayName: "LOUBNA HIBATERRAHMANE LAIB", actif: true },
-        { id: 'student_006', username: "hibat.maghi", password: "Hibat2024!", role: "student", displayName: "HIBAT ERRAHMANE MAGHNI", actif: true },
-        { id: 'student_007', username: "chourouk.metlou", password: "Chourouk2024!", role: "student", displayName: "CHOUROUK METLOUG", actif: true },
-        { id: 'student_008', username: "alaie.ouamane", password: "Alaie2024!", role: "student", displayName: "ALAIE OUAMANE", actif: true },
-        { id: 'student_009', username: "chahd.rehouma", password: "Chahd2024!", role: "student", displayName: "CHAHD REHOUMA", actif: true },
-        { id: 'student_010', username: "salsabil.saadi", password: "Salsabil2024!", role: "student", displayName: "SALSABIL SAADI", actif: true },
-        { id: 'student_011', username: "fatma.sassoui", password: "Fatma2024!", role: "student", displayName: "FATMA ZOHRA AROUA SASSOUI", actif: true },
-        { id: 'student_012', username: "djamila.seid", password: "Djamila2024!", role: "student", displayName: "DJAMILA SEID", actif: true },
-        { id: 'student_013', username: "ayat.serraoui", password: "Ayat2024!", role: "student", displayName: "AYAT ERRAHMANE SERRAOUI", actif: true },
-        { id: 'student_014', username: "chaima.taghzout", password: "Chaima2024!", role: "student", displayName: "CHAIMA TAGHZOUT", actif: true },
-        { id: 'student_015', username: "serine.touami", password: "Serine2024!", role: "student", displayName: "SERINE LEILA TOUAMI", actif: true },
-        { id: 'student_016', username: "sara.zegar", password: "Sara2024!", role: "student", displayName: "SARA ZEGAR", actif: true },
-        { id: 'student_017', username: "safaa.zerrouak", password: "Safaa2024!", role: "student", displayName: "SAFAA NOUR ELYAKINE ZERROUAK", actif: true },
-        { id: 'student_018', username: "fatima.ziouchi", password: "Fatima2024!", role: "student", displayName: "FATIMA ZIOUCHI", actif: true }
+        // Enseignants (3)
+        { id: 'teacher_001', username: "kamel.chellouai", role: "teacher", displayName: "KAMEL CHELLOUAI", concepteur: true, actif: true },
+        { id: 'teacher_002', username: "yaakoub.moumni", role: "teacher", displayName: "YAAKOUB MOUMNI", concepteur: false, actif: true },
+        { id: 'teacher_003', username: "salaheddine.mellaoui", role: "teacher", displayName: "SALAH EDDINE MELLAOUI", concepteur: false, actif: true },
+        // Étudiants (37)
+        { id: 'student_001', username: "amira.hamdaoui", role: "student", displayName: "AMIRA CHAHD HAMDAOUI", actif: true },
+        { id: 'student_002', username: "wissal.hamza", role: "student", displayName: "WISSAL HAMZA", actif: true },
+        { id: 'student_003', username: "isra.herzallah", role: "student", displayName: "ISRA HERZALLAH", actif: true },
+        { id: 'student_004', username: "rym.kabouche", role: "student", displayName: "RYM KABOUCHE", actif: true },
+        { id: 'student_005', username: "loubna.laib", role: "student", displayName: "LOUBNA HIBATERRAHMANE LAIB", actif: true },
+        { id: 'student_006', username: "hibat.maghi", role: "student", displayName: "HIBAT ERRAHMANE MAGHNI", actif: true },
+        { id: 'student_007', username: "chourouk.metlou", role: "student", displayName: "CHOUROUK METLOUG", actif: true },
+        { id: 'student_008', username: "alaie.ouamane", role: "student", displayName: "ALAIE OUAMANE", actif: true },
+        { id: 'student_009', username: "chahd.rehouma", role: "student", displayName: "CHAHD REHOUMA", actif: true },
+        { id: 'student_010', username: "salsabil.saadi", role: "student", displayName: "SALSABIL SAADI", actif: true },
+        { id: 'student_011', username: "fatma.sassoui", role: "student", displayName: "FATMA ZOHRA AROUA SASSOUI", actif: true },
+        { id: 'student_012', username: "djamila.seid", role: "student", displayName: "DJAMILA SEID", actif: true },
+        { id: 'student_013', username: "ayat.serraoui", role: "student", displayName: "AYAT ERRAHMANE SERRAOUI", actif: true },
+        { id: 'student_014', username: "chaima.taghzout", role: "student", displayName: "CHAIMA TAGHZOUT", actif: true },
+        { id: 'student_015', username: "serine.touami", role: "student", displayName: "SERINE LEILA TOUAMI", actif: true },
+        { id: 'student_016', username: "sara.zegar", role: "student", displayName: "SARA ZEGAR", actif: true },
+        { id: 'student_017', username: "safaa.zerrouak", role: "student", displayName: "SAFAA NOUR ELYAKINE ZERROUAK", actif: true },
+        { id: 'student_018', username: "fatima.ziouchi", role: "student", displayName: "FATIMA ZIOUCHI", actif: true },
+        { id: 'student_019', username: "nour.elhouda.basli", role: "student", displayName: "NOUR EL HOUDA BASLI", actif: true },
+        { id: 'student_020', username: "rahma.abbassi", role: "student", displayName: "RAHMA ABBASSI", actif: true },
+        { id: 'student_021', username: "yasmine.amiri", role: "student", displayName: "YASMINE AMIRI", actif: true },
+        { id: 'student_022', username: "lixa.gaci", role: "student", displayName: "LIXA GACI", actif: true },
+        { id: 'student_023', username: "rania.arieche", role: "student", displayName: "RANIA ARIECHE", actif: true },
+        { id: 'student_024', username: "oumaima.bekhouche", role: "student", displayName: "OUMAÏMA BEKHOUCHE", actif: true },
+        { id: 'student_025', username: "hanine.achouri", role: "student", displayName: "HANINE ACHOURI", actif: true },
+        { id: 'student_026', username: "ahmed.yacine.amrane", role: "student", displayName: "AHMED YACINE AMRANE", actif: true },
+        { id: 'student_027', username: "ihcene.benbarkat", role: "student", displayName: "IHCENE BENBARKAT", actif: true },
+        { id: 'student_028', username: "kenza.gacem", role: "student", displayName: "KENZA GACEM", actif: true },
+        { id: 'student_029', username: "maroua.daas", role: "student", displayName: "MAROUA DAAS", actif: true },
+        { id: 'student_030', username: "ahmed.yacine.hachani", role: "student", displayName: "AHMED YACINE HACHANI", actif: true },
+        { id: 'student_031', username: "nedjwa.fakroun", role: "student", displayName: "NEDJWA FAKROUN", actif: true },
+        { id: 'student_032', username: "yousra.ban.amor", role: "student", displayName: "YOUSRA BAN AMOR", actif: true },
+        { id: 'student_033', username: "abdelrahman.ben.soltane", role: "student", displayName: "ABDELRAHMAN BEN SOLTANE", actif: true },
+        { id: 'student_034', username: "medjdaya.chaouch", role: "student", displayName: "MEDJDAYA CHAOUCH", actif: true },
+        { id: 'student_035', username: "ahmed.yacine.abdelkrim", role: "student", displayName: "AHMED YACINE ABDELKRIM", actif: true },
+        { id: 'student_036', username: "mohamed.amine.ben.saadi", role: "student", displayName: "MOHAMED AMINE BEN SAADI", actif: true },
+        { id: 'student_037', username: "ahmed.yacine.achouri", role: "student", displayName: "AHMED YACINE ACHOURI", actif: true }
       ];
 
-      // État de l'authentification
+      // Profil sélectionné (SEC-003 : PAS une authentification)
       let currentUser = null;
-      let loginAttempts = {};
-      let lockedAccounts = new Set();
 
-      // Classe de gestion d'authentification
-      class AuthManager {
+      // Sélecteur de profils (SEC-003 : PAS une authentification sécurisée)
+      class ProfileSelector {
         constructor() {
-          this.config = AUTH_CONFIG;
-          this.users = users;
           this.currentUser = null;
           this.init();
         }
-
         init() {
-          this.restoreSession();
+          this.populateSelect();
           this.setupEventListeners();
-          console.log('🔐 Système d\'authentification initialisé');
+          this.restoreProfile();
+          console.log('👤 Sélecteur de profils initialisé (SEC-003)');
         }
-
+        populateSelect() {
+          const select = document.getElementById('username');
+          if (!select) return;
+          const students = users.filter(u => u.role === 'student' && u.actif);
+          const teachers = users.filter(u => u.role === 'teacher' && u.actif);
+          const ogS = document.createElement('optgroup');
+          ogS.label = 'Étudiants (' + students.length + ')';
+          students.forEach(u => { const o = document.createElement('option'); o.value = u.username; o.textContent = u.displayName; ogS.appendChild(o); });
+          const ogT = document.createElement('optgroup');
+          ogT.label = 'Enseignants (' + teachers.length + ')';
+          teachers.forEach(u => { const o = document.createElement('option'); o.value = u.username; o.textContent = u.displayName + (u.concepteur ? ' ★' : ''); ogT.appendChild(o); });
+          select.appendChild(ogS);
+          select.appendChild(ogT);
+        }
         setupEventListeners() {
           const loginForm = document.getElementById('loginForm');
-          if (loginForm) {
-            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
-          }
+          if (loginForm) loginForm.addEventListener('submit', (e) => this.handleSelect(e));
         }
-
-        handleLogin(event) {
+        handleSelect(event) {
           event.preventDefault();
-          const formData = new FormData(event.target);
-          const username = formData.get('username')?.trim();
-          const password = formData.get('password')?.trim();
-
-          if (!username || !password) {
-            this.showLoginError('Veuillez remplir tous les champs');
-            return;
-          }
-
-          const result = this.authenticate(username, password);
-          if (result.success) {
-            this.createSession(result.user);
-            this.redirectToApp();
-          } else {
-            this.handleLoginFailure(username, result);
-          }
+          const username = document.getElementById('username').value;
+          const user = users.find(u => u.username === username && u.actif);
+          if (user) { this.selectProfile(user); } else { this.showError('Profil non reconnu.'); }
         }
-
-        authenticate(username, password) {
-          // Vérifier si le compte est verrouillé
-          if (this.isAccountLocked(username)) {
-            return {
-              success: false,
-              code: 'ACCOUNT_LOCKED',
-              message: 'Compte temporairement verrouillé. Veuillez réessayer plus tard.'
-            };
-          }
-
-          // Rechercher l'utilisateur
-          const user = this.users.find(u => u.username === username && u.actif);
-          
-          if (!user) {
-            return {
-              success: false,
-              code: 'USER_NOT_FOUND',
-              message: 'Nom d\'utilisateur ou mot de passe incorrect'
-            };
-          }
-
-          // Vérifier le mot de passe
-          if (user.password !== password) {
-            return {
-              success: false,
-              code: 'INVALID_PASSWORD',
-              message: 'Nom d\'utilisateur ou mot de passe incorrect'
-            };
-          }
-
-          return {
-            success: true,
-            user: {
-              id: user.id,
-              username: user.username,
-              displayName: user.displayName,
-              role: user.role
-            }
-          };
-        }
-
-        handleLoginFailure(username, result) {
-          this.incrementLoginAttempts(username);
-          this.showLoginError(result.message);
-
-          if (loginAttempts[username] >= this.config.MAX_ATTEMPTS) {
-            this.lockAccount(username);
-            this.showLoginError('Compte verrouillé après trop de tentatives. Réessayez dans 15 minutes.');
-          }
-        }
-
-        incrementLoginAttempts(username) {
-          loginAttempts[username] = (loginAttempts[username] || 0) + 1;
-        }
-
-        isAccountLocked(username) {
-          return lockedAccounts.has(username);
-        }
-
-        lockAccount(username) {
-          lockedAccounts.add(username);
-          setTimeout(() => {
-            lockedAccounts.delete(username);
-            delete loginAttempts[username];
-          }, this.config.LOCKOUT_DURATION);
-        }
-
-        createSession(user) {
-          const session = {
-            user,
-            loginTime: Date.now(),
-            lastActivity: Date.now()
-          };
-
-          localStorage.setItem(this.config.SESSION_KEY, JSON.stringify(session));
-          this.currentUser = user;
-        }
-
-        restoreSession() {
-          try {
-            const sessionData = localStorage.getItem(this.config.SESSION_KEY);
-            if (sessionData) {
-              const session = JSON.parse(sessionData);
-              
-              // Vérifier l'expiration de la session
-              if (Date.now() - session.loginTime > this.config.SESSION_TIMEOUT) {
-                this.destroySession();
-                return;
-              }
-
-              this.currentUser = session.user;
-              this.updateUIForUser();
-            }
-          } catch (error) {
-            console.error('Erreur lors de la restauration de session:', error);
-            this.destroySession();
-          }
-        }
-
-        destroySession() {
-          localStorage.removeItem(this.config.SESSION_KEY);
-          this.currentUser = null;
-        }
-
-        updateUIForUser() {
+        selectProfile(user) {
+          this.currentUser = { id: user.id, username: user.username, displayName: user.displayName, role: user.role, concepteur: user.concepteur || false };
+          currentUser = this.currentUser;
+          if (typeof updateUserHeader === 'function') updateUserHeader(this.currentUser);
+          localStorage.setItem('currentProfile', JSON.stringify(this.currentUser));
           const authModal = document.getElementById('authModal');
           const mainApp = document.getElementById('mainApp');
-
-          if (this.currentUser && authModal && mainApp) {
-            authModal.classList.add('hidden');
-            mainApp.classList.remove('hidden');
-            this.updateUserInterface();
-          }
+          if (authModal) authModal.classList.add('hidden');
+          if (mainApp) mainApp.classList.remove('hidden');
+          console.log('👤 Profil sélectionné:', user.displayName);
         }
-
-        updateUserInterface() {
-          // Mettre à jour les éléments UI avec les informations utilisateur
-          const userElements = document.querySelectorAll('[data-user-info]');
-          userElements.forEach(element => {
-            const info = element.getAttribute('data-user-info');
-            if (this.currentUser[info]) {
-              element.textContent = this.currentUser[info];
+        restoreProfile() {
+          try {
+            const saved = localStorage.getItem('currentProfile');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              const validUser = users.find(u => u.id === parsed.id && u.actif);
+              if (validUser) this.selectProfile(validUser);
             }
-          });
+          } catch (e) { console.warn('Restauration profil échouée:', e); }
         }
-
-        redirectToApp() {
-          this.updateUIForUser();
-          // Masquer les erreurs de connexion
-          this.hideLoginError();
-        }
-
-        showLoginError(message) {
+        showError(message) {
           const loginError = document.getElementById('loginError');
-          if (loginError) {
-            loginError.textContent = message;
-            loginError.classList.remove('hidden');
-          }
+          if (loginError) { loginError.textContent = message; loginError.classList.remove('hidden'); }
         }
-
-        hideLoginError() {
+        hideError() {
           const loginError = document.getElementById('loginError');
-          if (loginError) {
-            loginError.classList.add('hidden');
-          }
+          if (loginError) loginError.classList.add('hidden');
         }
-
         logout() {
-          this.destroySession();
-          location.reload(); // Recharger la page pour afficher l'écran de connexion
+          this.currentUser = null;
+          currentUser = null;
+          localStorage.removeItem('currentProfile');
+          const authModal = document.getElementById('authModal');
+          const mainApp = document.getElementById('mainApp');
+          if (authModal) authModal.classList.remove('hidden');
+          if (mainApp) mainApp.classList.add('hidden');
+          const form = document.getElementById('loginForm');
+          if (form) form.reset();
+          this.hideError();
         }
-
-        getCurrentUser() {
-          return this.currentUser;
-        }
-
-        isAuthenticated() {
-          return this.currentUser !== null;
-        }
-
-        hasRole(role) {
-          return this.currentUser && this.currentUser.role === role;
-        }
+        getCurrentUser() { return this.currentUser; }
+        isAuthenticated() { return false; } // SEC-003 : jamais prétendre être une authentification
+        hasRole(role) { return this.currentUser && this.currentUser.role === role; }
       }
 
-      // Initialiser le gestionnaire d'authentification
-      const authManager = new AuthManager();
+      // Initialiser le sélecteur de profils (SEC-003 : PAS une authentification)
+      const profileSelector = new ProfileSelector();
 
-      // Fonctions de compatibilité avec l'ancien code
-      function login(username, password) {
-        const result = authManager.authenticate(username, password);
-        if (result.success) {
-          authManager.createSession(result.user);
-          authManager.redirectToApp();
-        }
-        return result;
+      // Fonctions de compatibilité
+      function selectProfile(username) {
+        const user = users.find(u => u.username === username && u.actif);
+        if (user) { profileSelector.selectProfile(user); return true; }
+        return false;
       }
+      function logout() { profileSelector.logout(); }
+      function showLoginError(message) { profileSelector.showError(message); }
 
-      function logout() {
-        authManager.logout();
-      }
-
-      function showLoginError(message) {
-        authManager.showLoginError(message);
-      }
-
-      // Rendre l'authentification accessible globalement
-      window.authManager = authManager;
-      window.login = login;
+      // Rendre accessible globalement
+      window.profileSelector = profileSelector;
+      window.selectProfile = selectProfile;
+      window.login = function(username) { return selectProfile(username); };
       window.logout = logout;
-
-      function showLoginError(message) {
-        loginError.textContent = message;
-        loginError.classList.remove("hidden");
-      }
-
-      function hideLoginError() {
-        loginError.classList.add("hidden");
-      }
 
       // ============ NAVIGATION VUES ============
       // Les variables mainApp, contentMeta, contentTitle, contentBody sont définies plus haut
@@ -9296,105 +9139,35 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.body.setAttribute('data-bs-theme', savedTheme);
 
-      // ============ DÉCONNEXION ============
+      // ============ DÉCONNEXION (SEC-003) ============
       window.logout = function() {
-        currentUser = null;
-        localStorage.removeItem('currentUser');
-        mainApp.classList.add('hidden');
-        authModal.classList.remove('hidden');
-        document.getElementById('loginForm').reset();
+        if (typeof profileSelector !== 'undefined') {
+          profileSelector.logout();
+        } else {
+          currentUser = null;
+          localStorage.removeItem('currentProfile');
+          mainApp.classList.add('hidden');
+          authModal.classList.remove('hidden');
+          document.getElementById('loginForm').reset();
+        }
       };
 
-      function login(username, password) {
-        console.log("Tentative de connexion:", username, password);
-        const user = users.find(u => u.username === username && u.password === password);
-        console.log("User trouvé:", user);
-        if (user) {
-          currentUser = user;
-          try {
-            hideLoginError();
-            if (authModal) authModal.classList.add("hidden");
-            if (typeof updateUserHeader === 'function') updateUserHeader(user);
-            localStorage.setItem("currentUser", JSON.stringify(user));
-            if (mainApp) {
-              mainApp.classList.remove("hidden");
-              console.log("mainApp affiché avec succès");
-            } else {
-              console.error("mainApp non trouvé!");
-            }
-            
-            // Mettre à jour le badge des annonces après connexion
-            if (typeof updateAnnouncementsBadge === 'function') {
-              updateAnnouncementsBadge();
-            }
-            
-            return true;
-          } catch (err) {
-            console.error("Erreur lors du login:", err);
-            // En cas d'erreur, afficher quand même l'application
-            if (mainApp) mainApp.classList.remove("hidden");
-            if (authModal) authModal.classList.add("hidden");
-            return true;
-          }
-        }
-        return false;
-      }
-
-      function logout() {
-        currentUser = null;
-        authModal.classList.remove("hidden");
-        mainApp.classList.add("hidden");
-        localStorage.removeItem("currentUser");
-        loginForm.reset();
-        hideLoginError();
-      }
-
-      function checkExistingSession() {
-        const savedUser = localStorage.getItem("currentUser");
-        if (savedUser) {
-          try {
-            const user = JSON.parse(savedUser);
-            const validUser = users.find(u => u.username === user.username);
-            if (validUser) {
-              currentUser = validUser;
-              authModal.classList.add("hidden");
-              mainApp.classList.remove("hidden");
-              
-              // Mettre à jour le badge des annonces pour la session existante
-              if (typeof updateAnnouncementsBadge === 'function') {
-                updateAnnouncementsBadge();
-              }
-              
-              return true;
-            }
-          } catch (e) {
-            localStorage.removeItem("currentUser");
-          }
-        }
-        return false;
-      }
-
-      loginForm.addEventListener("submit", (e) => {
+      // Le formulaire est déjà géré par ProfileSelector.setupEventListeners()
+      loginForm.addEventListener("submit", function(e) {
         e.preventDefault();
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value;
-        
-        if (!username || !password) {
-          showLoginError("Veuillez remplir tous les champs.");
-          return;
-        }
-
-        if (!login(username, password)) {
-          showLoginError("Nom d'utilisateur ou mot de passe incorrect.");
-        }
+        var username = document.getElementById("username").value.trim();
+        if (!username) { showLoginError("Veuillez sélectionner un profil."); return; }
+        if (!selectProfile(username)) { showLoginError("Profil non reconnu."); }
       });
 
-      // Vérifier s'il y a une session existante au chargement
+      // Restaurer le profil sélectionné au chargement (déjà géré par ProfileSelector.restoreProfile())
       try {
-        checkExistingSession();
+        var savedProfile = localStorage.getItem('currentProfile');
+        if (savedProfile && typeof profileSelector !== 'undefined') {
+          // Déjà restauré par ProfileSelector.restoreProfile()
+        }
       } catch (err) {
         console.error("Erreur lors du chargement:", err);
-        // En cas d'erreur, afficher quand même l'application
         if (mainApp) mainApp.classList.remove("hidden");
         if (authModal) authModal.classList.add("hidden");
       }
@@ -9408,7 +9181,7 @@
         setTimeout(function() {
           var mainApp = document.getElementById('mainApp');
           var authModal = document.getElementById('authModal');
-          var savedUser = localStorage.getItem('currentUser');
+          var savedUser = localStorage.getItem('currentProfile');
           
           // Si une session existe mais que l'app n'est pas visible, forcer l'affichage
           if (savedUser && mainApp && authModal) {

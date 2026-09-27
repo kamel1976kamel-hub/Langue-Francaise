@@ -27,7 +27,8 @@ window.APP_CONFIG = window.APP_CONFIG || {
     api: {
         timeout: 30000,
         retryAttempts: 3,
-        retryDelay: 1000
+        retryDelay: 1000,
+        workerUrl: '/worker/ai-pipeline-worker.js'
     }
 };
 
@@ -215,7 +216,7 @@ window.demanderIA = async function(prompt, contexte) {
         
         if (originalText && originalText.length > 5) {
             try {
-                const analysisResult = window.analyzeTextLocal && window.analyzeTextLocal(originalText);
+                const analysisResult = window.analyzeTextLocal && await window.analyzeTextLocal(originalText);
                 if (analysisResult) {
                     corrections = analysisResult.errors || [];
                     explanations = analysisResult.explanations || [];
@@ -693,39 +694,30 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             userPrompt = `Texte de l'étudiant : "${studentAnswer}"`;
         }
         
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        // SEC-003 : Worker-only — aucun appel direct à Groq depuis le navigateur
+        const workerUrl = window.APP_CONFIG?.api?.workerUrl || '/worker/ai-pipeline-worker.js';
+        if (window.antiRafaleProtection && window.antiRafaleProtection.isThrottled('ia-request')) {
+            console.warn('⚠️ Requête IA throttled (anti-rafale)');
+            return { analysis: 'Trop de requêtes en cours. Veuillez patienter.', corrections: [], explanations: [], suggestions: [], throttled: true };
+        }
+        const response = await fetch(workerUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'llama-3.1-8b-instant', // Modèle plus rapide et stable
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt
-                    },
-                    {
-                        role: 'user',
-                        content: userPrompt
-                    }
-                ],
-                max_tokens: activityContext === 'chat' ? 500 : 300, // Plus de tokens pour le chat
+                action: 'analyze',
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                context: activityContext,
+                maxTokens: activityContext === 'chat' ? 500 : 300,
                 temperature: 0.7
             }),
             signal: controller.signal
         });
-        
         clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error(`Erreur API: ${response.status} ${response.statusText}`);
-        }
-        
+        if (!response.ok) { throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`); }
         const data = await response.json();
-        const aiResponse = data.choices[0].message.content;
-        console.log('✅ Réponse API Groq reçue:', aiResponse);
+        const aiResponse = data.choices?.[0]?.message?.content || data.analysis || 'Réponse IA non disponible';
+        console.log('✅ Réponse Worker reçue:', aiResponse);
         
         // Traiter la réponse selon le contexte
         if (activityContext === 'chat' || activityContext.includes('chat')) {

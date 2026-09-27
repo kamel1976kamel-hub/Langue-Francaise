@@ -48,7 +48,9 @@ window.SpacyAnalyzer = {
         ponctuation: [
             { pattern: /\s+[.,!?]/g, correction: "", type: "ponctuation", rule: "espace_avant_ponctuation", confidence: 0.95 },
             { pattern: /[a-z][A-Z]/g, correction: (match) => match[0] + ' ' + match[1], type: "ponctuation", rule: "espace_mots", confidence: 0.90 }
-        ]
+        ],
+
+        grammaire: []
     },
 
     /**
@@ -402,54 +404,8 @@ window.applyRules = function(text, options = {}) {
     const suggestions = [];
     
     try {
-        // Appliquer les règles de style
-        if (window.SpacyAnalyzer.patterns.style && window.SpacyAnalyzer.patterns.style.length > 0) {
-            window.SpacyAnalyzer.patterns.style.forEach(rule => {
-                try {
-                    if (rule.pattern && rule.correction) {
-                        let pattern;
-                        if (rule.pattern instanceof RegExp) {
-                            pattern = rule.pattern;
-                        } else if (typeof rule.pattern === 'string') {
-                            pattern = new RegExp(rule.pattern, 'g');
-                        } else {
-                            return; // Skip invalid patterns
-                        }
-                        
-                        const matches = text.match(pattern);
-                        if (matches) {
-                            matches.forEach(match => {
-                                let correction;
-                                if (typeof rule.correction === 'function') {
-                                    correction = rule.correction(match);
-                                } else {
-                                    correction = match.replace(pattern, rule.correction);
-                                }
-                                
-                                errors.push({
-                                    text: match,
-                                    correction: correction,
-                                    type: rule.type || 'style',
-                                    rule: rule.name || 'style_rule',
-                                    confidence: rule.confidence || 0.8,
-                                    explanation: rule.explanation || 'Règle de style',
-                                    example: rule.example || ''
-                                });
-                                
-                                if (rule.explanation) {
-                                    explanations.push(rule.explanation);
-                                }
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.warn('⚠️ Erreur dans la règle de style:', rule.name, error);
-                }
-            });
-        }
-        
-        // Appliquer les autres catégories de règles (vocabulaire, conjugaison, orthographe)
-        ['vocabulaire', 'conjugaison', 'orthographe'].forEach(category => {
+        // Appliquer les règles de style et les autres catégories linguistiques
+        ['style', 'vocabulaire', 'conjugaison', 'orthographe', 'grammaire'].forEach(category => {
             if (window.SpacyAnalyzer.patterns[category] && window.SpacyAnalyzer.patterns[category].length > 0) {
                 window.SpacyAnalyzer.patterns[category].forEach(rule => {
                     try {
@@ -520,31 +476,16 @@ window.initializeAdvancedRules = async function() {
         try {
             console.log('📊 Chargement des règles depuis la base de données...');
             const allRules = await window.NLPDatabase.getAllRules();
-            
-            // Intégrer les règles de chaque catégorie
-            if (allRules.style && allRules.style.length > 0) {
-                window.SpacyAnalyzer.patterns.style = allRules.style;
-                rulesIntegrated += allRules.style.length;
-                console.log(`✅ ${allRules.style.length} règles de style intégrées`);
-            }
-            
-            if (allRules.vocabulaire && allRules.vocabulaire.length > 0) {
-                window.SpacyAnalyzer.patterns.vocabulaire = allRules.vocabulaire;
-                rulesIntegrated += allRules.vocabulaire.length;
-                console.log(`✅ ${allRules.vocabulaire.length} règles de vocabulaire intégrées`);
-            }
-            
-            if (allRules.orthographe && allRules.orthographe.length > 0) {
-                window.SpacyAnalyzer.patterns.orthographe = allRules.orthographe;
-                rulesIntegrated += allRules.orthographe.length;
-                console.log(`✅ ${allRules.orthographe.length} règles d'orthographe intégrées`);
-            }
-            
-            if (allRules.conjugaison && allRules.conjugaison.length > 0) {
-                window.SpacyAnalyzer.patterns.conjugaison = allRules.conjugaison;
-                rulesIntegrated += allRules.conjugaison.length;
-                console.log(`✅ ${allRules.conjugaison.length} règles de conjugaison intégrées`);
-            }
+            window.NLPRules = allRules;
+
+            const categories = ['style', 'vocabulaire', 'orthographe', 'conjugaison', 'grammaire'];
+            categories.forEach(category => {
+                if (allRules[category] && allRules[category].length > 0) {
+                    window.SpacyAnalyzer.patterns[category] = allRules[category];
+                    rulesIntegrated += allRules[category].length;
+                    console.log(`✅ ${allRules[category].length} règles de ${category} intégrées`);
+                }
+            });
             
             console.log(`✅ Total: ${rulesIntegrated} règles intégrées depuis la base de données`);
             return rulesIntegrated;
@@ -597,7 +538,7 @@ window.initializeAdvancedRules = async function() {
         }, 0);
         
         console.log(`📊 Total des règles disponibles : ${totalRules}`);
-        console.log('🎯 Règles de style, vocabulaire, orthographe et conjugaison intégrées avec succès !');
+        console.log('🎯 Règles de style, vocabulaire, orthographe, conjugaison et grammaire intégrées avec succès !');
         
         return true;
     } else {
@@ -606,14 +547,5 @@ window.initializeAdvancedRules = async function() {
     }
 };
 
-// Auto-initialisation quand les règles de style sont chargées
-if (window.styleRules) {
-    window.initializeAdvancedRules();
-} else {
-    // Attendre que les règles de style soient chargées
-    setTimeout(() => {
-        if (window.styleRules) {
-            window.initializeAdvancedRules();
-        }
-    }, 100);
-}
+// L'intégration réelle est déclenchée par NLPDatabaseIntegration une fois la base prête.
+// Ne pas auto-charger ici : NLPDatabase.isReady est encore faux au parse du script.

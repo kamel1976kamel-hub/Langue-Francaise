@@ -23,11 +23,22 @@ class DatabaseRulesManager {
         this.cache = new Map();
         this.cacheTimestamp = new Map();
         this.isReady = false;
+        this._initPromise = null;
+        this.resolvedRules = null;
         
         this.initialize();
     }
 
     async initialize() {
+        if (this._initPromise) {
+            return this._initPromise;
+        }
+
+        this._initPromise = this._doInitialize();
+        return this._initPromise;
+    }
+
+    async _doInitialize() {
         try {
             console.log('🗄️ Initialisation du gestionnaire de base de données...');
             
@@ -159,8 +170,14 @@ class DatabaseRulesManager {
                 style: rulesByCategory.style.length,
                 vocabulaire: rulesByCategory.vocabulaire.length,
                 conjugaison: rulesByCategory.conjugaison.length,
-                orthographe: rulesByCategory.orthographe.length
+                orthographe: rulesByCategory.orthographe.length,
+                grammaire: rulesByCategory.grammaire.length
             });
+
+            this.resolvedRules = rulesByCategory;
+            if (typeof window !== 'undefined') {
+                window.NLPRules = rulesByCategory;
+            }
             
             if (this.config.cacheRules) {
                 this.cache.set(cacheKey, rulesByCategory);
@@ -448,7 +465,8 @@ class DatabaseRulesManager {
             style: this.getJSONRulesByCategory('style'),
             vocabulaire: this.getJSONRulesByCategory('vocabulaire'),
             conjugaison: this.getJSONRulesByCategory('conjugaison'),
-            orthographe: this.getJSONRulesByCategory('orthographe')
+            orthographe: this.getJSONRulesByCategory('orthographe'),
+            grammaire: this.getJSONRulesByCategory('grammaire')
         };
     }
 
@@ -458,7 +476,8 @@ class DatabaseRulesManager {
             style: window.styleRules || [],
             vocabulaire: window.vocabulaireRules || [],
             conjugaison: window.conjugaisonRules || [],
-            orthographe: window.orthographeRules || []
+            orthographe: window.orthographeRules || [],
+            grammaire: window.grammaireRules || []
         };
 
         return fallbackRules[category] || [];
@@ -578,7 +597,9 @@ window.NLPDatabase = new DatabaseRulesManager({
 
 // Interface compatible avec le système existant
 window.loadAllRules = async () => {
-    return await window.NLPDatabase.getAllRules();
+    const rules = await window.NLPDatabase.getAllRules();
+    window.NLPRules = rules;
+    return rules;
 };
 
 window.loadRulesByCategory = async (category) => {

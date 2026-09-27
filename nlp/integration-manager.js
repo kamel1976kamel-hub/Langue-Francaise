@@ -6,6 +6,7 @@ class NLPIntegrationManager {
         this.isReady = false;
         this.initializationPromise = null;
         this.fallbackMode = false;
+        this.resolvedRules = null;
         this.initialize();
     }
 
@@ -22,7 +23,7 @@ class NLPIntegrationManager {
         console.log('🚀 Initialisation du gestionnaire NLP...');
 
         try {
-            // Attendre que les scripts soient chargés
+            // Attendre analyseTextLocal ET les règles résolues (objet, pas Promise)
             await this.waitForScripts();
             
             // Initialiser le pipeline avancé si disponible
@@ -31,16 +32,28 @@ class NLPIntegrationManager {
                 console.log('✅ Pipeline avancé initialisé:', success);
             }
 
-            // Charger et intégrer les règles
+            // Charger et intégrer les règles (une fois la base prête)
             if (window.initializeAdvancedRules) {
-                const rulesCount = await window.initializeAdvancedRules();
+                const already = this.countResolvedRules(window.NLPRules);
+                const rulesCount = already >= 275
+                    ? already
+                    : await window.initializeAdvancedRules();
                 console.log('📚 Règles intégrées:', rulesCount);
             }
 
-            // Valider les règles
+            // Valider les règles — toujours await pour conserver l'objet réel
             if (window.loadAllRules) {
                 const rules = await window.loadAllRules();
-                console.log('📊 Règles chargées:', rules);
+                window.NLPRules = rules;
+                this.resolvedRules = rules;
+                console.log('📊 Règles chargées:', {
+                    style: rules.style?.length || 0,
+                    vocabulaire: rules.vocabulaire?.length || 0,
+                    conjugaison: rules.conjugaison?.length || 0,
+                    orthographe: rules.orthographe?.length || 0,
+                    grammaire: rules.grammaire?.length || 0,
+                    total: this.countResolvedRules(rules)
+                });
             }
 
             this.isReady = true;
@@ -56,20 +69,70 @@ class NLPIntegrationManager {
         }
     }
 
+    countResolvedRules(rules) {
+        if (!rules || typeof rules.then === 'function') {
+            return 0;
+        }
+        return Object.keys(rules).reduce((sum, key) => {
+            return sum + (Array.isArray(rules[key]) ? rules[key].length : 0);
+        }, 0);
+    }
+
     waitForScripts() {
         return new Promise((resolve) => {
-            const checkInterval = setInterval(() => {
-                if (typeof window.analyzeTextLocal !== 'undefined' && typeof window.analyzeTextLocal === 'function') {
+            let settled = false;
+            let checkInterval = null;
+            let timeoutId = null;
+
+            const done = () => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                if (checkInterval) {
                     clearInterval(checkInterval);
-                    resolve();
+                }
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                resolve();
+            };
+
+            const isReady = () => {
+                const analyzeReady = typeof window.analyzeTextLocal === 'function';
+                const dbReady = !!(window.NLPDatabaseIntegration && window.NLPDatabaseIntegration.isReady);
+                const rules = window.NLPRules;
+                const rulesReady = !!(rules && typeof rules.then !== 'function' && Array.isArray(rules.grammaire));
+                return analyzeReady && dbReady && rulesReady;
+            };
+
+            const onDbReady = () => {
+                if (isReady()) {
+                    window.removeEventListener('nlp-database-ready', onDbReady);
+                    done();
+                }
+            };
+            window.addEventListener('nlp-database-ready', onDbReady);
+
+            if (isReady()) {
+                window.removeEventListener('nlp-database-ready', onDbReady);
+                done();
+                return;
+            }
+
+            checkInterval = setInterval(() => {
+                if (isReady()) {
+                    window.removeEventListener('nlp-database-ready', onDbReady);
+                    done();
                 }
             }, 100);
 
-            // Timeout après 10 secondes
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                console.warn('⚠️ Timeout: analyseTextLocal non disponible après 10 secondes');
-                resolve();
+            timeoutId = setTimeout(() => {
+                window.removeEventListener('nlp-database-ready', onDbReady);
+                if (!settled) {
+                    console.warn('⚠️ Timeout: analyseTextLocal ou règles NLP non disponibles après 10 secondes');
+                    done();
+                }
             }, 10000);
         });
     }
@@ -190,15 +253,16 @@ class NLPIntegrationManager {
         }
 
         const features = this.getAvailableFeatures();
-        const rules = window.loadAllRules ? window.loadAllRules() : null;
+        const rules = this.resolvedRules
+            || (window.NLPRules && typeof window.NLPRules.then !== 'function' ? window.NLPRules : null);
 
         return {
             status: 'ready',
             features: features,
             rules: rules ? {
-                total: Object.values(rules).reduce((sum, cat) => sum + (cat?.length || 0), 0),
+                total: this.countResolvedRules(rules),
                 categories: Object.keys(rules).reduce((obj, key) => {
-                    obj[key] = rules[key]?.length || 0;
+                    obj[key] = Array.isArray(rules[key]) ? rules[key].length : 0;
                     return obj;
                 }, {})
             } : null,

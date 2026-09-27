@@ -6,6 +6,7 @@ console.log('🚀 Initialisation du pipeline avancé de correction');
 // État global du pipeline
 const pipelineState = {
     rulesLoaded: false,
+    resolvedRules: null,
     aiReady: false,
     cache: new Map(),
     stats: {
@@ -107,7 +108,7 @@ window.advancedTextAnalysis = async function(text, options = {}) {
         enableAI: true,
         enableRules: true,
         maxCorrections: 20,
-        categories: ['style', 'vocabulaire', 'orthographe', 'conjugaison']
+        categories: ['style', 'vocabulaire', 'orthographe', 'conjugaison', 'grammaire']
     };
     
     const opts = { ...defaultOptions, ...options };
@@ -145,8 +146,28 @@ window.advancedTextAnalysis = async function(text, options = {}) {
         // 1. Analyse par règles linguistiques
         if (opts.enableRules && pipelineState.rulesLoaded) {
             try {
-                const rules = window.loadAllRules();
-                ruleResults = window.applyRules(text, rules);
+                const rules = pipelineState.resolvedRules
+                    || (typeof window.loadAllRules === 'function' ? await window.loadAllRules() : window.NLPRules);
+                pipelineState.resolvedRules = rules && typeof rules.then === 'function' ? await rules : rules;
+                const applied = window.applyRules(text, pipelineState.resolvedRules);
+                ruleResults = Array.isArray(applied)
+                    ? applied
+                    : (applied && Array.isArray(applied.errors) ? applied.errors : []);
+                ruleResults = ruleResults.map(function(e) {
+                    const matched = e.text || e.matched_text || '';
+                    const start = typeof e.start === 'number' ? e.start : text.indexOf(matched);
+                    return {
+                        matched_text: matched,
+                        suggestion: e.suggestion || e.correction || '',
+                        category: e.category || e.type || 'unknown',
+                        rule_id: e.rule_id || e.rule || 'unknown',
+                        explanation: e.explanation || '',
+                        example: e.example || '',
+                        start: start >= 0 ? start : 0,
+                        end: (start >= 0 ? start : 0) + matched.length,
+                        priority: e.priority || 80
+                    };
+                });
                 pipelineState.stats.ruleMatches += ruleResults.length;
                 console.log(`📝 Règles linguistiques: ${ruleResults.length} corrections`);
             } catch (error) {
@@ -241,8 +262,13 @@ window.initializeAdvancedPipeline = async function() {
     try {
         // 1. Charger les règles
         if (typeof window.loadAllRules === 'function') {
-            const rules = window.loadAllRules();
-            const totalRules = Object.values(rules).reduce((sum, cat) => sum + cat.length, 0);
+            const rules = await window.loadAllRules();
+            const resolved = rules && typeof rules.then === 'function' ? await rules : rules;
+            pipelineState.resolvedRules = resolved;
+            window.NLPRules = resolved;
+            const totalRules = Object.values(resolved || {}).reduce((sum, cat) => {
+                return sum + (Array.isArray(cat) ? cat.length : 0);
+            }, 0);
             console.log(`📚 ${totalRules} règles linguistiques chargées`);
             pipelineState.rulesLoaded = true;
         }

@@ -6,43 +6,49 @@ class NLPDatabaseIntegration {
         this.isReady = false;
         this.dbManager = null;
         this.fallbackRules = null;
+        this._initPromise = null;
     }
 
     async initialize() {
+        if (this._initPromise) {
+            return this._initPromise;
+        }
+
+        this._initPromise = this._doInitialize();
+        return this._initPromise;
+    }
+
+    async _doInitialize() {
         try {
             console.log('🚀 Initialisation de la base de données NLP pour l\'application...');
-            
-            // 1. Initialiser la base de données SQLite
-            if (window.BrowserSQLiteManager) {
-                const sqliteManager = new BrowserSQLiteManager();
-                await sqliteManager.initialize();
-                console.log('✅ Base de données SQLite initialisée');
-                
-                // 2. Configurer le gestionnaire de base de données
+
+            if (!window.BrowserSQLiteManager && !window.NLPDatabase) {
+                console.warn('⚠️ BrowserSQLiteManager non disponible, utilisation du fallback');
+                await this.initializeFallback();
+                return;
+            }
+
+            // Réutiliser le gestionnaire déjà créé (évite une 2e SQLite + 2e initialize)
+            if (window.NLPDatabase) {
+                this.dbManager = window.NLPDatabase;
+            } else {
                 this.dbManager = new DatabaseRulesManager({
                     useSQLite: true,
                     sqlitePath: 'browser',
                     cacheRules: true,
                     cacheTimeout: 300000
                 });
-                
-                await this.dbManager.initialize();
-                console.log('✅ Gestionnaire de base de données prêt');
-                
-                // 3. Intégrer les règles dans le système existant
-                await this.integrateRules();
-                
-                this.isReady = true;
-                console.log('✅ Base de données NLP intégrée avec succès');
-                
-                // 4. Notifier l'application
-                this.notifyApplication();
-                
-            } else {
-                console.warn('⚠️ BrowserSQLiteManager non disponible, utilisation du fallback');
-                await this.initializeFallback();
             }
-            
+
+            await this.dbManager.initialize();
+            console.log('✅ Gestionnaire de base de données prêt');
+
+            await this.integrateRules();
+
+            this.isReady = true;
+            console.log('✅ Base de données NLP intégrée avec succès');
+
+            this.notifyApplication();
         } catch (error) {
             console.error('❌ Erreur lors de l\'intégration de la base de données:', error);
             await this.initializeFallback();
@@ -142,7 +148,8 @@ class NLPDatabaseIntegration {
                     explanation: 'Utiliser "se" pour le pronom réfléchi, "ce" pour le démonstratif.',
                     example: 'Ce lave → Se lave'
                 }
-            ]
+            ],
+            grammaire: []
         };
         
         // Rendre les règles de fallback disponibles

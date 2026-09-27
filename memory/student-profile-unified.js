@@ -11,11 +11,8 @@ const CONFIG = {
     EMAIL_DOMAINS: {
         teacher: 'enseignant.fr',
         student: 'etudiant.fr'
-    },
-    PASSWORD_FORMAT: {
-        teacher: (prenom) => `${prenom}@2024!`,
-        student: (prenom) => `${prenom}2024!`
     }
+    // SEC-003 : PASSWORD_FORMAT supprimé — aucun mot de passe côté client
 };
 
 // Base de données des utilisateurs avec profils intégrés
@@ -26,9 +23,9 @@ const utilisateurs = [
         nom: "CHELLOUAI",
         prenom: "KAMEL",
         username: "kamel.chellouai",
-        password: "Kamel@2024!",
         email: "kamel.chellouai@enseignant.fr",
         role: "teacher",
+        concepteur: true,
         displayName: "KAMEL CHELLOUAI",
         actif: true,
         dateCreation: new Date('2024-01-01'),
@@ -60,7 +57,6 @@ const utilisateurs = [
         nom: "HAMDAOUI",
         prenom: "AMIRA CHAHD",
         username: "amira.hamdaoui",
-        password: "Amira2024!",
         email: "amira.hamdaoui@etudiant.fr",
         role: "student",
         displayName: "AMIRA CHAHD HAMDAOUI",
@@ -93,7 +89,6 @@ const utilisateurs = [
         nom: "HAMZA",
         prenom: "WISSAL",
         username: "wissal.hamza",
-        password: "Wissal2024!",
         email: "wissal.hamza@etudiant.fr",
         role: "student",
         displayName: "WISSAL HAMZA",
@@ -126,7 +121,6 @@ const utilisateurs = [
         nom: "HERZALLAH",
         prenom: "ISRA",
         username: "isra.herzallah",
-        password: "Isra2024!",
         email: "isra.herzallah@etudiant.fr",
         role: "student",
         displayName: "ISRA HERZALLAH",
@@ -159,7 +153,6 @@ const utilisateurs = [
         nom: "KABOUCHE",
         prenom: "RYM",
         username: "rym.kabouche",
-        password: "Rym2024!",
         email: "rym.kabouche@etudiant.fr",
         role: "student",
         displayName: "RYM KABOUCHE",
@@ -192,7 +185,6 @@ const utilisateurs = [
         nom: "LAIB",
         prenom: "LOUBNA HIBATERRAHMANE",
         username: "loubna.laib",
-        password: "Loubna2024!",
         email: "loubna.laib@etudiant.fr",
         role: "student",
         displayName: "LOUBNA HIBATERRAHMANE LAIB",
@@ -225,7 +217,6 @@ const utilisateurs = [
         nom: "MAGHNI",
         prenom: "HIBAT ERRAHMANE",
         username: "hibat.maghi",
-        password: "Hibat2024!",
         email: "hibat.maghi@etudiant.fr",
         role: "student",
         displayName: "HIBAT ERRAHMANE MAGHNI",
@@ -258,7 +249,6 @@ const utilisateurs = [
         nom: "METLOUG",
         prenom: "CHOUROUK",
         username: "chourouk.metlou",
-        password: "Chourouk2024!",
         email: "chourouk.metlou@etudiant.fr",
         role: "student",
         displayName: "CHOUROUK METLOUG",
@@ -291,7 +281,6 @@ const utilisateurs = [
         nom: "OUAMANE",
         prenom: "ALAIE",
         username: "alaie.ouamane",
-        password: "Alaie2024!",
         email: "alaie.ouamane@etudiant.fr",
         role: "student",
         displayName: "ALAIE OUAMANE",
@@ -324,7 +313,6 @@ const utilisateurs = [
         nom: "REHOUMA",
         prenom: "CHAHD",
         username: "chahd.rehouma",
-        password: "Chahd2024!",
         email: "chahd.rehouma@etudiant.fr",
         role: "student",
         displayName: "CHAHD REHOUMA",
@@ -357,7 +345,6 @@ const utilisateurs = [
         nom: "SAADI",
         prenom: "SALSABIL",
         username: "salsabil.saadi",
-        password: "Salsabil2024!",
         email: "salsabil.saadi@etudiant.fr",
         role: "student",
         displayName: "SALSABIL SAADI",
@@ -390,7 +377,6 @@ const utilisateurs = [
         nom: "SASSOUI",
         prenom: "FATMA ZOHRA AROUA",
         username: "fatma.sassoui",
-        password: "Fatma2024!",
         email: "fatma.sassoui@etudiant.fr",
         role: "student",
         displayName: "FATMA ZOHRA AROUA SASSOUI",
@@ -423,7 +409,6 @@ const utilisateurs = [
         nom: "SEID",
         prenom: "DJAMILA",
         username: "djamila.seid",
-        password: "Djamila2024!",
         email: "djamila.seid@etudiant.fr",
         role: "student",
         displayName: "DJAMILA SEID",
@@ -456,7 +441,6 @@ const utilisateurs = [
         nom: "SERRAOUI",
         prenom: "AYAT ERRAHMANE",
         username: "ayat.serraoui",
-        password: "Ayat2024!",
         email: "ayat.serraoui@etudiant.fr",
         role: "student",
         displayName: "AYAT ERRAHMANE SERRAOUI",
@@ -489,7 +473,6 @@ const utilisateurs = [
         nom: "TAGHZOUT",
         prenom: "CHAIMA",
         username: "chaima.taghzout",
-        password: "Chaima2024!",
         email: "chaima.taghzout@etudiant.fr",
         role: "student",
         displayName: "CHAIMA TAGHZOUT",
@@ -522,7 +505,6 @@ const utilisateurs = [
         nom: "TOUAMI",
         prenom: "SERINE LEILA",
         username: "serine.touami",
-        password: "Serine2024!",
         email: "serine.touami@etudiant.fr",
         role: "student",
         displayName: "SERINE LEILA TOUAMI",
@@ -555,7 +537,6 @@ const utilisateurs = [
         nom: "ZEGAR",
         prenom: "SARA",
         username: "sara.zegar",
-        password: "Sara2024!",
         email: "sara.zegar@etudiant.fr",
         role: "student",
         displayName: "SARA ZEGAR",
@@ -588,7 +569,6 @@ const utilisateurs = [
         nom: "ZERROUAK",
         prenom: "SAFAA NOUR ELYAKINE",
         username: "safaa.zerrouak",
-        password: "Safaa2024!",
         email: "safaa.zerrouak@etudiant.fr",
         role: "student",
         displayName: "SAFAA NOUR ELYAKINE ZERROUAK",
@@ -621,7 +601,6 @@ const utilisateurs = [
         nom: "ZIOUCHI",
         prenom: "FATIMA",
         username: "fatima.ziouchi",
-        password: "Fatima2024!",
         email: "fatima.ziouchi@etudiant.fr",
         role: "student",
         displayName: "FATIMA ZIOUCHI",
@@ -648,6 +627,176 @@ const utilisateurs = [
                 focusAreas: ['confiance', 'expression']
             }
         }
+    },
+    // === NOUVEAUX ÉTUDIANTS (ajoutés sans credentials — SEC-003) ===
+    {
+        id: 'student_019', nom: "BASLI", prenom: "AICHA", username: "aicha.basli",
+        email: "aicha.basli@etudiant.fr", role: "student", displayName: "AICHA BASLI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_020', nom: "ABBASSI", prenom: "DOUA MENETALLAH", username: "douaa.abbassi",
+        email: "douaa.abbassi@etudiant.fr", role: "student", displayName: "DOUA MENETALLAH ABBASSI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_021', nom: "AMIRI", prenom: "KAMILIA", username: "kamilia.amiri",
+        email: "kamilia.amiri@etudiant.fr", role: "student", displayName: "KAMILIA AMIRI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_022', nom: "GACI", prenom: "AHMED MOUNSEF", username: "ahmed.gaci",
+        email: "ahmed.gaci@etudiant.fr", role: "student", displayName: "AHMED MOUNSEF GACI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_023', nom: "ARIECHE", prenom: "SARA", username: "sara.arieche",
+        email: "sara.arieche@etudiant.fr", role: "student", displayName: "SARA ARIECHE", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_024', nom: "BEKHOUCHE", prenom: "INESSE", username: "inesse.bekhouche",
+        email: "inesse.bekhouche@etudiant.fr", role: "student", displayName: "INESSE BEKHOUCHE", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_025', nom: "ACHOURI", prenom: "HANINE", username: "hanine.achouri",
+        email: "hanine.achouri@etudiant.fr", role: "student", displayName: "HANINE ACHOURI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_026', nom: "AMRANE", prenom: "MOHAMED ANES", username: "mohamed.amrane",
+        email: "mohamed.amrane@etudiant.fr", role: "student", displayName: "MOHAMED ANES AMRANE", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_027', nom: "ACHOURI", prenom: "AHMED YACINE", username: "ahmed.achouri",
+        email: "ahmed.achouri@etudiant.fr", role: "student", displayName: "AHMED YACINE ACHOURI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_028', nom: "BENBARKAT", prenom: "INAS FATMA ZAHRA", username: "inas.benbarkat",
+        email: "inas.benbarkat@etudiant.fr", role: "student", displayName: "INAS FATMA ZAHRA BENBARKAT", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_029', nom: "GACEM", prenom: "MAISSOUNE", username: "maissoune.gacem",
+        email: "maissoune.gacem@etudiant.fr", role: "student", displayName: "MAISSOUNE GACEM", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_030', nom: "DAAS", prenom: "HADIL", username: "hadil.daas",
+        email: "hadil.daas@etudiant.fr", role: "student", displayName: "HADIL DAAS", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_031', nom: "HACHANI", prenom: "MANAR", username: "manar.hachani",
+        email: "manar.hachani@etudiant.fr", role: "student", displayName: "MANAR HACHANI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_032', nom: "FAKROUN", prenom: "CHEHD", username: "chehd.fakroun",
+        email: "chehd.fakroun@etudiant.fr", role: "student", displayName: "CHEHD FAKROUN", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_033', nom: "BAN AMOR", prenom: "NAHLA", username: "nahla.banamor",
+        email: "nahla.banamor@etudiant.fr", role: "student", displayName: "NAHLA BAN AMOR", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_034', nom: "BEN SOLTANE", prenom: "MALAK", username: "malak.bensoltane",
+        email: "malak.bensoltane@etudiant.fr", role: "student", displayName: "MALAK BEN SOLTANE", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_035', nom: "CHAOUCH", prenom: "BOCHRA", username: "bochra.chaouch",
+        email: "bochra.chaouch@etudiant.fr", role: "student", displayName: "BOCHRA CHAOUCH", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_036', nom: "ABDELKRIM", prenom: "DJIHANE", username: "djihane.abdelkrim",
+        email: "djihane.abdelkrim@etudiant.fr", role: "student", displayName: "DJIHANE ABDELKRIM", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    {
+        id: 'student_037', nom: "BEN SAADI", prenom: "HANA", username: "hana.bensaadi",
+        email: "hana.bensaadi@etudiant.fr", role: "student", displayName: "HANA BEN SAADI", actif: true,
+        dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'intermediate', preferredFeedbackType: 'detailed', exerciseFrequency: 'normal', focusAreas: [] } }
+    },
+    // === ENSEIGNANTS (non concepteurs) ===
+    {
+        id: 'teacher_002', nom: "MOUMNI", prenom: "YAAKOUB", username: "yaakoub.moumni",
+        email: "yaakoub.moumni@enseignant.fr", role: "teacher", concepteur: false,
+        displayName: "YAAKOUB MOUMNI", actif: true, dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'advanced', preferredFeedbackType: 'detailed', exerciseFrequency: 'high', focusAreas: [] } }
+    },
+    {
+        id: 'teacher_003', nom: "MELLAOUI", prenom: "SALAH EDDINE", username: "salaheddine.mellaoui",
+        email: "salaheddine.mellaoui@enseignant.fr", role: "teacher", concepteur: false,
+        displayName: "SALAH EDDINE MELLAOUI", actif: true, dateCreation: new Date('2024-01-01'),
+        profile: { errors: {}, strengths: [], weaknesses: [], learningHistory: [], lastActivity: null,
+            statistics: { totalActivities: 0, correctAnswers: 0, errorRate: 0, improvementRate: 0, averageConfidence: 0 },
+            adaptiveSettings: { difficultyLevel: 'advanced', preferredFeedbackType: 'detailed', exerciseFrequency: 'high', focusAreas: [] } }
     }
 ];
 
@@ -698,39 +847,16 @@ class StudentProfileManager {
     // ======== FONCTIONS AUTHENTIFICATION ========
     
     /**
-     * Vérifie la connexion
+     * SEC-003 : Authentification côté client DÉSACTIVÉE.
+     * Aucun mot de passe n'est stocké ni comparé côté navigateur.
+     * Retourne toujours un échec avec message informatif.
      */
     verifierConnexion(username, password) {
-        const utilisateur = this.utilisateurs.find(u => u.username === username);
-        
-        if (!utilisateur) {
-            return {
-                success: false,
-                message: "Nom d'utilisateur incorrect",
-                utilisateur: null
-            };
-        }
-        
-        if (utilisateur.password !== password) {
-            return {
-                success: false,
-                message: "Mot de passe incorrect",
-                utilisateur: null
-            };
-        }
-        
-        if (!utilisateur.actif) {
-            return {
-                success: false,
-                message: "Compte désactivé",
-                utilisateur: null
-            };
-        }
-        
+        console.warn('⚠️ Authentification côté client désactivée (SEC-003). Aucun mot de passe côté navigateur.');
         return {
-            success: true,
-            message: "Connexion réussie",
-            utilisateur: utilisateur
+            success: false,
+            message: "L'authentification côté client a été désactivée pour sécurité. Utilisez un compte sans mot de passe.",
+            utilisateur: null
         };
     }
     
@@ -914,10 +1040,10 @@ class StudentProfileManager {
     // ======== UTILITAIRES ========
     
     /**
-     * Exporte les données au format CSV
+     * Exporte les données au format CSV (SEC-003 : sans mot de passe)
      */
     genererCSV() {
-        const headers = ['ID', 'Nom', 'Prénom', 'Email', 'Username', 'Password', 'Role', 'Actif', 'TotalActivities', 'ErrorRate', 'ImprovementRate'];
+        const headers = ['ID', 'Nom', 'Prénom', 'Email', 'Username', 'Role', 'Concepteur', 'Actif', 'TotalActivities', 'ErrorRate', 'ImprovementRate'];
         let csv = headers.join(',') + '\n';
         
         this.utilisateurs.forEach(u => {
@@ -930,8 +1056,8 @@ class StudentProfileManager {
                 u.prenom,
                 u.email,
                 u.username,
-                u.password,
                 u.role,
+                u.concepteur || false,
                 u.actif,
                 stats.totalActivities || 0,
                 (stats.errorRate || 0).toFixed(2),

@@ -3415,7 +3415,8 @@ class BrowserSQLiteManager {
             style: [],
             vocabulaire: [],
             conjugaison: [],
-            orthographe: []
+            orthographe: [],
+            grammaire: []
         };
 
         rules.forEach(rule => {
@@ -3459,14 +3460,19 @@ class BrowserSQLiteManager {
         }
 
         // Conversion de la correction
-        if (dbRule.correction && dbRule.correction === 'function') {
-            // Créer une fonction de correction simple
-            rule.correction = function(match) {
-                // Fonction de correction par défaut
-                return match;
-            };
+        if (typeof dbRule.correction === 'function') {
+            // Déjà une fonction — garder telle quelle
+            rule.correction = dbRule.correction;
+        } else if (typeof dbRule.correction === 'string' && dbRule.correction.trim().startsWith('function')) {
+            // Chaîne contenant une définition de fonction — évaluer en fonction
+            try {
+                rule.correction = new Function('return ' + dbRule.correction)();
+            } catch (e) {
+                console.warn('Correction function invalide:', dbRule.name, e.message);
+                rule.correction = dbRule.correction;
+            }
         } else if (dbRule.correction) {
-            // Garder la correction comme chaîne si ce n'est pas 'function'
+            // Correction simple (chaîne de remplacement)
             rule.correction = dbRule.correction;
         }
 
