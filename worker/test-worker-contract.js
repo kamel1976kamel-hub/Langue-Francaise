@@ -52,13 +52,22 @@ function makeErrorResponse(status, extra) {
     };
 }
 
-function makeRequest(body, method) {
+function makeRequest(body, method, origin) {
     return {
         method: method || 'POST',
+        headers: {
+            get: function(k) {
+                if (k.toLowerCase() === 'authorization') return 'Bearer mock-session-token';
+                if (k.toLowerCase() === 'cf-connecting-ip') return '1.2.3.4';
+                if (k.toLowerCase() === 'origin') return origin || null;
+                return null;
+            }
+        },
         json: async function() {
             if (typeof body === 'string') throw new Error('invalid json');
             return body;
-        }
+        },
+        clone: function() { return this; }
     };
 }
 
@@ -86,7 +95,26 @@ async function runTests() {
     const handler = workerModule.default;
     assert(handler && typeof handler.fetch === 'function', 'Worker importé et fetch disponible');
 
-    const env = { GROQ_API_KEY: 'test-key-mock' };
+    const env = {
+        GROQ_API_KEY: 'test-key-mock',
+        AUTH_PEPPER: 'test-pepper',
+        DB: {
+            prepare: function(sql) {
+                const isUserQuery = sql && typeof sql === 'string' && sql.indexOf('FROM users') !== -1;
+                return {
+                    bind: function() { return this; },
+                    first: async function() {
+                        if (isUserQuery) {
+                            return { id: 'test_user', username: 'testuser', password_hash: '100000:aa:bb', display_name: 'Test', role: 'student', concepteur: 0, actif: 1, must_change: 0 };
+                        }
+                        return { user_id: 'test_user', expires_at: new Date(Date.now() + 3600000).toISOString() };
+                    },
+                    all: async function() { return { results: [] }; },
+                    run: async function() { return {}; }
+                };
+            }
+        }
+    };
     const ctx = {};
 
     // ─── TEST 1 : Requête valide avec contrat main.js ───
@@ -411,6 +439,91 @@ async function runTests() {
         assertEq(resp.status, 200, 'Statut 200 (mode chat)');
         const aiResponse = data.choices?.[0]?.message?.content || data.analysis || 'Réponse IA non disponible';
         assert(aiResponse !== 'Réponse IA non disponible', 'Réponse chat consommable par main.js');
+    }
+
+    // ─── TESTS CORS : contrôle strict d'origine ───
+    console.log('\n📋 Tests CORS : contrôle strict d\'origine');
+
+    const ALLOWED = 'https://kamel1976kamel-hub.github.io';
+
+    // Test CORS 1 : Origin autorisée → CORS PASS
+    {
+        const req = makeRequest({}, 'OPTIONS', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        assertEq(resp.status, 204, 'CORS 1 — OPTIONS origine autorisée → 204');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), ALLOWED, 'CORS 1 — Allow-Origin correct');
+        assertEq(resp.headers.get('Access-Control-Allow-Methods'), 'POST, OPTIONS', 'CORS 1 — Allow-Methods correct');
+    }
+
+    // Test CORS 2 : Origin arbitraire → CORS REFUSED
+    {
+        const req = makeRequest({}, 'OPTIONS', 'https://random-site.com');
+        const resp = await handler.fetch(req, env, ctx);
+        assertEq(resp.status, 403, 'CORS 2 — OPTIONS origine arbitraire → 403');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), null, 'CORS 2 — Pas de Allow-Origin');
+    }
+
+    // Test CORS 3 : Origin evil.example → CORS REFUSED
+    {
+        const req = makeRequest({ action: 'login', username: 'x', password: 'y' }, 'POST', 'https://evil.example');
+        const resp = await handler.fetch(req, env, ctx);
+        assertEq(resp.status, 403, 'CORS 3 — POST evil.example → 403');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), null, 'CORS 3 — Pas de Allow-Origin pour evil');
+    }
+
+    // Test CORS 4 : OPTIONS autorisé → headers complets
+    {
+        const req = makeRequest({}, 'OPTIONS', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        assertEq(resp.status, 204, 'CORS 4 — OPTIONS autorisé → 204');
+        assert(resp.headers.get('Access-Control-Allow-Headers') !== null, 'CORS 4 — Allow-Headers présent');
+        assertEq(resp.headers.get('Access-Control-Max-Age'), '86400', 'CORS 4 — Max-Age 86400');
+    }
+
+    // Test CORS 5 : Authorization conservé dans Allow-Headers
+    {
+        const req = makeRequest({}, 'OPTIONS', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        const allowHeaders = resp.headers.get('Access-Control-Allow-Headers') || '';
+        assert(allowHeaders.includes('Authorization'), 'CORS 5 — Authorization dans Allow-Headers');
+        assert(allowHeaders.includes('Content-Type'), 'CORS 5 — Content-Type dans Allow-Headers');
+    }
+
+    // Test CORS 6 : /login fonctionne toujours avec origine autorisée
+    {
+        const req = makeRequest({ action: 'login', username: 'test', password: 'test' }, 'POST', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        assert(resp.status !== 403, 'CORS 6 — /login origine autorisée ≠ 403');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), ALLOWED, 'CORS 6 — CORS présent sur réponse login');
+    }
+
+    // Test CORS 7 : /me fonctionne toujours avec origine autorisée
+    {
+        const req = makeRequest({ action: 'me' }, 'POST', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        assert(resp.status !== 403, 'CORS 7 — /me origine autorisée ≠ 403');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), ALLOWED, 'CORS 7 — CORS présent sur réponse /me');
+    }
+
+    // Test CORS 8 : /analyze authentifié fonctionne avec origine autorisée
+    {
+        mockFetch([
+            makeGroqResponse('{"diagnostic":"test","erreurs":[],"priorite":"basse"}'),
+            makeGroqResponse('{"explication":"ok","conseil":"ok","exemple":"ok"}'),
+            makeGroqResponse('{"point_cours":"ok","regle":"ok","exemple":"ok","verifie":true}')
+        ]);
+        const req = makeRequest(makeMainJsPayload(), 'POST', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        assertEq(resp.status, 200, 'CORS 8 — /analyze origine autorisée → 200');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), ALLOWED, 'CORS 8 — CORS présent sur réponse analyze');
+    }
+
+    // Test CORS 9 : logout fonctionne avec origine autorisée
+    {
+        const req = makeRequest({ action: 'logout' }, 'POST', ALLOWED);
+        const resp = await handler.fetch(req, env, ctx);
+        assertEq(resp.status, 200, 'CORS 9 — logout origine autorisée → 200');
+        assertEq(resp.headers.get('Access-Control-Allow-Origin'), ALLOWED, 'CORS 9 — CORS présent sur réponse logout');
     }
 
     // ─── Résumé ───

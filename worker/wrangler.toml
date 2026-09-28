@@ -16,3 +16,13 @@ compatibility_date = "2024-12-01"
 
 # Le secret GROQ_API_KEY est bind automatiquement par l'environnement
 # Cloudflare Workers. Aucun token/secret en clair dans ce fichier.
+
+# Base de données D1 pour authentification
+# Créer avec : wrangler d1 create langue-francaise-auth
+# Puis appliquer le schéma : wrangler d1 execute langue-francaise-auth --file=schema.sql
+# Secrets requis : AUTH_PEPPER (wrangler secret put AUTH_PEPPER)
+
+[[d1_databases]]
+binding = "DB"
+database_name = "langue-francaise-auth"
+database_id = "4d5c20fe-94bf-475a-981d-531611ba2add"

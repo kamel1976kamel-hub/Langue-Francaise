@@ -190,7 +190,7 @@ async function validateLocalRules() {
 }
 
 // Exécuter le test
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== 'undefined' && require.main !== module) {
     module.exports = { validateLocalRules };
 } else {
     validateLocalRules().then(result => {

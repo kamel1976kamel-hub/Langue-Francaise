@@ -702,7 +702,9 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         }
         const response = await fetch(workerUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: window.AuthClient
+                ? window.AuthClient.withAuthHeaders({ 'Content-Type': 'application/json' })
+                : { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'analyze',
                 systemPrompt: systemPrompt,
@@ -714,6 +716,12 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             signal: controller.signal
         });
         clearTimeout(timeoutId);
+        // Session expirée → retour à la connexion
+        if (response.status === 401) {
+            if (window.AuthClient) window.AuthClient.clearToken();
+            if (window.profileSelector) window.profileSelector.showLoginScreen();
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         if (!response.ok) { throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`); }
         const data = await response.json();
         const aiResponse = data.choices?.[0]?.message?.content || data.analysis || 'Réponse IA non disponible';

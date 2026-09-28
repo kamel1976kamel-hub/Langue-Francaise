@@ -57,15 +57,322 @@ const TEMPERATURE_DEFAULT = 0.5;
 const MAX_CONCURRENT_REQUESTS = 10;
 let concurrentRequests = 0;
 
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400'
-};
+// =================================================================
+// AUTHENTIFICATION — Constantes
+// =================================================================
+const AUTH_REQUIRED = true; // Production : auth obligatoire. Si DB absente → 503.
+const PBKDF2_ITERATIONS = 100000;
+const SALT_BYTES = 16;
+const SESSION_TOKEN_BYTES = 32;
+const SESSION_EXPIRY_SECONDS = 4 * 60 * 60; // 4 heures
+const MAX_LOGIN_ATTEMPTS = 15;
+const LOCKOUT_WINDOW_SECONDS = 1800; // 30 minutes
+const GLOBAL_IP_MAX_ATTEMPTS = 50; // Max tentatives (tous usernames) par IP dans la fenêtre
+const BRUTE_FORCE_THRESHOLDS = [
+    { attempts: 3, delay: 5 },
+    { attempts: 5, delay: 30 },
+    { attempts: 10, delay: 300 }
+];
+
+// =================================================================
+// AUTHENTIFICATION — Fonctions utilitaires
+// =================================================================
+
+function hexEncode(buffer) {
+    return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateRandomHex(bytes) {
+    const arr = new Uint8Array(bytes);
+    crypto.getRandomValues(arr);
+    return hexEncode(arr.buffer);
+}
+
+async function sha256Hex(data) {
+    const encoded = new TextEncoder().encode(data);
+    const hash = await crypto.subtle.digest('SHA-256', encoded);
+    return hexEncode(hash);
+}
+
+async function hashPassword(password, pepper) {
+    const salt = generateRandomHex(SALT_BYTES);
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(password + pepper),
+        'PBKDF2', false, ['deriveBits']
+    );
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: new TextEncoder().encode(salt),
+          iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+        keyMaterial, 256
+    );
+    return PBKDF2_ITERATIONS + ':' + salt + ':' + hexEncode(bits);
+}
+
+async function verifyPassword(password, pepper, storedHash) {
+    const parts = storedHash.split(':');
+    if (parts.length !== 3) return false;
+    const iterations = parseInt(parts[0], 10);
+    const salt = parts[1];
+    const expectedHash = parts[2];
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(password + pepper),
+        'PBKDF2', false, ['deriveBits']
+    );
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: new TextEncoder().encode(salt),
+          iterations: iterations, hash: 'SHA-256' },
+        keyMaterial, 256
+    );
+    const computed = hexEncode(bits);
+    // Constant-time comparison
+    if (computed.length !== expectedHash.length) return false;
+    let result = 0;
+    for (let i = 0; i < computed.length; i++) {
+        result |= computed.charCodeAt(i) ^ expectedHash.charCodeAt(i);
+    }
+    return result === 0;
+}
+
+function generateSessionToken() {
+    return generateRandomHex(SESSION_TOKEN_BYTES);
+}
+
+async function hashSessionToken(token) {
+    return await sha256Hex(token);
+}
+
+function extractSessionToken(request) {
+    if (!request.headers || typeof request.headers.get !== 'function') return null;
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    return authHeader.slice(7).trim();
+}
+
+function getIPHash(request) {
+    const ip = (request.headers && typeof request.headers.get === 'function')
+        ? (request.headers.get('CF-Connecting-IP') || 'unknown')
+        : 'unknown';
+    return sha256Hex(ip);
+}
+
+function getDelayForAttempts(failCount) {
+    let delay = 0;
+    for (const t of BRUTE_FORCE_THRESHOLDS) {
+        if (failCount >= t.attempts) delay = t.delay;
+    }
+    return delay;
+}
+
+async function checkBruteForce(db, username, ipHash) {
+    const cutoff = new Date(Date.now() - LOCKOUT_WINDOW_SECONDS * 1000).toISOString();
+    // 1. Verrouillage par username (cible spécifique)
+    const byUser = await db.prepare(
+        'SELECT COUNT(*) as count FROM login_attempts WHERE username = ? AND success = 0 AND attempted_at > ?'
+    ).bind(username, cutoff).first();
+    if (byUser.count >= MAX_LOGIN_ATTEMPTS) {
+        return { locked: true, delay: 0, reason: 'locked' };
+    }
+    // 2. Limite globale par IP (tous usernames confondus)
+    //    Empêche un attaquant de contourner la limite par username en changeant de cible.
+    const globalByIP = await db.prepare(
+        'SELECT COUNT(*) as count FROM login_attempts WHERE ip_hash = ? AND success = 0 AND attempted_at > ?'
+    ).bind(ipHash, cutoff).first();
+    if (globalByIP.count >= GLOBAL_IP_MAX_ATTEMPTS) {
+        return { locked: true, delay: 0, reason: 'ip_locked' };
+    }
+    // 3. Délai progressif par IP
+    const delay = getDelayForAttempts(globalByIP.count);
+    if (delay > 0) return { locked: false, delay: delay, reason: 'throttled' };
+    return { locked: false, delay: 0, reason: null };
+}
+
+async function recordLoginAttempt(db, username, ipHash, success) {
+    await db.prepare(
+        'INSERT INTO login_attempts (username, ip_hash, success) VALUES (?, ?, ?)'
+    ).bind(username, ipHash, success ? 1 : 0).run();
+}
+
+async function validateSession(db, token) {
+    const tokenHash = await hashSessionToken(token);
+    const session = await db.prepare(
+        'SELECT user_id, expires_at FROM sessions WHERE token_hash = ?'
+    ).bind(tokenHash).first();
+    if (!session) return null;
+    if (new Date(session.expires_at) < new Date()) {
+        await db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
+        return null;
+    }
+    return session;
+}
+
+async function cleanupExpiredSessions(db) {
+    try {
+        await db.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
+        await db.prepare(
+            'DELETE FROM login_attempts WHERE attempted_at < ?'
+        ).bind(new Date(Date.now() - 86400000).toISOString()).run();
+    } catch (e) { /* best-effort */ }
+}
+
+// =================================================================
+// AUTHENTIFICATION — Handlers
+// =================================================================
+
+async function handleLogin(request, env) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
+    const ipHash = await getIPHash(request);
+    let corps;
+    try { corps = await request.json(); } catch (e) {
+        return reponseJSON({ erreur: 'JSON invalide' }, 400);
+    }
+    const { username, password } = corps || {};
+    if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
+        return reponseJSON({ erreur: 'Identifiants requis' }, 400);
+    }
+    // Anti-brute-force
+    const bf = await checkBruteForce(db, username, ipHash);
+    if (bf.locked) {
+        return reponseJSON({ erreur: 'Compte temporairement verrouillé' }, 429);
+    }
+    if (bf.delay > 0) {
+        await new Promise(r => setTimeout(r, bf.delay * 1000));
+    }
+    // Lookup utilisateur
+    const user = await db.prepare(
+        'SELECT id, username, password_hash, display_name, role, concepteur, actif, must_change FROM users WHERE username = ?'
+    ).bind(username.toLowerCase().trim()).first();
+    if (!user) {
+        await recordLoginAttempt(db, username, ipHash, false);
+        return reponseJSON({ erreur: 'Identifiants invalides' }, 401);
+    }
+    // Vérifier mot de passe
+    const valid = await verifyPassword(password, pepper, user.password_hash);
+    if (!valid) {
+        await recordLoginAttempt(db, username, ipHash, false);
+        return reponseJSON({ erreur: 'Identifiants invalides' }, 401);
+    }
+    if (!user.actif) {
+        await recordLoginAttempt(db, username, ipHash, false);
+        return reponseJSON({ erreur: 'Compte désactivé' }, 403);
+    }
+    // Succès — nettoyer tentatives et créer session
+    await recordLoginAttempt(db, username, ipHash, true);
+    await db.prepare('DELETE FROM login_attempts WHERE username = ? AND success = 0').bind(username).run();
+    const sessionToken = generateSessionToken();
+    const tokenHash = await hashSessionToken(sessionToken);
+    const expiresAt = new Date(Date.now() + SESSION_EXPIRY_SECONDS * 1000).toISOString();
+    await db.prepare(
+        'INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)'
+    ).bind(tokenHash, user.id, expiresAt).run();
+    return reponseJSON({
+        session: sessionToken,
+        user: {
+            id: user.id,
+            username: user.username,
+            displayName: user.display_name,
+            role: user.role,
+            concepteur: !!user.concepteur
+        },
+        mustChangePassword: !!user.must_change,
+        expiresAt: expiresAt
+    }, 200);
+}
+
+async function handleLogout(request, env) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
+    const token = extractSessionToken(request);
+    if (token) {
+        const tokenHash = await hashSessionToken(token);
+        await db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
+    }
+    return reponseJSON({ message: 'Déconnexion réussie' }, 200);
+}
+
+async function handleChangePassword(request, env, session) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
+    let corps;
+    try { corps = await request.json(); } catch (e) {
+        return reponseJSON({ erreur: 'JSON invalide' }, 400);
+    }
+    const { oldPassword, newPassword } = corps || {};
+    if (!oldPassword || !newPassword || typeof newPassword !== 'string') {
+        return reponseJSON({ erreur: 'Ancien et nouveau mot de passe requis' }, 400);
+    }
+    if (newPassword.length < 8) {
+        return reponseJSON({ erreur: 'Mot de passe trop court (minimum 8 caractères)' }, 400);
+    }
+    // Vérifier ancien mot de passe
+    const user = await db.prepare(
+        'SELECT id, password_hash FROM users WHERE id = ?'
+    ).bind(session.user_id).first();
+    if (!user) return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    const valid = await verifyPassword(oldPassword, pepper, user.password_hash);
+    if (!valid) return reponseJSON({ erreur: 'Mot de passe incorrect' }, 401);
+    // Hasher nouveau mot de passe
+    const newHash = await hashPassword(newPassword, pepper);
+    await db.prepare(
+        'UPDATE users SET password_hash = ?, must_change = 0, updated_at = datetime(\'now\') WHERE id = ?'
+    ).bind(newHash, user.id).run();
+    return reponseJSON({ message: 'Mot de passe modifié' }, 200);
+}
+
+async function handleMe(env, session) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
+    const user = await db.prepare(
+        'SELECT id, username, display_name, role, concepteur, actif, must_change FROM users WHERE id = ?'
+    ).bind(session.user_id).first();
+    if (!user) return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    if (!user.actif) return reponseJSON({ erreur: 'Compte désactivé' }, 403);
+    return reponseJSON({
+        user: {
+            id: user.id,
+            username: user.username,
+            displayName: user.display_name,
+            role: user.role,
+            concepteur: !!user.concepteur
+        },
+        mustChangePassword: !!user.must_change
+    }, 200);
+}
+
+async function requireSession(request, env) {
+    const db = env.DB;
+    if (!db) return { error: reponseJSON({ erreur: 'Authentification requise' }, 401) };
+    const token = extractSessionToken(request);
+    if (!token) return { error: reponseJSON({ erreur: 'Authentification requise' }, 401) };
+    const session = await validateSession(db, token);
+    if (!session) return { error: reponseJSON({ erreur: 'Session expirée' }, 401) };
+    return { session: session };
+}
+
+// CORS dynamique : vérifie l'Origin de la requête.
+// Retourne les headers CORS uniquement si l'origine est autorisée
+// ou si aucun Origin n'est fourni (outils serveur / tests).
+function getCorsHeaders(request) {
+    const origin = request.headers && typeof request.headers.get === 'function'
+        ? request.headers.get('Origin') : null;
+    if (!origin || origin === ALLOWED_ORIGIN) {
+        return {
+            'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Max-Age': '86400'
+        };
+    }
+    return {};
+}
 
 function reponseJSON(corps, statut) {
-    const entetes = Object.assign({ 'Content-Type': 'application/json' }, CORS_HEADERS);
+    const entetes = { 'Content-Type': 'application/json' };
     return new Response(JSON.stringify(corps), { status: statut, headers: entetes });
 }
 
@@ -230,17 +537,38 @@ function synthetiserReponsePedagogique(etapes) {
 
 export default {
     async fetch(request, env, ctx) {
-        // Prévol CORS / méthode
+        // ─── Contrôle strict de l'origine CORS ───
+        const origin = request.headers && typeof request.headers.get === 'function'
+            ? request.headers.get('Origin') : null;
+        const originAllowed = !origin || origin === ALLOWED_ORIGIN;
+
+        // Prévol CORS — uniquement pour l'origine autorisée
         if (request.method === 'OPTIONS') {
-            return new Response(null, { status: 204, headers: CORS_HEADERS });
+            if (!originAllowed) {
+                return new Response(null, { status: 403 });
+            }
+            return new Response(null, { status: 204, headers: getCorsHeaders(request) });
         }
         if (request.method !== 'POST') {
-            return reponseJSON({ erreur: 'Méthode non autorisée (POST uniquement)' }, 405);
+            const corsH = originAllowed ? getCorsHeaders(request) : {};
+            return new Response(JSON.stringify({ erreur: 'Méthode non autorisée (POST uniquement)' }),
+                { status: 405, headers: Object.assign({ 'Content-Type': 'application/json' }, corsH) });
+        }
+        // Origine non autorisée → 403 sans headers CORS
+        if (!originAllowed) {
+            return new Response(JSON.stringify({ erreur: 'Origine non autorisée' }),
+                { status: 403, headers: { 'Content-Type': 'application/json' } });
         }
 
         // CATCH GLOBAL : capturer toute exception non gérée pour retourner une réponse structurée
         try {
-            return await this._handlePostRequest(request, env);
+            const result = await this._handlePostRequest(request, env);
+            // Ajouter les headers CORS à toutes les réponses (origine déjà validée)
+            const corsH = getCorsHeaders(request);
+            for (const [k, v] of Object.entries(corsH)) {
+                result.headers.set(k, v);
+            }
+            return result;
         } catch (globalError) {
             // Exception non capturée par les blocs internes
             console.error('WORKER_GLOBAL_ERROR:', {
@@ -248,16 +576,63 @@ export default {
                 message: globalError.message,
                 stack: globalError.stack
             });
-            return reponseJSON({
+            return new Response(JSON.stringify({
                 erreur: 'Erreur interne du Worker',
                 source: 'worker_error',
                 code: 'UNCAUGHT_EXCEPTION',
                 details: globalError.message
-            }, 502);
+            }), {
+                status: 502,
+                headers: Object.assign({ 'Content-Type': 'application/json' }, getCorsHeaders(request))
+            });
         }
     },
 
     async _handlePostRequest(request, env) {
+
+        // Extraction du token de session (pour toutes les actions)
+        const sessionToken = extractSessionToken(request);
+
+        // ─── ROUTING AUTHENTIFICATION (pas besoin de GROQ_API_KEY) ───
+        let corpsBrut = null;
+        try {
+            const cloneable = typeof request.clone === 'function' ? request.clone() : request;
+            corpsBrut = await cloneable.json();
+        } catch (e) { /* corps non-JSON ou clone non supporté */ }
+        const actionAuth = (corpsBrut && typeof corpsBrut === 'object') ? corpsBrut.action : undefined;
+
+        if (actionAuth === 'login') {
+            return await handleLogin(request, env);
+        }
+        if (actionAuth === 'logout') {
+            return await handleLogout(request, env);
+        }
+        if (actionAuth === 'change-password') {
+            if (!sessionToken) return reponseJSON({ erreur: 'Authentification requise' }, 401);
+            const { session, error } = await requireSession(request, env);
+            if (error) return error;
+            return await handleChangePassword(request, env, session);
+        }
+        if (actionAuth === 'me') {
+            if (!sessionToken) return reponseJSON({ erreur: 'Authentification requise' }, 401);
+            const { session, error } = await requireSession(request, env);
+            if (error) return error;
+            return await handleMe(env, session);
+        }
+
+        // ─── PIPELINE IA — Session requise ───
+        if (AUTH_REQUIRED) {
+            if (!env.DB) {
+                return reponseJSON({ erreur: 'Service authentification non configuré', source: 'auth_unavailable' }, 503);
+            }
+            if (!sessionToken) {
+                return reponseJSON({ erreur: 'Authentification requise', source: 'auth_required' }, 401);
+            }
+            const { session, error } = await requireSession(request, env);
+            if (error) return error;
+            // Nettoyage périodique des sessions expirées (best-effort)
+            await cleanupExpiredSessions(env.DB);
+        }
 
         // Secret présent ? (jamais exposé au navigateur)
         const cle = env && env.GROQ_API_KEY;

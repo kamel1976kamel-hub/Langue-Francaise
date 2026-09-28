@@ -25,6 +25,7 @@
     <script src="nlp/integration-manager.js?v=44"></script>
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=44"></script>
+    <script src="auth-client.js?v=80"></script>
     <script src="main.js?v=75"></script>
     
     // Debug script -->
@@ -1887,42 +1888,82 @@
       <div class="w-full max-w-md rounded-lg border p-6 shadow-xl" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
         <div class="mb-6 text-center">
           <h2 class="text-xl font-semibold" style="color: var(--bs-body-color);">Atelier de rédaction</h2>
-          <p class="mt-1 text-sm" style="color: var(--bs-text-muted);">Sélectionnez votre profil</p>
+          <p class="mt-1 text-sm" style="color: var(--bs-text-muted);">Connexion sécurisée</p>
         </div>
 
         <form id="loginForm" class="space-y-4">
           <div>
-            <label for="username" class="block text-sm font-medium text-slate-700">Votre nom</label>
-            <select
+            <label for="username" class="block text-sm font-medium text-slate-700">Nom d'utilisateur</label>
+            <input
+              type="text"
               id="username"
               name="username"
+              autocomplete="username"
               required
               class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-            >
-              <option value="" disabled selected>— Choisissez votre nom —</option>
-            </select>
+              placeholder="Votre nom d'utilisateur"
+            />
+          </div>
+          <div>
+            <label for="password" class="block text-sm font-medium text-slate-700">Mot de passe</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              required
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              placeholder="Votre mot de passe"
+            />
           </div>
 
           <div id="loginError" class="hidden rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
-            Profil non reconnu.
+            Identifiants invalides.
           </div>
 
           <button
             type="submit"
+            id="loginButton"
             class="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
           >
-            Continuer
+            Connexion
           </button>
         </form>
+      </div>
+    </div>
 
-        <div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
-          <p class="font-medium mb-1">⚠️ Ceci n'est pas une authentification sécurisée.</p>
-          <p class="text-amber-700">La sélection de profil est uniquement pour charger vos données personnelles. Aucune vérification par mot de passe.</p>
+    <!-- Modal changement de mot de passe obligatoire -->
+    <div id="changePasswordModal" class="fixed inset-0 z-50 hidden flex items-center justify-center backdrop-blur-sm" style="background-color: rgba(38, 38, 38, 0.6);">
+      <div class="w-full max-w-md rounded-lg border p-6 shadow-xl" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
+        <div class="mb-6 text-center">
+          <h2 class="text-xl font-semibold" style="color: var(--bs-body-color);">Changement de mot de passe</h2>
+          <p class="mt-1 text-sm" style="color: var(--bs-text-muted);">Vous devez changer votre mot de passe avant de continuer.</p>
         </div>
 
-        <div class="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-          <p class="text-center">Sélectionnez votre nom dans la liste ci-dessus pour continuer.</p>
-        </div>
+        <form id="changePasswordForm" class="space-y-4">
+          <div>
+            <label for="oldPassword" class="block text-sm font-medium text-slate-700">Ancien mot de passe</label>
+            <input type="password" id="oldPassword" name="oldPassword" autocomplete="current-password" required
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500" />
+          </div>
+          <div>
+            <label for="newPassword" class="block text-sm font-medium text-slate-700">Nouveau mot de passe</label>
+            <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" required minlength="8"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500" />
+          </div>
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-slate-700">Confirmer le nouveau mot de passe</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required minlength="8"
+              class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500" />
+          </div>
+
+          <div id="changePasswordError" class="hidden rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600"></div>
+
+          <button type="submit" id="changePasswordButton"
+            class="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
+            Changer le mot de passe
+          </button>
+        </form>
       </div>
     </div>
 
@@ -5629,66 +5670,195 @@
         { id: 'student_037', username: "ahmed.yacine.achouri", role: "student", displayName: "AHMED YACINE ACHOURI", actif: true }
       ];
 
-      // Profil sélectionné (SEC-003 : PAS une authentification)
+      // Profil authentifié (source officielle : Worker /me)
       let currentUser = null;
 
-      // Sélecteur de profils (SEC-003 : PAS une authentification sécurisée)
+      // Gestionnaire d'authentification — Worker + D1
       class ProfileSelector {
         constructor() {
           this.currentUser = null;
+          this.mustChangePassword = false;
           this.init();
         }
         init() {
-          this.populateSelect();
           this.setupEventListeners();
-          this.restoreProfile();
-          console.log('👤 Sélecteur de profils initialisé (SEC-003)');
-        }
-        populateSelect() {
-          const select = document.getElementById('username');
-          if (!select) return;
-          const students = users.filter(u => u.role === 'student' && u.actif);
-          const teachers = users.filter(u => u.role === 'teacher' && u.actif);
-          const ogS = document.createElement('optgroup');
-          ogS.label = 'Étudiants (' + students.length + ')';
-          students.forEach(u => { const o = document.createElement('option'); o.value = u.username; o.textContent = u.displayName; ogS.appendChild(o); });
-          const ogT = document.createElement('optgroup');
-          ogT.label = 'Enseignants (' + teachers.length + ')';
-          teachers.forEach(u => { const o = document.createElement('option'); o.value = u.username; o.textContent = u.displayName + (u.concepteur ? ' ★' : ''); ogT.appendChild(o); });
-          select.appendChild(ogS);
-          select.appendChild(ogT);
+          this.setupChangePasswordForm();
+          this.bootstrapAuth();
+          console.log('🔐 Authentification Worker initialisée');
         }
         setupEventListeners() {
           const loginForm = document.getElementById('loginForm');
-          if (loginForm) loginForm.addEventListener('submit', (e) => this.handleSelect(e));
+          if (loginForm) loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         }
-        handleSelect(event) {
+        setupChangePasswordForm() {
+          const cpForm = document.getElementById('changePasswordForm');
+          if (cpForm) cpForm.addEventListener('submit', (e) => this.handleChangePassword(e));
+        }
+
+        // ─── BOOTSTRAP : vérifier session existante via /me ───
+        async bootstrapAuth() {
+          if (!window.AuthClient || !window.AuthClient.isAuthenticated()) {
+            this.showLoginScreen();
+            return;
+          }
+          try {
+            const result = await window.AuthClient.getMe();
+            if (result.status === 200 && result.data.user) {
+              this.setAuthenticatedUser(result.data.user, result.data.mustChangePassword);
+              if (this.mustChangePassword) {
+                this.showChangePasswordScreen();
+              } else {
+                this.showMainApp();
+              }
+            } else {
+              window.AuthClient.clearToken();
+              this.showLoginScreen();
+            }
+          } catch (e) {
+            window.AuthClient.clearToken();
+            this.showLoginScreen();
+          }
+        }
+
+        // ─── LOGIN ───
+        async handleLogin(event) {
           event.preventDefault();
-          const username = document.getElementById('username').value;
-          const user = users.find(u => u.username === username && u.actif);
-          if (user) { this.selectProfile(user); } else { this.showError('Profil non reconnu.'); }
+          this.hideError();
+          const usernameEl = document.getElementById('username');
+          const passwordEl = document.getElementById('password');
+          const loginBtn = document.getElementById('loginButton');
+          const username = usernameEl ? usernameEl.value.trim() : '';
+          const password = passwordEl ? passwordEl.value : '';
+          if (!username || !password) {
+            this.showError('Veuillez remplir tous les champs.');
+            return;
+          }
+          // État chargement
+          if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Connexion...'; }
+          try {
+            const result = await window.AuthClient.login(username, password);
+            if (result.status === 200 && result.data.session) {
+              // Login réussi → appeler /me pour l'identité officielle
+              const meResult = await window.AuthClient.getMe();
+              if (meResult.status === 200 && meResult.data.user) {
+                this.setAuthenticatedUser(meResult.data.user, meResult.data.mustChangePassword);
+                if (this.mustChangePassword) {
+                  this.showChangePasswordScreen();
+                } else {
+                  this.showMainApp();
+                }
+              } else {
+                window.AuthClient.clearToken();
+                this.showError('Erreur lors de la récupération du profil.');
+              }
+            } else if (result.status === 401) {
+              this.showError('Identifiants invalides.');
+            } else if (result.status === 429) {
+              this.showError('Compte temporairement verrouillé. Réessayez plus tard.');
+            } else if (result.status === 503) {
+              this.showError('Service temporairement indisponible.');
+            } else {
+              this.showError('Erreur de connexion. Réessayez.');
+            }
+          } catch (e) {
+            this.showError('Service temporairement indisponible.');
+          }
+          if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Connexion'; }
+          // Ne jamais journaliser le mot de passe
+          if (passwordEl) passwordEl.value = '';
         }
-        selectProfile(user) {
-          this.currentUser = { id: user.id, username: user.username, displayName: user.displayName, role: user.role, concepteur: user.concepteur || false };
+
+        // ─── CHANGEMENT DE MOT DE PASSE ───
+        async handleChangePassword(event) {
+          event.preventDefault();
+          const errEl = document.getElementById('changePasswordError');
+          const btn = document.getElementById('changePasswordButton');
+          const oldPw = document.getElementById('oldPassword');
+          const newPw = document.getElementById('newPassword');
+          const confirmPw = document.getElementById('confirmPassword');
+          if (!oldPw || !newPw || !confirmPw) return;
+          if (newPw.value !== confirmPw.value) {
+            this.showChangePasswordError('Les nouveaux mots de passe ne correspondent pas.');
+            return;
+          }
+          if (newPw.value.length < 8) {
+            this.showChangePasswordError('Le mot de passe doit contenir au moins 8 caractères.');
+            return;
+          }
+          if (btn) { btn.disabled = true; btn.textContent = 'Modification...'; }
+          try {
+            const result = await window.AuthClient.changePassword(oldPw.value, newPw.value);
+            if (result.status === 200) {
+              // Succès → rappeler /me pour vérifier must_change = 0
+              const meResult = await window.AuthClient.getMe();
+              if (meResult.status === 200 && meResult.data.user) {
+                this.setAuthenticatedUser(meResult.data.user, meResult.data.mustChangePassword);
+                if (!this.mustChangePassword) {
+                  this.showMainApp();
+                } else {
+                  this.showChangePasswordError('Le changement n\'a pas été pris en compte.');
+                }
+              } else {
+                this.showChangePasswordError('Erreur lors de la vérification.');
+              }
+            } else if (result.status === 401) {
+              this.showChangePasswordError('Ancien mot de passe incorrect.');
+            } else {
+              this.showChangePasswordError(result.data.erreur || 'Erreur lors du changement.');
+            }
+          } catch (e) {
+            this.showChangePasswordError('Service temporairement indisponible.');
+          }
+          if (btn) { btn.disabled = false; btn.textContent = 'Changer le mot de passe'; }
+          oldPw.value = '';
+          newPw.value = '';
+          confirmPw.value = '';
+        }
+
+        // ─── IDENTITÉ AUTHENTIFIÉE ───
+        setAuthenticatedUser(meUser, mustChange) {
+          this.currentUser = {
+            id: meUser.id,
+            username: meUser.username,
+            displayName: meUser.displayName,
+            role: meUser.role,
+            concepteur: !!meUser.concepteur
+          };
+          this.mustChangePassword = !!mustChange;
           currentUser = this.currentUser;
-          if (typeof updateUserHeader === 'function') updateUserHeader(this.currentUser);
+          // Compatibilité : synchroniser localStorage.currentProfile (lecture seule)
           localStorage.setItem('currentProfile', JSON.stringify(this.currentUser));
+          if (typeof updateUserHeader === 'function') updateUserHeader(this.currentUser);
+          console.log('🔐 Utilisateur authentifié:', meUser.username);
+        }
+
+        // ─── NAVIGATION ÉCRANS ───
+        showLoginScreen() {
           const authModal = document.getElementById('authModal');
           const mainApp = document.getElementById('mainApp');
+          const cpModal = document.getElementById('changePasswordModal');
+          if (authModal) authModal.classList.remove('hidden');
+          if (mainApp) mainApp.classList.add('hidden');
+          if (cpModal) cpModal.classList.add('hidden');
+        }
+        showMainApp() {
+          const authModal = document.getElementById('authModal');
+          const mainApp = document.getElementById('mainApp');
+          const cpModal = document.getElementById('changePasswordModal');
           if (authModal) authModal.classList.add('hidden');
           if (mainApp) mainApp.classList.remove('hidden');
-          console.log('👤 Profil sélectionné:', user.displayName);
+          if (cpModal) cpModal.classList.add('hidden');
         }
-        restoreProfile() {
-          try {
-            const saved = localStorage.getItem('currentProfile');
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              const validUser = users.find(u => u.id === parsed.id && u.actif);
-              if (validUser) this.selectProfile(validUser);
-            }
-          } catch (e) { console.warn('Restauration profil échouée:', e); }
+        showChangePasswordScreen() {
+          const authModal = document.getElementById('authModal');
+          const mainApp = document.getElementById('mainApp');
+          const cpModal = document.getElementById('changePasswordModal');
+          if (authModal) authModal.classList.add('hidden');
+          if (mainApp) mainApp.classList.add('hidden');
+          if (cpModal) cpModal.classList.remove('hidden');
         }
+
+        // ─── ERREURS ───
         showError(message) {
           const loginError = document.getElementById('loginError');
           if (loginError) { loginError.textContent = message; loginError.classList.remove('hidden'); }
@@ -5697,30 +5867,37 @@
           const loginError = document.getElementById('loginError');
           if (loginError) loginError.classList.add('hidden');
         }
-        logout() {
+        showChangePasswordError(message) {
+          const el = document.getElementById('changePasswordError');
+          if (el) { el.textContent = message; el.classList.remove('hidden'); }
+        }
+
+        // ─── LOGOUT ───
+        async logout() {
+          try { await window.AuthClient.logout(); } catch (e) { /* best-effort */ }
           this.currentUser = null;
+          this.mustChangePassword = false;
           currentUser = null;
           localStorage.removeItem('currentProfile');
-          const authModal = document.getElementById('authModal');
-          const mainApp = document.getElementById('mainApp');
-          if (authModal) authModal.classList.remove('hidden');
-          if (mainApp) mainApp.classList.add('hidden');
           const form = document.getElementById('loginForm');
           if (form) form.reset();
           this.hideError();
+          this.showLoginScreen();
         }
+
         getCurrentUser() { return this.currentUser; }
-        isAuthenticated() { return false; } // SEC-003 : jamais prétendre être une authentification
+        isAuthenticated() { return !!this.currentUser && window.AuthClient && window.AuthClient.isAuthenticated(); }
         hasRole(role) { return this.currentUser && this.currentUser.role === role; }
       }
 
-      // Initialiser le sélecteur de profils (SEC-003 : PAS une authentification)
+      // Initialiser l'authentification Worker
       const profileSelector = new ProfileSelector();
 
       // Fonctions de compatibilité
       function selectProfile(username) {
-        const user = users.find(u => u.username === username && u.actif);
-        if (user) { profileSelector.selectProfile(user); return true; }
+        // Compatibilité : selectProfile sans mot de passe ne fonctionne plus
+        // L'authentification réelle nécessite login(username, password) via le formulaire
+        console.warn('selectProfile() sans mot de passe non supporté — utiliser le formulaire de connexion');
         return false;
       }
       function logout() { profileSelector.logout(); }
@@ -9147,57 +9324,37 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       document.body.setAttribute('data-bs-theme', savedTheme);
 
-      // ============ DÉCONNEXION (SEC-003) ============
+      // ============ DÉCONNEXION ============
       window.logout = function() {
         if (typeof profileSelector !== 'undefined') {
           profileSelector.logout();
-        } else {
-          currentUser = null;
-          localStorage.removeItem('currentProfile');
-          mainApp.classList.add('hidden');
-          authModal.classList.remove('hidden');
-          document.getElementById('loginForm').reset();
         }
       };
 
       // Le formulaire est déjà géré par ProfileSelector.setupEventListeners()
-      loginForm.addEventListener("submit", function(e) {
-        e.preventDefault();
-        var username = document.getElementById("username").value.trim();
-        if (!username) { showLoginError("Veuillez sélectionner un profil."); return; }
-        if (!selectProfile(username)) { showLoginError("Profil non reconnu."); }
-      });
+      // (pas de double abonnement)
 
-      // Restaurer le profil sélectionné au chargement (déjà géré par ProfileSelector.restoreProfile())
-      try {
-        var savedProfile = localStorage.getItem('currentProfile');
-        if (savedProfile && typeof profileSelector !== 'undefined') {
-          // Déjà restauré par ProfileSelector.restoreProfile()
-        }
-      } catch (err) {
-        console.error("Erreur lors du chargement:", err);
-        if (mainApp) mainApp.classList.remove("hidden");
-        if (authModal) authModal.classList.add("hidden");
-      }
+      // Restauration gérée par ProfileSelector.bootstrapAuth() via /me
+      // Ne JAMAIS afficher mainApp sur la seule base de localStorage
     </script>
     
-    <!-- Script de secours pour garantir l'affichage -->
+    <!-- Script de secours : vérifie la session AuthClient, pas localStorage -->
     <script>
     (function() {
-      // Attendre que tout soit chargé
       window.addEventListener('load', function() {
         setTimeout(function() {
           var mainApp = document.getElementById('mainApp');
           var authModal = document.getElementById('authModal');
-          var savedUser = localStorage.getItem('currentProfile');
+          var cpModal = document.getElementById('changePasswordModal');
           
-          // Si une session existe mais que l'app n'est pas visible, forcer l'affichage
-          if (savedUser && mainApp && authModal) {
-            if (mainApp.classList.contains('hidden')) {
-              console.log('Script de secours: affichage forcé de l\'interface');
-              authModal.classList.add('hidden');
-              mainApp.classList.remove('hidden');
-            }
+          // Si aucun écran n'est visible, retourner à la connexion
+          var authHidden = authModal && authModal.classList.contains('hidden');
+          var mainHidden = mainApp && mainApp.classList.contains('hidden');
+          var cpHidden = cpModal && cpModal.classList.contains('hidden');
+          
+          if (authHidden && mainHidden && cpHidden) {
+            // Tout est caché → afficher login
+            if (authModal) authModal.classList.remove('hidden');
           }
         }, 500);
       });
