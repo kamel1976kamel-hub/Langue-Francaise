@@ -273,6 +273,7 @@ async function makeMockEnv(db) {
         DB: db,
         GROQ_API_KEY: 'test-key-mock',
         AUTH_PEPPER: pepper,
+        BOOTSTRAP_KEY: 'test-bootstrap-key-12345',
         _testPasswords: {
             'amira.hamdaoui': 'TestPassword123',
             'wissal.hamza': 'TempPass456!',
@@ -1328,6 +1329,213 @@ async function runTests() {
         // ghost_1 inexistant, student_003 inactif, ghost_2 inexistant → seuls student_001 traité
         assertEq(data.results.length, 1, '1 résultat (inexistants/inactifs ignorés)');
         assertEq(data.results[0].userId, 'student_001', 'Seul student_001 traité');
+    }
+
+    // =================================================================
+    // TESTS BOOTSTRAP — Mécanisme temporaire teacher_001
+    // =================================================================
+    console.log('\n' + '═'.repeat(60));
+    console.log('🔑 TESTS BOOTSTRAP — Initialisation teacher_001');
+    console.log('═'.repeat(60));
+
+    // ─── TEST B1 : bootstrap cible correcte → 200 ───
+    console.log('\n📋 Test B1 : bootstrap teacher_001 → 200');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const hashBefore = db.users.get('kamel.chellouai').password_hash;
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const resp = await handler.fetch(req, env, {});
+        const data = await resp.json();
+        assertEq(resp.status, 200, 'Statut 200');
+        assert(!!data.temporaryPassword, 'Mot de passe temporaire retourné');
+        assertEq(data.temporaryPassword.length, 16, 'TemporaryPassword 16 chars');
+        assertEq(data.userId, 'teacher_001', 'userId = teacher_001');
+        // Vérifier que le hash a changé
+        const hashAfter = db.users.get('kamel.chellouai').password_hash;
+        assert(hashAfter !== hashBefore, 'Hash modifié');
+        // Vérifier must_change=1
+        assertEq(db.users.get('kamel.chellouai').must_change, 1, 'must_change=1');
+    }
+
+    // ─── TEST B2 : bootstrap cible différente → 403 ───
+    console.log('\n📋 Test B2 : bootstrap cible différente → 403');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'student_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const resp = await handler.fetch(req, env, {});
+        assertEq(resp.status, 403, 'Statut 403 cible non autorisée');
+    }
+
+    // ─── TEST B3 : bootstrap sans BOOTSTRAP_KEY → 403 ───
+    console.log('\n📋 Test B3 : bootstrap sans clé → 403');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            {}
+        );
+        const resp = await handler.fetch(req, env, {});
+        assertEq(resp.status, 403, 'Statut 403 sans clé');
+    }
+
+    // ─── TEST B4 : bootstrap avec mauvaise clé → 403 ───
+    console.log('\n📋 Test B4 : bootstrap mauvaise clé → 403');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': 'wrong-key' }
+        );
+        const resp = await handler.fetch(req, env, {});
+        assertEq(resp.status, 403, 'Statut 403 mauvaise clé');
+    }
+
+    // ─── TEST B5 : bootstrap sans AUTH_PEPPER → 503 ───
+    console.log('\n📋 Test B5 : bootstrap sans AUTH_PEPPER → 503');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        env.AUTH_PEPPER = undefined;
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const resp = await handler.fetch(req, env, {});
+        assertEq(resp.status, 503, 'Statut 503 sans pepper');
+    }
+
+    // ─── TEST B6 : bootstrap sans BOOTSTRAP_KEY configuré → 503 ───
+    console.log('\n📋 Test B6 : bootstrap sans BOOTSTRAP_KEY env → 503');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        env.BOOTSTRAP_KEY = undefined;
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': 'anything' }
+        );
+        const resp = await handler.fetch(req, env, {});
+        assertEq(resp.status, 503, 'Statut 503 bootstrap non configuré');
+    }
+
+    // ─── TEST B7 : hash PBKDF2 valide après bootstrap ───
+    console.log('\n📋 Test B7 : hash PBKDF2 valide après bootstrap');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const resp = await handler.fetch(req, env, {});
+        const data = await resp.json();
+        const newHash = db.users.get('kamel.chellouai').password_hash;
+        const parts = newHash.split(':');
+        assertEq(parts.length, 3, 'Hash au format iterations:salt:hash');
+        assertEq(parts[0], '100000', '100000 itérations');
+        assert(parts[1].length === 32, 'Salt 32 hex chars');
+        assert(parts[2].length === 64, 'Hash 64 hex chars (256 bits)');
+    }
+
+    // ─── TEST B8 : sessions invalidées après bootstrap ───
+    console.log('\n📋 Test B8 : sessions invalidées après bootstrap');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        // Créer une session pour teacher_001
+        const token = await createSessionForUser(env, 'teacher_001');
+        assert(db.sessions.size > 0, 'Session créée avant bootstrap');
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        await handler.fetch(req, env, {});
+        // Vérifier que les sessions de teacher_001 sont supprimées
+        let sessionsForTeacher = 0;
+        for (const [k, v] of db.sessions) {
+            if (v.user_id === 'teacher_001') sessionsForTeacher++;
+        }
+        assertEq(sessionsForTeacher, 0, 'Sessions teacher_001 invalidées');
+    }
+
+    // ─── TEST B9 : aucun plaintext password dans D1 ───
+    console.log('\n📋 Test B9 : aucun plaintext dans D1');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const resp = await handler.fetch(req, env, {});
+        const data = await resp.json();
+        const storedHash = db.users.get('kamel.chellouai').password_hash;
+        // Le mot de passe temporaire ne doit pas être stocké en clair
+        assert(!storedHash.includes(data.temporaryPassword), 'Temp password absent du hash stocké');
+        // Le hash doit être au format PBKDF2
+        assert(storedHash.startsWith('100000:'), 'Format PBKDF2');
+    }
+
+    // ─── TEST B10 : aucun secret dans la réponse ───
+    console.log('\n📋 Test B10 : réponse sans pepper ni hash');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        const req = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const resp = await handler.fetch(req, env, {});
+        const data = await resp.json();
+        const respStr = JSON.stringify(data);
+        assert(!respStr.includes(env.AUTH_PEPPER), 'Pepper absent de la réponse');
+        assert(!respStr.includes(env.BOOTSTRAP_KEY), 'Bootstrap key absent de la réponse');
+        assert(!respStr.includes(db.users.get('kamel.chellouai').password_hash), 'Hash absent de la réponse');
+    }
+
+    // ─── TEST B11 : login avec temp password après bootstrap ───
+    console.log('\n📋 Test B11 : login avec temp password après bootstrap');
+    {
+        const db = new MockD1Database();
+        const env = await makeMockEnv(db);
+        // Bootstrap
+        const reqBoot = makeRequest(
+            { action: 'bootstrap-set-password', targetUserId: 'teacher_001' },
+            'POST',
+            { 'X-Bootstrap-Key': env.BOOTSTRAP_KEY }
+        );
+        const respBoot = await handler.fetch(reqBoot, env, {});
+        const dataBoot = await respBoot.json();
+        const tempPw = dataBoot.temporaryPassword;
+        // Login avec le temp password
+        const reqLogin = makeRequest(
+            { action: 'login', username: 'kamel.chellouai', password: tempPw },
+            'POST', {}
+        );
+        const respLogin = await handler.fetch(reqLogin, env, {});
+        assertEq(respLogin.status, 200, 'Login avec temp password → 200');
+        const dataLogin = await respLogin.json();
+        assertEq(dataLogin.mustChangePassword, true, 'must_change=1 après login');
     }
 
     // ─── RÉSUMÉ ───

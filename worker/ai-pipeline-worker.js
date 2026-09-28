@@ -561,6 +561,59 @@ async function recordResetOperation(db, concepteurId) {
 // CORS dynamique : vérifie l'Origin de la requête.
 // Retourne les headers CORS uniquement si l'origine est autorisée
 // ou si aucun Origin n'est fourni (outils serveur / tests).
+
+// ─── BOOTSTRAP — Mécanisme temporaire à usage unique ───
+// Réservé au compte teacher_001 (kamel.chellouai).
+// Autorisation via secret Worker BOOTSTRAP_KEY (header X-Bootstrap-Key).
+// SUPPRIMER le secret BOOTSTRAP_KEY après utilisation pour désactiver définitivement.
+const BOOTSTRAP_TARGET_ID = 'teacher_001';
+
+async function handleBootstrapSetPassword(request, env) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    // Autorisation : clé bootstrap requise
+    const bootstrapKey = env.BOOTSTRAP_KEY;
+    if (!bootstrapKey) return reponseJSON({ erreur: 'Bootstrap non configuré' }, 503);
+    const providedKey = request.headers.get('X-Bootstrap-Key');
+    if (!providedKey || providedKey !== bootstrapKey) {
+        return reponseJSON({ erreur: 'Autorisation refusée' }, 403);
+    }
+    // Corps de la requête
+    let corps;
+    try { corps = await request.json(); } catch (e) {
+        return reponseJSON({ erreur: 'JSON invalide' }, 400);
+    }
+    const { targetUserId } = corps || {};
+    // Cible strictement limitée à teacher_001
+    if (targetUserId !== BOOTSTRAP_TARGET_ID) {
+        return reponseJSON({ erreur: 'Cible non autorisée' }, 403);
+    }
+    // Vérifier que la cible existe
+    const target = await db.prepare(
+        'SELECT id, username FROM users WHERE id = ?'
+    ).bind(BOOTSTRAP_TARGET_ID).first();
+    if (!target) {
+        return reponseJSON({ erreur: 'Compte cible introuvable' }, 404);
+    }
+    // Générer mot de passe temporaire + hasher
+    const tempPassword = generateTempPassword();
+    const newHash = await hashPassword(tempPassword, pepper);
+    // Mettre à jour le hash + must_change=1
+    await db.prepare(
+        "UPDATE users SET password_hash = ?, must_change = 1, updated_at = datetime('now') WHERE id = ?"
+    ).bind(newHash, target.id).run();
+    // Invalider toutes les sessions existantes
+    await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(target.id).run();
+    // Retourner le mot de passe UNE SEULE FOIS
+    return reponseJSON({
+        message: 'Bootstrap réussi',
+        userId: target.id,
+        username: target.username,
+        temporaryPassword: tempPassword
+    }, 200);
+}
 function getCorsHeaders(request) {
     const origin = request.headers && typeof request.headers.get === 'function'
         ? request.headers.get('Origin') : null;
@@ -825,6 +878,12 @@ export default {
         }
 
         // ─── ADMIN — Réservé au concepteur (role=teacher, concepteur=1) ───
+
+        // ─── BOOTSTRAP — Mécanisme temporaire (BOOTSTRAP_KEY requis) ───
+        if (actionAuth === 'bootstrap-set-password') {
+            return await handleBootstrapSetPassword(request, env);
+        }
+
         if (actionAuth === 'admin-list-users') {
             const { user, error } = await requireConcepteur(request, env);
             if (error) return error;
