@@ -1967,6 +1967,47 @@
       </div>
     </div>
 
+    <!-- Modal gestion des comptes (concepteur uniquement) -->
+    <div id="adminModal" class="fixed inset-0 z-50 hidden flex items-center justify-center backdrop-blur-sm" style="background-color: rgba(38, 38, 38, 0.6);">
+      <div class="w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-lg border p-6 shadow-xl" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-bold" style="color: var(--bs-heading-color);">Gestion des comptes</h2>
+          <button type="button" onclick="closeAdminModal()" class="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div id="adminUserList" class="space-y-2 mb-4">
+          <p class="text-sm text-gray-500">Chargement...</p>
+        </div>
+        <div class="flex gap-2 border-t pt-4" style="border-color: var(--bs-border-color);">
+          <button type="button" id="adminResetSelectedBtn" onclick="adminResetSelected()" disabled
+            class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            Réinitialiser la sélection
+          </button>
+          <button type="button" onclick="closeAdminModal()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal résultat de réinitialisation (affiché UNE SEULE FOIS) -->
+    <div id="adminResultModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center backdrop-blur-sm" style="background-color: rgba(38, 38, 38, 0.7);">
+      <div class="w-full max-w-md rounded-lg border p-6 shadow-xl" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
+        <h3 class="mb-3 text-base font-bold text-amber-700">Mot de passe temporaire généré</h3>
+        <p class="mb-3 text-sm text-gray-600 dark:text-gray-300">Copiez-le maintenant et transmettez-le à l'utilisateur. Il ne sera plus affiché après fermeture.</p>
+        <div id="adminResultContent" class="mb-4 space-y-2"></div>
+        <div class="flex gap-2">
+          <button type="button" id="adminCopyBtn" onclick="adminCopyPasswords()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+            Copier
+          </button>
+          <button type="button" onclick="adminCloseResult()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+            Fermer (définitif)
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- INTERFACE PRINCIPALE - 4 COLONNES VERTICALES -->
     <div id="mainApp" class="hidden min-h-screen" style="background-color: var(--bs-body-bg);">
       <div class="flex h-screen">
@@ -2100,6 +2141,16 @@
               <span class="text-[8px] mt-1 text-center leading-tight" style="color: var(--bs-text-muted);">Mode</span>
             </button>
             
+            <!-- Gestion des comptes (concepteur uniquement) -->
+            <button id="adminPanelBtn" class="hidden flex-col items-center group" title="Gestion des comptes" onclick="openAdminPanel()">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors" style="color: var(--bs-text-muted);" onmouseover="this.style.color='var(--bs-warning)'" onmouseout="this.style.color='var(--bs-text-muted)'">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+              </div>
+              <span class="text-[8px] mt-1 text-center leading-tight" style="color: var(--bs-text-muted);">Comptes</span>
+            </button>
+
             <!-- Se déconnecter -->
             <button class="flex flex-col items-center group" title="Se déconnecter" onclick="logout()">
               <div class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors" style="color: var(--bs-text-muted);" onmouseover="this.style.color='var(--bs-danger)'" onmouseout="this.style.color='var(--bs-text-muted)'">
@@ -5829,6 +5880,17 @@
           // Compatibilité : synchroniser localStorage.currentProfile (lecture seule)
           localStorage.setItem('currentProfile', JSON.stringify(this.currentUser));
           if (typeof updateUserHeader === 'function') updateUserHeader(this.currentUser);
+          // Afficher le bouton admin si concepteur
+          var adminBtn = document.getElementById('adminPanelBtn');
+          if (adminBtn) {
+            if (this.currentUser.concepteur) {
+              adminBtn.classList.remove('hidden');
+              adminBtn.classList.add('flex');
+            } else {
+              adminBtn.classList.add('hidden');
+              adminBtn.classList.remove('flex');
+            }
+          }
           console.log('🔐 Utilisateur authentifié:', meUser.username);
         }
 
@@ -5905,6 +5967,140 @@
 
       // Rendre accessible globalement
       window.profileSelector = profileSelector;
+
+      // =================================================================
+      // ADMIN — Gestion des comptes (concepteur uniquement)
+      // =================================================================
+      var _adminTempPasswords = null; // Mémoire temporaire, effacée à la fermeture
+
+      window.openAdminPanel = function() {
+        if (!window.AuthClient || !window.AuthClient.isAuthenticated()) return;
+        var user = profileSelector.currentUser;
+        if (!user || !user.concepteur) return;
+        var modal = document.getElementById('adminModal');
+        if (modal) modal.classList.remove('hidden');
+        loadAdminUserList();
+      };
+
+      window.closeAdminModal = function() {
+        var modal = document.getElementById('adminModal');
+        if (modal) modal.classList.add('hidden');
+      };
+
+      function loadAdminUserList() {
+        var listEl = document.getElementById('adminUserList');
+        if (!listEl) return;
+        listEl.innerHTML = '<p class="text-sm text-gray-500">Chargement...</p>';
+        window.AuthClient.adminListUsers().then(function(result) {
+          if (result.status !== 200 || !result.data.users) {
+            listEl.innerHTML = '<p class="text-sm text-rose-600">Erreur de chargement.</p>';
+            return;
+          }
+          var users = result.data.users;
+          var currentUser = profileSelector.currentUser;
+          var html = '';
+          for (var i = 0; i < users.length; i++) {
+            var u = users[i];
+            var isSelf = currentUser && u.id === currentUser.id;
+            var roleLabel = u.role === 'teacher' ? 'Enseignant' : 'Élève';
+            if (u.concepteur) roleLabel += ' (concepteur)';
+            var statusLabel = u.actif ? 'Actif' : 'Inactif';
+            var mustChangeLabel = u.must_change ? '⚠️ À changer' : '✅ OK';
+            html += '<label class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" style="border-color: var(--bs-border-color);">';
+            html += '<input type="checkbox" class="admin-user-check" value="' + u.id + '"' + (isSelf ? ' disabled' : '') + ' onchange="updateAdminResetBtn()">';
+            html += '<div class="flex-1 min-w-0">';
+            html += '<div class="text-sm font-medium truncate" style="color: var(--bs-heading-color);">' + (u.display_name || u.username) + '</div>';
+            html += '<div class="text-xs text-gray-500">' + u.username + ' · ' + roleLabel + ' · ' + statusLabel + ' · ' + mustChangeLabel + '</div>';
+            html += '</div>';
+            if (!isSelf) {
+              html += '<button type="button" onclick="adminResetSingle(\'' + u.id + '\')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
+            } else {
+              html += '<span class="text-xs text-gray-400">Votre compte</span>';
+            }
+            html += '</label>';
+          }
+          listEl.innerHTML = html;
+        }).catch(function() {
+          listEl.innerHTML = '<p class="text-sm text-rose-600">Erreur réseau.</p>';
+        });
+      }
+
+      window.updateAdminResetBtn = function() {
+        var checks = document.querySelectorAll('.admin-user-check:checked');
+        var btn = document.getElementById('adminResetSelectedBtn');
+        if (btn) btn.disabled = checks.length === 0;
+      };
+
+      window.adminResetSingle = function(targetId) {
+        if (!confirm('Réinitialiser le mot de passe de cet utilisateur ?')) return;
+        window.AuthClient.adminResetPassword(targetId).then(function(result) {
+          if (result.status === 200 && result.data.temporaryPassword) {
+            showAdminResult([{ username: result.data.username, displayName: result.data.displayName, temporaryPassword: result.data.temporaryPassword }]);
+          } else {
+            alert('Erreur : ' + (result.data.erreur || 'opération échouée'));
+          }
+        }).catch(function() { alert('Erreur réseau.'); });
+      };
+
+      window.adminResetSelected = function() {
+        var checks = document.querySelectorAll('.admin-user-check:checked');
+        var ids = [];
+        for (var i = 0; i < checks.length; i++) ids.push(checks[i].value);
+        if (ids.length === 0) return;
+        if (!confirm('Réinitialiser les mots de passe des ' + ids.length + ' utilisateur(s) sélectionné(s) ?')) return;
+        window.AuthClient.adminResetBatch(ids).then(function(result) {
+          if (result.status === 200 && result.data.results) {
+            showAdminResult(result.data.results);
+            loadAdminUserList(); // Rafraîchir la liste
+          } else {
+            alert('Erreur : ' + (result.data.erreur || 'opération échouée'));
+          }
+        }).catch(function() { alert('Erreur réseau.'); });
+      };
+
+      function showAdminResult(results) {
+        _adminTempPasswords = results; // Mémoire temporaire
+        var content = document.getElementById('adminResultContent');
+        if (!content) return;
+        var html = '';
+        for (var i = 0; i < results.length; i++) {
+          var r = results[i];
+          html += '<div class="rounded border p-3" style="border-color: var(--bs-border-color);">';
+          html += '<div class="text-sm font-medium" style="color: var(--bs-heading-color);">' + (r.displayName || r.username) + '</div>';
+          html += '<div class="mt-1 font-mono text-base font-bold text-amber-700 select-all" id="adminPw_' + i + '">' + r.temporaryPassword + '</div>';
+          html += '</div>';
+        }
+        content.innerHTML = html;
+        var resultModal = document.getElementById('adminResultModal');
+        if (resultModal) resultModal.classList.remove('hidden');
+        // Fermer le modal admin
+        var adminModal = document.getElementById('adminModal');
+        if (adminModal) adminModal.classList.add('hidden');
+      }
+
+      window.adminCopyPasswords = function() {
+        if (!_adminTempPasswords) return;
+        var text = '';
+        for (var i = 0; i < _adminTempPasswords.length; i++) {
+          var r = _adminTempPasswords[i];
+          text += (r.displayName || r.username) + ' : ' + r.temporaryPassword + '\n';
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function() {
+            var btn = document.getElementById('adminCopyBtn');
+            if (btn) { btn.textContent = 'Copié !'; setTimeout(function() { btn.textContent = 'Copier'; }, 2000); }
+          });
+        }
+      };
+
+      window.adminCloseResult = function() {
+        // Effacer les mots de passe de la mémoire
+        _adminTempPasswords = null;
+        var content = document.getElementById('adminResultContent');
+        if (content) content.innerHTML = '';
+        var resultModal = document.getElementById('adminResultModal');
+        if (resultModal) resultModal.classList.add('hidden');
+      };
       window.selectProfile = selectProfile;
       window.login = function(username) { return selectProfile(username); };
       window.logout = logout;

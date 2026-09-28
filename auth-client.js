@@ -142,6 +142,53 @@
     }
 
     // =================================================================
+    // ADMIN — Gestion des comptes (réservé concepteur)
+    // =================================================================
+
+    /**
+     * Liste tous les utilisateurs (sans password_hash).
+     * Réservé au concepteur authentifié (role=teacher, concepteur=1).
+     */
+    function adminListUsers() {
+        return workerFetch({ action: 'admin-list-users' });
+    }
+
+    /**
+     * Réinitialise le mot de passe d'un utilisateur cible.
+     * Retourne { temporaryPassword } UNE SEULE FOIS.
+     * Ne jamais stocker ce mot de passe.
+     */
+    function adminResetPassword(targetUserId) {
+        if (!targetUserId || typeof targetUserId !== 'string') {
+            return Promise.resolve({
+                status: 400,
+                data: { erreur: 'Utilisateur cible requis' }
+            });
+        }
+        return workerFetch({
+            action: 'admin-reset-password',
+            targetUserId: targetUserId
+        });
+    }
+
+    /**
+     * Réinitialise les mots de passe de plusieurs utilisateurs.
+     * Retourne { results: [{ userId, username, temporaryPassword }] } UNE SEULE FOIS.
+     */
+    function adminResetBatch(targetUserIds) {
+        if (!Array.isArray(targetUserIds) || targetUserIds.length === 0) {
+            return Promise.resolve({
+                status: 400,
+                data: { erreur: 'Liste d\'utilisateurs requise' }
+            });
+        }
+        return workerFetch({
+            action: 'admin-reset-batch',
+            targetUserIds: targetUserIds
+        });
+    }
+
+    // =================================================================
     // HELPERS
     // =================================================================
     function isAuthenticated() {
@@ -194,6 +241,9 @@
         logout: logout,
         getMe: getMe,
         changePassword: changePassword,
+        adminListUsers: adminListUsers,
+        adminResetPassword: adminResetPassword,
+        adminResetBatch: adminResetBatch,
         getToken: getToken,
         clearToken: clearToken,
         isAuthenticated: isAuthenticated,

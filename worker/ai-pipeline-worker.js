@@ -73,6 +73,8 @@ const BRUTE_FORCE_THRESHOLDS = [
     { attempts: 5, delay: 30 },
     { attempts: 10, delay: 300 }
 ];
+const RESET_RATE_LIMIT = 20; // Max resets par session concepteur
+const RESET_RATE_WINDOW_SECONDS = 600; // Fenêtre de 10 minutes
 
 // =================================================================
 // AUTHENTIFICATION — Fonctions utilitaires
@@ -136,6 +138,19 @@ async function verifyPassword(password, pepper, storedHash) {
 
 function generateSessionToken() {
     return generateRandomHex(SESSION_TOKEN_BYTES);
+}
+
+// Génère un mot de passe temporaire cryptographiquement aléatoire.
+// Retourne UNE SEULE FOIS — ne jamais logger, stocker ou persister.
+function generateTempPassword() {
+    const bytes = new Uint8Array(12);
+    crypto.getRandomValues(bytes);
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < 16; i++) {
+        password += chars[bytes[i % bytes.length] % chars.length];
+    }
+    return password;
 }
 
 async function hashSessionToken(token) {
@@ -324,6 +339,157 @@ async function handleChangePassword(request, env, session) {
     return reponseJSON({ message: 'Mot de passe modifié' }, 200);
 }
 
+// Liste tous les utilisateurs actifs (sans password_hash).
+// Réservé au concepteur authentifié.
+async function handleAdminListUsers(env, concepteur) {
+    const db = env.DB;
+    const result = await db.prepare(
+        'SELECT id, username, display_name, role, concepteur, actif, must_change, created_at, updated_at FROM users ORDER BY role DESC, display_name ASC'
+    ).all();
+    return reponseJSON({ users: result.results || [] }, 200);
+}
+
+// Réinitialise le mot de passe d'un utilisateur cible.
+// Génère un mot de passe temporaire, stocke le hash, met must_change=1, invalide les sessions.
+// Retourne le mot de passe temporaire UNE SEULE FOIS dans la réponse.
+async function handleAdminResetPassword(request, env, concepteur) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    let corps;
+    try { corps = await request.json(); } catch (e) {
+        return reponseJSON({ erreur: 'JSON invalide' }, 400);
+    }
+    const { targetUserId } = corps || {};
+    if (!targetUserId || typeof targetUserId !== 'string') {
+        return reponseJSON({ erreur: 'Utilisateur cible requis' }, 400);
+    }
+    // Interdire le reset de son propre compte via cette API
+    if (targetUserId === concepteur.id) {
+        return reponseJSON({ erreur: 'Opération non autorisée' }, 403);
+    }
+    // Rate limiting
+    if (await checkResetRateLimit(db, concepteur.id)) {
+        return reponseJSON({ erreur: 'Trop de réinitialisations récentes, réessayez plus tard' }, 429);
+    }
+    // Vérifier que la cible existe
+    const target = await db.prepare(
+        'SELECT id, username, display_name FROM users WHERE id = ? AND actif = 1'
+    ).bind(targetUserId).first();
+    if (!target) {
+        return reponseJSON({ erreur: 'Utilisateur introuvable ou désactivé' }, 404);
+    }
+    // Générer mot de passe temporaire + hasher
+    const tempPassword = generateTempPassword();
+    const newHash = await hashPassword(tempPassword, pepper);
+    // Stocker le hash (JAMAIS le mot de passe en clair)
+    await db.prepare(
+        "UPDATE users SET password_hash = ?, must_change = 1, updated_at = datetime('now') WHERE id = ?"
+    ).bind(newHash, target.id).run();
+    // Invalider toutes les sessions existantes de la cible
+    await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(target.id).run();
+    // Enregistrer l'opération pour le rate limiting
+    await recordResetOperation(db, concepteur.id);
+    // Retourner le mot de passe temporaire UNE SEULE FOIS
+    return reponseJSON({
+        message: 'Mot de passe réinitialisé',
+        userId: target.id,
+        username: target.username,
+        displayName: target.display_name,
+        temporaryPassword: tempPassword
+    }, 200);
+}
+
+// Réinitialise les mots de passe de plusieurs utilisateurs sélectionnés.
+// Chaque utilisateur reçoit un mot de passe différent.
+//
+// Contrat batch :
+//   1. Déduplique les IDs côté serveur.
+//   2. Exclut le propre compte du concepteur.
+//   3. Valide toutes les cibles AVANT toute écriture (actif, existant).
+//   4. Vérifie la capacité restante du rate limiter AVANT toute écriture.
+//      Si la capacité est insuffisante, le batch entier est refusé (429).
+//   5. Exécute les resets uniquement si toutes les validations passent.
+//
+// Cibles invalides :
+//   - ID non-string ou null → ignoré silencieusement (filtré par déduplication).
+//   - Cible inexistante → ignorée (ne compte pas dans le capacity check).
+//   - Cible inactive → ignorée (ne compte pas dans le capacity check).
+//   - Propre compte du concepteur → exclu avant validation.
+//   - Autre enseignant/concepteur → autorisé (même politique que le reset simple).
+async function handleAdminResetBatch(request, env, concepteur) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    let corps;
+    try { corps = await request.json(); } catch (e) {
+        return reponseJSON({ erreur: 'JSON invalide' }, 400);
+    }
+    const { targetUserIds } = corps || {};
+    if (!Array.isArray(targetUserIds) || targetUserIds.length === 0) {
+        return reponseJSON({ erreur: 'Liste d\'utilisateurs requise' }, 400);
+    }
+    if (targetUserIds.length > 50) {
+        return reponseJSON({ erreur: 'Trop d\'utilisateurs sélectionnés (max 50)' }, 400);
+    }
+    // ── Étape 1 : Dédupliquer les IDs (côté Worker) ──
+    const seenIds = new Set();
+    const uniqueIds = [];
+    for (const id of targetUserIds) {
+        if (typeof id === 'string' && id !== concepteur.id && !seenIds.has(id)) {
+            seenIds.add(id);
+            uniqueIds.push(id);
+        }
+    }
+    if (uniqueIds.length === 0) {
+        return reponseJSON({ erreur: 'Opération non autorisée' }, 403);
+    }
+    // ── Étape 2 : Valider toutes les cibles AVANT toute écriture ──
+    const validTargets = [];
+    for (const targetId of uniqueIds) {
+        const target = await db.prepare(
+            'SELECT id, username, display_name FROM users WHERE id = ? AND actif = 1'
+        ).bind(targetId).first();
+        if (target) {
+            validTargets.push(target);
+        }
+    }
+    if (validTargets.length === 0) {
+        return reponseJSON({ erreur: 'Aucun utilisateur valide à réinitialiser' }, 400);
+    }
+    // ── Étape 3 : Vérifier la capacité restante (fail-before-write) ──
+    const currentCount = await getResetCount(db, concepteur.id);
+    const remainingCapacity = RESET_RATE_LIMIT - currentCount;
+    if (validTargets.length > remainingCapacity) {
+        return reponseJSON({
+            erreur: 'Capacité insuffisante : ' + validTargets.length + ' reset(s) demandé(s), ' + remainingCapacity + ' disponible(s). Réessayez plus tard.'
+        }, 429);
+    }
+    // ── Étape 4 : Exécuter les resets (tous validés, capacité suffisante) ──
+    const results = [];
+    for (const target of validTargets) {
+        const tempPassword = generateTempPassword();
+        const newHash = await hashPassword(tempPassword, pepper);
+        await db.prepare(
+            "UPDATE users SET password_hash = ?, must_change = 1, updated_at = datetime('now') WHERE id = ?"
+        ).bind(newHash, target.id).run();
+        await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(target.id).run();
+        await recordResetOperation(db, concepteur.id);
+        results.push({
+            userId: target.id,
+            username: target.username,
+            displayName: target.display_name,
+            temporaryPassword: tempPassword
+        });
+    }
+    return reponseJSON({
+        message: results.length + ' mot(s) de passe réinitialisé(s)',
+        results: results
+    }, 200);
+}
+
 async function handleMe(env, session) {
     const db = env.DB;
     if (!db) return reponseJSON({ erreur: 'Service authentification non configuré' }, 503);
@@ -352,6 +518,44 @@ async function requireSession(request, env) {
     const session = await validateSession(db, token);
     if (!session) return { error: reponseJSON({ erreur: 'Session expirée' }, 401) };
     return { session: session };
+}
+
+// Vérifie que l'utilisateur authentifié est un concepteur (role=teacher, concepteur=1).
+// Retourne soit { user } avec les données utilisateur, soit { error } avec une réponse 403.
+async function requireConcepteur(request, env) {
+    const db = env.DB;
+    if (!db) return { error: reponseJSON({ erreur: 'Service non configuré' }, 503) };
+    const { session, error } = await requireSession(request, env);
+    if (error) return { error };
+    const user = await db.prepare(
+        'SELECT id, username, role, concepteur FROM users WHERE id = ?'
+    ).bind(session.user_id).first();
+    if (!user || user.role !== 'teacher' || !user.concepteur) {
+        return { error: reponseJSON({ erreur: 'Accès refusé' }, 403) };
+    }
+    return { session, user };
+}
+
+// Rate limiting pour les opérations de reset (par session concepteur).
+// Retourne le nombre de resets effectués dans la fenêtre glissante.
+async function getResetCount(db, concepteurId) {
+    const cutoff = new Date(Date.now() - RESET_RATE_WINDOW_SECONDS * 1000).toISOString();
+    const result = await db.prepare(
+        "SELECT COUNT(*) as count FROM login_attempts WHERE ip_hash = ? AND attempted_at > ? AND success = 1 AND username LIKE 'reset:%'"
+    ).bind(await sha256Hex('reset:' + concepteurId), cutoff).first();
+    return result.count;
+}
+
+// Vérifie si la limite est atteinte (compatibilité avec handleAdminResetPassword).
+async function checkResetRateLimit(db, concepteurId) {
+    return (await getResetCount(db, concepteurId)) >= RESET_RATE_LIMIT;
+}
+
+async function recordResetOperation(db, concepteurId) {
+    const ipHash = await sha256Hex('reset:' + concepteurId);
+    await db.prepare(
+        "INSERT INTO login_attempts (username, ip_hash, success) VALUES (?, ?, 1)"
+    ).bind('reset:' + concepteurId, ipHash).run();
 }
 
 // CORS dynamique : vérifie l'Origin de la requête.
@@ -618,6 +822,23 @@ export default {
             const { session, error } = await requireSession(request, env);
             if (error) return error;
             return await handleMe(env, session);
+        }
+
+        // ─── ADMIN — Réservé au concepteur (role=teacher, concepteur=1) ───
+        if (actionAuth === 'admin-list-users') {
+            const { user, error } = await requireConcepteur(request, env);
+            if (error) return error;
+            return await handleAdminListUsers(env, user);
+        }
+        if (actionAuth === 'admin-reset-password') {
+            const { user, error } = await requireConcepteur(request, env);
+            if (error) return error;
+            return await handleAdminResetPassword(request, env, user);
+        }
+        if (actionAuth === 'admin-reset-batch') {
+            const { user, error } = await requireConcepteur(request, env);
+            if (error) return error;
+            return await handleAdminResetBatch(request, env, user);
         }
 
         // ─── PIPELINE IA — Session requise ───
