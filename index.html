@@ -4508,7 +4508,6 @@
       const loginError = document.getElementById("loginError");
       const activitiesContainer = document.getElementById("activitiesContainer");
       
-      // Éléments de la colonne théorie (peuvent être null si non affichée)
       
       let activityWindowZ = 80;
       const supportDocCache = new Map();
@@ -5851,7 +5850,6 @@
       // Initialiser l'authentification Worker
       const profileSelector = new ProfileSelector();
 
-      // Fonctions de compatibilité
 
       // Rendre accessible globalement
       window.profileSelector = profileSelector;
@@ -6221,7 +6219,6 @@
         `;
       }
       
-      // Utiliser la version de activities.js pour éviter les conflits
       
       // Fonction pour charger les activités dans la colonne du milieu
       function loadActivities(chapterId) {
