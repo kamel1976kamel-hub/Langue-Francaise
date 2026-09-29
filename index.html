@@ -766,54 +766,6 @@
         }
 
         // Fonctions pour la correction des activités
-        window.analyzeAndSubmitActivity = async function(chapterId, activityId) {
-            try {
-                console.log('🔍 analyzeAndSubmitActivity appelé pour', chapterId, activityId);
-                
-                const answer = getActivityAnswerText(chapterId, activityId);
-                
-                if (!answer) {
-                    console.log('⚠️ Réponse vide');
-                    alert('⚠️ Veuillez d\'abord écrire une réponse.');
-                    return;
-                }
-                
-                console.log('📝 Réponse à analyser:', answer);
-                
-                // Afficher l'indicateur de chargement
-                const feedbackDiv = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
-                const feedbackText = document.getElementById(`activity-feedback-text-${chapterId}-${activityId}`);
-                
-                feedbackDiv.classList.remove('hidden');
-                feedbackText.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2 text-blue-600">Analyse en cours...</p></div>';
-                
-                // Analyser la réponse avec le système de correction
-                if (window.correctTextWithDatabase) {
-                    console.log('🚀 Utilisation de la base de données pour l\'activité');
-                    window.correctTextWithDatabase(answer)
-                        .then(corrections => {
-                            console.log('✅ Corrections reçues pour l\'activité:', corrections);
-                            processActivityCorrections(corrections, answer, chapterId, activityId);
-                        })
-                        .catch(error => {
-                            console.error('❌ Erreur lors de l\'analyse de l\'activité:', error);
-                            // En cas d'erreur, soumettre directement
-                            submitCorrectedActivity(answer, chapterId, activityId);
-                        });
-                } else if (window.analyzeTextLocal) {
-                    console.log('🔄 Utilisation de l\'analyse locale pour l\'activité');
-                    const corrections = await window.analyzeTextLocal(answer);
-                    console.log('✅ Corrections locales reçues pour l\'activité:', corrections);
-                    processActivityCorrections(corrections, answer, chapterId, activityId);
-                } else {
-                    console.log('⚠️ Système de correction non disponible pour l\'activité, soumission directe');
-                    submitCorrectedActivity(answer, chapterId, activityId);
-                }
-                
-            } catch (error) {
-                console.error('❌ Erreur analyzeAndSubmitActivity:', error);
-            }
-        };
         
         function processActivityCorrections(corrections, originalAnswer, chapterId, activityId) {
             try {
