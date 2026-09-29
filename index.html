@@ -6817,6 +6817,36 @@
       };
       
       // ============ GESTION DES ANNONCES ============
+
+      // Fonction pour afficher/masquer le panneau d'annonces
+      window.toggleAnnouncementsPanel = function() {
+        const panel = document.getElementById('announcementsPanel');
+        const databasePanel = document.getElementById('databasePanel');
+        const homeworkPanel = document.getElementById('homeworkPanel');
+        const accessibilityPanel = document.getElementById('accessibilityPanel');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const progressionPanel = document.getElementById('progressionPanel');
+
+        databasePanel.classList.add('hidden');
+        homeworkPanel.classList.add('hidden');
+        accessibilityPanel.classList.add('hidden');
+        settingsPanel.classList.add('hidden');
+        progressionPanel.classList.add('hidden');
+        panel.classList.toggle('hidden');
+
+        // Adapter le contenu selon le rôle
+        const teacherSection = document.getElementById('teacherAnnouncementsSection');
+        if (currentUser && currentUser.role === 'teacher') {
+          teacherSection.classList.remove('hidden');
+        } else {
+          teacherSection.classList.add('hidden');
+          // Marquer les annonces comme lues quand l'étudiant ouvre le panel
+          markAllAsRead();
+        }
+
+        // Charger les annonces
+        loadAnnouncements();
+      };
       window.saveAnnouncement = function() {
         const title = document.getElementById('announcementTitle').value.trim();
         const content = document.getElementById('announcementContent').value.trim();
