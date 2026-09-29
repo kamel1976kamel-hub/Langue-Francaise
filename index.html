@@ -6201,7 +6201,6 @@
               rows="4" 
               placeholder="Votre réponse..."
               oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
-              onload="setupRealTimeCorrection('${chapterId}', '${activityId}')"
             ></textarea>
             <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
               <span>💡 L'assistant d'écriture vous aide en temps réel</span>
@@ -6285,7 +6284,6 @@
                     rows="4" 
                     placeholder="Votre réponse..."
                     oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
-                    onload="setupRealTimeCorrection('${chapterId}', '${id}')"
                   ></textarea>
                   `}
                   <div class="flex gap-2">
