@@ -269,21 +269,25 @@ function extractActivityInstructions(html, maxLen) {
         // Pas de section Consignes — essayer Objectif
         var objectifMatch = html.match(/<h5>\s*Objectif\s*<\/h5>([\s\S]*?)(?:<h5>|$)/i);
         if (!objectifMatch) return '';
-        return stripHtmlToText(objectifMatch[1]).slice(0, maxLen);
+        return resoudreStripHtmlToTextPourInstructions()(objectifMatch[1]).slice(0, maxLen);
     }
 
-    return stripHtmlToText(consignesMatch[1]).slice(0, maxLen);
+    return resoudreStripHtmlToTextPourInstructions()(consignesMatch[1]).slice(0, maxLen);
 }
 
 /**
- * Convertit du HTML en texte lisible.
+ * Convertit du HTML en texte lisible — implementation REGEX du module.
  * - Remplace les <li> par des lignes
  * - Supprime les balises
  * - Normalise les espaces
+ *
+ * Nom volontairement distinct de `stripHtmlToText` (index.html) : ce nom etait
+ * declare au niveau 0, ce qui creait un homonyme GLOBAL ecrase par le script
+ * inline de index.html. Voir resoudreStripHtmlToTextPourInstructions().
  * @param {string} html
  * @returns {string}
  */
-function stripHtmlToText(html) {
+function stripHtmlToTextRegles(html) {
     if (typeof html !== 'string') return '';
     var text = html;
     // Remplacer les <li> par des tirets
@@ -300,6 +304,31 @@ function stripHtmlToText(html) {
     // Normaliser les espaces
     text = text.replace(/\s+/g, ' ').trim();
     return text;
+}
+
+/**
+ * Selection EXPLICITE de l'implementation a utiliser pour extraire les consignes.
+ *
+ * Historique : la fonction REGEX ci-dessus s'appelait `stripHtmlToText` au niveau 0,
+ * creant un nom GLOBAL homonyme de `stripHtmlToText` (index.html). Le script inline de
+ * index.html s'executant APRES ce module, il ecrasait la version du module : en
+ * navigateur, `extractActivityInstructions` utilisait donc silencieusement
+ * l'implementation DOM de la page.
+ *
+ * Ce nom global ayant ete supprime (renommage en `stripHtmlToTextRegles`), la
+ * resolution est desormais demandee explicitement ici :
+ *   - navigateur    : implementation DOM fournie par la page (`window.stripHtmlToText`) ;
+ *   - Node/CommonJS : implementation REGEX locale au module.
+ *
+ * But : AUCUN changement de sortie metier. Seule la collision implicite disparait.
+ *
+ * @returns {function(string): string}
+ */
+function resoudreStripHtmlToTextPourInstructions() {
+    if (typeof window !== 'undefined' && typeof window.stripHtmlToText === 'function') {
+        return window.stripHtmlToText;
+    }
+    return stripHtmlToTextRegles;
 }
 
 // =================================================================
@@ -575,7 +604,8 @@ if (typeof module !== 'undefined' && module.exports) {
         buildNameToRuleIndex: buildNameToRuleIndex,
         buildIdToRuleIndex: buildIdToRuleIndex,
         extractActivityInstructions: extractActivityInstructions,
-        stripHtmlToText: stripHtmlToText,
+        stripHtmlToText: stripHtmlToTextRegles, // alias de compatibilite (semantique REGEX)
+        stripHtmlToTextRegles: stripHtmlToTextRegles,
         buildChatContext: buildChatContext,
         buildActivityContext: buildActivityContext,
         buildRequestV2: buildRequestV2,
@@ -598,7 +628,8 @@ if (typeof window !== 'undefined') {
         buildNameToRuleIndex: buildNameToRuleIndex,
         buildIdToRuleIndex: buildIdToRuleIndex,
         extractActivityInstructions: extractActivityInstructions,
-        stripHtmlToText: stripHtmlToText,
+        stripHtmlToText: stripHtmlToTextRegles, // alias de compatibilite (semantique REGEX)
+        stripHtmlToTextRegles: stripHtmlToTextRegles,
         buildChatContext: buildChatContext,
         buildActivityContext: buildActivityContext,
         buildRequestV2: buildRequestV2,
