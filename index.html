@@ -6078,65 +6078,9 @@
         }
       };
 
-      // Fonction pour sélectionner un module
-      window.selectModule = function(chapterId) {
-        const chapter = chapters[chapterId];
-        if (!chapter) return;
-
-        // Utiliser les éléments qui existent réellement dans le HTML
-        const theoryContent = document.getElementById("theoryContent");
-        
-        if (!theoryContent) {
-          console.warn('Élément theoryContent non disponible, retry dans 100ms...');
-          setTimeout(() => selectModule(chapterId), 100);
-          return;
-        }
-
-        // Mettre à jour le contenu théorique avec les éléments disponibles
-        theoryContent.innerHTML = chapter.body;
-
-        // Charger les activités dans la colonne du milieu
-        loadActivities(chapterId);
-
-        // Mettre à jour la navigation visuelle
-        document.querySelectorAll('.module-btn').forEach(btn => {
-          btn.classList.remove('bg-slate-800', 'text-white');
-          btn.classList.add('text-slate-300');
-        });
-        
-        const activeBtn = document.querySelector(`button[data-chapter="${chapterId}"]`);
-        if (activeBtn) {
-          activeBtn.classList.add('bg-slate-800', 'text-white');
-          activeBtn.classList.remove('text-slate-300');
-        }
-
-        // Mettre à jour l'URL
-        history.replaceState(null, "", `#${chapterId}`);
-      };
-
-      // Gestion du hash initial pour charger le bon module (déplacé après la définition)
-      const initial = (location.hash || "").replace("#", "");
-      if (initial && chapters[initial]) {
-        // Développer le parcours correspondant
-        const pathType = initial.split('-')[0];
-        const modulesDiv = document.getElementById(`modules-${pathType}`);
-        const arrow = document.getElementById(`arrow-${pathType}`);
-        if (modulesDiv && modulesDiv.classList.contains("hidden")) {
-          modulesDiv.classList.remove("hidden");
-          if (arrow) arrow.style.transform = "rotate(90deg)";
-        }
-        // Vérification que selectModule existe avant de l'appeler
-        if (typeof selectModule === 'function') {
-          selectModule(initial);
-        }
-      }
-
-      window.addEventListener("hashchange", () => {
-        const id = (location.hash || "").replace("#", "");
-        if (chapters[id] && typeof selectModule === 'function') {
-          selectModule(id);
-        }
-      });
+      // Fonction de sélection de module : définition UNIQUE déplacée plus bas
+      // (section « SÉLECTION DE MODULE »), afin que parcoursData, currentParcours
+      // et currentModule soient initialisés avant tout appel (aucune TDZ).
 
       // Fonction pour générer un tableau à compléter
       function generateTableInput(chapterId, activityId, tableType) {
@@ -8366,10 +8310,30 @@
 
       // ============ SÉLECTION DE MODULE ============
       window.selectModule = function(moduleId) {
-        currentModule = moduleId;
+        // Garde d'entrée : jamais de TypeError sur un identifiant absent ou non exploitable.
+        if (typeof moduleId !== 'string' || moduleId === '') return;
+
         const parcoursId = moduleId.split('-')[0];
+
+        // Module inconnu : sortie silencieuse (aucun effet de bord).
+        const connuDansChapters = !!chapters[moduleId];
+        const connuDansParcours = !!(parcoursData[parcoursId] &&
+          parcoursData[parcoursId].modules && parcoursData[parcoursId].modules[moduleId]);
+        if (!connuDansChapters && !connuDansParcours) return;
+
+        currentModule = moduleId;
         currentParcours = parcoursId;
-        
+
+        // Retry historique (100 ms) : la colonne théorie n'est pas encore dans le DOM.
+        // Sémantique inchangée par rapport à l'ancienne définition D1 : avertir,
+        // réessayer, ne rien modifier d'autre pour l'instant.
+        const theoryContentDisponible = document.getElementById("theoryContent");
+        if (!theoryContentDisponible) {
+          console.warn('Élément theoryContent non disponible, retry dans 100ms...');
+          setTimeout(() => selectModule(moduleId), 100);
+          return;
+        }
+
         // 1. Charger le contenu depuis l'objet chapters (contenu théorique détaillé)
         const chapter = chapters[moduleId];
         if (chapter && contentMeta && contentTitle && contentBody) {
@@ -8425,6 +8389,33 @@
         // 6. Mettre à jour l'URL
         history.replaceState(null, "", `#${moduleId}`);
       };
+
+      // ============ INITIALISATION PAR LE HASH ============
+      // Exécuté APRÈS la définition unique de selectModule : parcoursData,
+      // currentParcours et currentModule sont donc déjà initialisés (aucune TDZ).
+      const initial = (location.hash || "").replace("#", "");
+      if (initial && chapters[initial]) {
+        // Développer le parcours correspondant
+        const pathType = initial.split('-')[0];
+        const modulesDiv = document.getElementById(`modules-${pathType}`);
+        const arrow = document.getElementById(`arrow-${pathType}`);
+        if (modulesDiv && modulesDiv.classList.contains("hidden")) {
+          modulesDiv.classList.remove("hidden");
+          if (arrow) arrow.style.transform = "rotate(90deg)";
+        }
+        // Vérification que selectModule existe avant de l'appeler
+        if (typeof selectModule === 'function') {
+          selectModule(initial);
+        }
+      }
+
+      // Listener UNIQUE de navigation par hash
+      window.addEventListener("hashchange", () => {
+        const id = (location.hash || "").replace("#", "");
+        if (chapters[id] && typeof selectModule === 'function') {
+          selectModule(id);
+        }
+      });
 
       // ============ MODAL YOUTUBE CHAT ============
       window.toggleYoutubeModal = function() {
