@@ -4557,9 +4557,6 @@
       const activitiesContainer = document.getElementById("activitiesContainer");
       
       // Éléments de la colonne théorie (peuvent être null si non affichée)
-      const contentMeta = document.getElementById("contentMeta");
-      const contentTitle = document.getElementById("contentTitle");
-      const contentBody = document.getElementById("contentBody") || document.getElementById("theoryContent");
       
       let activityWindowZ = 80;
       const supportDocCache = new Map();
@@ -6062,7 +6059,7 @@
       window.login = function(username) { return selectProfile(username); };
 
       // ============ NAVIGATION VUES ============
-      // Les variables mainApp, contentMeta, contentTitle, contentBody sont définies plus haut
+      // Les variables mainApp et activitiesContainer sont définies plus haut
 
       // Fonction pour développer/réduire un parcours
       window.togglePath = function(pathType) {
@@ -8237,7 +8234,6 @@
       };
 
       // ============ CHAT AVEC IA (vue Chat) ============
-      // Anciennes fonctions supprimées - utilise chat-system-simple.js
 
       function escapeHtml(text) {
         const div = document.createElement('div');
@@ -8334,14 +8330,6 @@
           return;
         }
 
-        // 1. Charger le contenu depuis l'objet chapters (contenu théorique détaillé)
-        const chapter = chapters[moduleId];
-        if (chapter && contentMeta && contentTitle && contentBody) {
-          contentMeta.textContent = chapter.meta;
-          contentTitle.textContent = chapter.title;
-          contentBody.innerHTML = chapter.body;
-        }
-        
         // 2. Charger les activités depuis activityContent
         loadActivities(moduleId);
         
