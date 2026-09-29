@@ -338,18 +338,16 @@ console.log('\n── SECTION T1 : activité + local_requis HTTP 200 ──\n');
     });
 
     return h.sandbox.window.demanderIA('la texte est important', 'activité').then(function (reponse) {
-        // ⚠️ MISE À JOUR B1-B1 : le 429 ne tombe PLUS dans le catch générique.
-        // Le client le traite désormais explicitement (main.js, branche
-        // `response.status === 429`) et retourne un état de saturation honnête.
-        // Ce test conserve les invariants qui comptent :
-        //   - aucun retry (1 seul fetch) ;
-        //   - pas d'appel au moteur local (le repli 275 règles est réservé à A1/200) ;
-        //   - pas de crash ;
-        //   - jamais la chaîne « Réponse IA non disponible ».
+        // ⚠️ MISE À JOUR B1-C1 : en ACTIVITÉ, un 429 utilise désormais le MÊME
+        // moteur local que A1 (le texte `studentAnswer` est disponible).
+        // En CHAT, le moteur reste délibérément NON appelé (c'est un correcteur,
+        // pas un générateur de réponse).
+        // Ce test vérifie donc que le moteur EST appelé en activité — le
+        // comportement chat/activité est couvert par tests/test-client-429-local-fallback.js.
         assertEq(h.journal.fetchCalls.length, 1,
             'le 429 ne déclenche AUCUN retry (1 seul fetch)');
-        assertEq(h.journal.correctCalls.length, 0,
-            'le moteur local n\'est PAS appelé pour un 429 (réservé à A1)');
+        assertEq(h.journal.correctCalls.length, 1,
+            'le moteur local EST utilisé pour un 429 en activité (B1-C1, aligné sur A1)');
         assertOk(reponse !== undefined && reponse !== null,
             'un objet de repli est bien produit (pas de crash)');
         assertOk(String(reponse.analysis).indexOf(INTERDIT) === -1,
@@ -360,6 +358,10 @@ console.log('\n── SECTION T1 : activité + local_requis HTTP 200 ──\n');
             'iaUnavailable = true (état explicite pour l\'UI)');
         assertEq(reponse.retryAfterSeconds, 5,
             'retryAfterSeconds = 5 (lu depuis data.retryAfter, non inventé)');
+        assertOk(String(reponse.analysis).indexOf('saturé') !== -1,
+            'l\'information de saturation est CONSERVÉE dans analysis (B1-C1)');
+        assertEq(reponse.isActivityResponse, true,
+            'isActivityResponse:true conservé');
     });
 }).then(function () {
 

@@ -731,18 +731,44 @@ function extraireRetryAfterSeconds(valeur) {
     return n;
 }
 
-// ─── B1-B1 : état retourné au niveau appelant pour un HTTP 429 ───
+// ─── B1-B1 / B1-C1 : état retourné au niveau appelant pour un HTTP 429 ───
 // AUCUN retry : une seule requête est émise, jamais de seconde tentative.
-function etatSaturation(retryAfterSeconds, estChat) {
-    return {
+// B1-C1 : en ACTIVITÉ, le moteur local existant (275 règles, via `repliLocal`)
+// prend le relais comme dans A1 — le texte `studentAnswer` est disponible dans
+// `runFourModelPipeline`. En CHAT, le moteur est un CORRECTEUR et non un
+// générateur de réponse : il reste donc délibérément non appelé.
+// L'information de saturation est TOUJOURS conservée dans `analysis`.
+async function etatSaturation(retryAfterSeconds, estChat, texte) {
+    const base = {
         source: 'saturated',
-        analysis: messageSature(retryAfterSeconds),
-        corrections: [], explanations: [], suggestions: [],
         iaUnavailable: true,
-        retryAfterSeconds: (typeof retryAfterSeconds === 'number' ? retryAfterSeconds : null),
-        isChatResponse: !!estChat,
-        isActivityResponse: !estChat
+        retryAfterSeconds: (typeof retryAfterSeconds === 'number' ? retryAfterSeconds : null)
     };
+    // ─── CHAT : message de saturation, AUCUN appel au moteur local ───
+    if (estChat) {
+        return Object.assign(base, {
+            analysis: messageSature(retryAfterSeconds),
+            corrections: [], explanations: [], suggestions: [],
+            isChatResponse: true
+        });
+    }
+    // ─── ACTIVITÉ : moteur local si prêt, sinon message honnête ───
+    if (!isLocalEngineReady()) {
+        return Object.assign(base, {
+            analysis: messageSature(retryAfterSeconds),
+            corrections: [], explanations: [], suggestions: [],
+            isActivityResponse: true
+        });
+    }
+    // Réutiliser le mécanisme A1 existant — aucune réécriture du moteur.
+    const local = await repliLocal(texte, false);
+    return Object.assign(base, {
+        analysis: messageSature(retryAfterSeconds) + ' ' + local.analysis,
+        corrections: (local && Array.isArray(local.corrections)) ? local.corrections : [],
+        explanations: [], suggestions: [],
+        isActivityResponse: true,
+        localFallback: true
+    });
 }
 
 // ─── A1 : repli local via le moteur EXISTANT (275 règles, aucune réécriture) ───
@@ -886,7 +912,7 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             const ra429 = extraireRetryAfterSeconds(corps429 && corps429.retryAfter);
             const estChat429 = (activityContext === 'chat' || activityContext.includes('chat'));
             console.warn('⚠️ Worker: HTTP 429 (saturation)', { retryAfterSeconds: ra429 });
-            return etatSaturation(ra429, estChat429);
+            return await etatSaturation(ra429, estChat429, studentAnswer);
         }
         if (!response.ok) { throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`); }
         const data = await response.json();
