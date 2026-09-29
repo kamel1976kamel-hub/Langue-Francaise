@@ -4324,43 +4324,6 @@
                 </ul>
               </section>
 
-              <section class="space-y-2">
-                <h3 class="text-sm font-semibold text-slate-900">Observer un monument : Notre-Dame</h3>
-                <model-viewer
-                  src="models/notre-dame-de-paris/source/notre_dame.glb"
-                  alt="Notre-Dame"
-                  auto-rotate
-                  camera-controls
-                  ar
-                  style="width:100%;height:420px;border-radius:0.75rem;border:1px solid rgb(226 232 240);overflow:hidden;background:#f8fafc;position:relative;"
-                >
-                  <button
-                    class="hotspot"
-                    style="position:absolute;top:72%;left:50%;transform:translate(-50%,-50%);"
-                    data-info="façade"
-                    type="button"
-                  >
-                    Façade
-                  </button>
-                  <button
-                    class="hotspot"
-                    style="position:absolute;top:25%;left:65%;transform:translate(-50%,-50%);"
-                    data-info="tour"
-                    type="button"
-                  >
-                    Tour
-                  </button>
-                  <button
-                    class="hotspot"
-                    style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);"
-                    data-info="rose"
-                    type="button"
-                  >
-                    Rose
-                  </button>
-                </model-viewer>
-                <p id="hotspot-message" class="text-sm text-slate-700"></p>
-              </section>
             </div>
           `,
         },
@@ -4372,14 +4335,6 @@
               Appuie-toi sur les sens : vue, son, odeur, toucher, goût (quand pertinent). Privilégie
               des détails <strong>concrets</strong> plutôt que des généralités.
             </p>
-            <model-viewer
-              src="models/notre-dame-de-paris/source/notre_dame.glb"
-              alt="Notre-Dame"
-              auto-rotate
-              camera-controls
-              ar
-              style="width:100%;height:420px;border-radius:0.75rem;border:1px solid rgb(226 232 240);overflow:hidden;background:#f8fafc;"
-            ></model-viewer>
             <p>
               Exemple : plutôt que « une rue animée », précise « scooters, éclats de voix, néons qui
               clignotent ».
@@ -5449,39 +5404,6 @@
           },
         },
       };
-      // Gestion des hotspots (si contentBody existe)
-      if (contentBody) {
-        contentBody.addEventListener("click", (event) => {
-          const target = event.target;
-          if (!(target instanceof HTMLElement)) return;
-          if (!target.classList.contains("hotspot")) return;
-      
-          const rawInfo = target.dataset.info || "";
-          const key = rawInfo.toLowerCase();
-          const messageEl = document.getElementById("hotspot-message");
-          if (!messageEl) return;
-      
-          if (key === "cause") {
-            messageEl.textContent =
-              "Tu as sélectionné la cause : l'élément qui déclenche le mécanisme.";
-          } else if (key === "conséquence" || key === "consequence") {
-            messageEl.textContent =
-              "Tu as sélectionné la conséquence : ce qui se produit à partir de la cause.";
-          } else if (key === "façade" || key === "facade") {
-            messageEl.textContent =
-              "Façade : la face principale de la cathédrale, cadrant l'arrivée du regard, avec ses portails sculptés et ses rangées de statues.";
-          } else if (key === "tour") {
-            messageEl.textContent =
-              "Tour : l'une des deux tours massives qui encadrent la façade et structurent la silhouette de Notre-Dame dans le paysage urbain.";
-          } else if (key === "rose") {
-            messageEl.textContent =
-              "Rose : la grande verrière circulaire qui filtre la lumière et sert de point focal au centre de la façade.";
-          } else {
-            messageEl.textContent = rawInfo;
-          }
-        });
-      }
-
       function stripHtmlToText(html) {
         const tmp = document.createElement("div");
         tmp.innerHTML = html || "";
