@@ -1283,6 +1283,14 @@ export default {
             }
             concurrentRequests++;
 
+            // ─── B1-A : libération idempotente du slot de concurrence ───
+            // Une réservation (ligne ci-dessus) doit avoir EXACTEMENT une libération.
+            // `slotLibere` rend la libération idempotente : le chemin d'erreur libère AVANT
+            // l'attente de retry (sinon le slot serait retenu artificiellement pendant
+            // jusqu'à 10 s — défaut P1 de l'audit B0), et le `finally` reste un filet de
+            // sécurité pour tout chemin non anticipé.
+            let slotLibere = false;
+
             try {
                 const debutV2 = Date.now();
                 try {
@@ -1306,6 +1314,18 @@ export default {
                         dureeTotaleMs: Date.now() - debutTotal
                     });
 
+                    // ─── B1-A : libérer le slot AVANT l'attente de retry ───
+                    // Le slot de concurrence protège l'accès concurrent aux appels Groq ;
+                    // il ne doit PAS couvrir une temporisation. Sans cette libération, une
+                    // attente de `retryAfter` (jusqu'à 10 s) immobilisait un slot sur
+                    // MAX_CONCURRENT_REQUESTS = 10 et aggravait la saturation (audit B0, P1).
+                    // Aligne la branche V2 sur le comportement de la branche legacy, qui libère
+                    // déjà son slot dans le `catch` avant l'attente équivalente.
+                    if (!slotLibere) {
+                        slotLibere = true;
+                        concurrentRequests--;
+                    }
+
                     // Fallback A22 si erreur transitoire
                     if (estTransitoire(errV2)) {
                         const retryAfter = errV2.retryAfter || 5;
@@ -1328,8 +1348,13 @@ export default {
                     return reponseJSON(v2Local, 200);
                 }
             } finally {
-                // Le décrément est ici — exécuté exactement une fois, quel que soit le chemin.
-                concurrentRequests--;
+                // B1-A : filet de sécurité — ne décrémente que si le slot n'a pas déjà été
+                // libéré avant l'attente de retry. Garantit exactement une libération par
+                // réservation, sans double décrément ni slot perdu.
+                if (!slotLibere) {
+                    slotLibere = true;
+                    concurrentRequests--;
+                }
             }
         }
 
