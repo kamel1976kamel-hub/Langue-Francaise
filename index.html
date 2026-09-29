@@ -683,7 +683,7 @@
                 console.log('📝 Texte à lire:', text);
                 
                 // Utiliser un ID unique mais stable basé sur le contenu du message
-                const sourceId = 'chat-ai-response-' + text.substring(0, 20).replace(/\s+/g, '-').toLowerCase();
+                const sourceId = 'chat-ai-response-' + text;
                 
                 // Si on clique sur la même source qui est en cours de lecture, on arrête
                 if (window.currentAudioSource === sourceId && window.isSpeaking()) {
@@ -6455,7 +6455,7 @@
         if (!text) return;
         
         // Utiliser un ID unique mais stable basé sur le contenu du message
-        const sourceId = 'chat-ai-response-' + text.substring(0, 20).replace(/\s+/g, '-').toLowerCase();
+        const sourceId = 'chat-ai-response-' + text;
         
         // Si on clique sur la même source qui est en cours de lecture, on arrête
         if (window.currentAudioSource === sourceId && window.isSpeaking()) {
