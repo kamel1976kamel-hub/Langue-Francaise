@@ -330,7 +330,7 @@ console.log('\n── SECTION T1 : activité + local_requis HTTP 200 ──\n');
     // =============================================================
     console.log('\n── SECTION T6 : local_requis HTTP 429 ──\n');
 
-    console.log('Test T6 : HTTP 429 — comportement de rejet conservé');
+    console.log('Test T6 : HTTP 429 — traité explicitement (comportement B1-B1)');
     var h = creerHarnais({
         status: 429,
         reponse: { erreur: 'Service IA saturé, réessayez plus tard', source: 'local_requis', retryAfter: 5 },
@@ -338,15 +338,28 @@ console.log('\n── SECTION T1 : activité + local_requis HTTP 200 ──\n');
     });
 
     return h.sandbox.window.demanderIA('la texte est important', 'activité').then(function (reponse) {
-        // Le 429 déclenche !response.ok => throw => catch => feedback local heuristique
+        // ⚠️ MISE À JOUR B1-B1 : le 429 ne tombe PLUS dans le catch générique.
+        // Le client le traite désormais explicitement (main.js, branche
+        // `response.status === 429`) et retourne un état de saturation honnête.
+        // Ce test conserve les invariants qui comptent :
+        //   - aucun retry (1 seul fetch) ;
+        //   - pas d'appel au moteur local (le repli 275 règles est réservé à A1/200) ;
+        //   - pas de crash ;
+        //   - jamais la chaîne « Réponse IA non disponible ».
+        assertEq(h.journal.fetchCalls.length, 1,
+            'le 429 ne déclenche AUCUN retry (1 seul fetch)');
         assertEq(h.journal.correctCalls.length, 0,
-            'le moteur local n\'est PAS appelé via le routage A1 (429 passe par catch)');
+            'le moteur local n\'est PAS appelé pour un 429 (réservé à A1)');
         assertOk(reponse !== undefined && reponse !== null,
-            'le catch produit bien un objet de repli (pas de crash)');
+            'un objet de repli est bien produit (pas de crash)');
         assertOk(String(reponse.analysis).indexOf(INTERDIT) === -1,
             'aucune chaîne « Réponse IA non disponible » après un 429');
-        assertEq(reponse.source, 'locale',
-            'le repli heuristique existant conserve source=locale');
+        assertEq(reponse.source, 'saturated',
+            'source=saturated (état B1-B1, plus source=locale)');
+        assertEq(reponse.iaUnavailable, true,
+            'iaUnavailable = true (état explicite pour l\'UI)');
+        assertEq(reponse.retryAfterSeconds, 5,
+            'retryAfterSeconds = 5 (lu depuis data.retryAfter, non inventé)');
     });
 }).then(function () {
 

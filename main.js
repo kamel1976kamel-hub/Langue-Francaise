@@ -198,6 +198,14 @@ window.demanderIA = async function(prompt, contexte, optionsV2) {
             return result;
         }
 
+        // ─── B1-B1 : saturation 429 — transmettre TEL QUEL ───
+        // Même raison qu'A1 : sans ce passage direct, `demanderIA` écraserait
+        // `analysis` (message de saturation) et `corrections` par son propre calcul,
+        // et le message honnête produit par `etatSaturation()` serait perdu.
+        if (result && result.source === 'saturated') {
+            return result;
+        }
+
         // ─── V2 : détecter si le résultat est une ResponseV2 ───
         var isV2 = isResponseV2(result);
         
@@ -703,6 +711,40 @@ function messageServiceIndisponible(contexte) {
     return 'Le service IA et l\u2019analyse locale sont momentanément indisponibles. Votre réponse n\u2019a pas pu être analysée pour le moment. Merci de réessayer dans quelques instants.';
 }
 
+// ─── B1-B1 : message honnête quand le Worker signale une saturation (HTTP 429) ───
+// Le 429 est une INSTRUCTION explicite (« réessayez plus tard »), pas une panne :
+// il ne doit donc ni passer par le catch générique, ni produire l'heuristique de
+// longueur (« Analyse locale (IA distante non configurée) — Votre réponse est très courte »).
+function messageSature(retryAfterSeconds) {
+    if (typeof retryAfterSeconds === 'number' && isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+        return 'Le service IA est momentanément saturé. Réessayez dans ' + retryAfterSeconds + ' seconde' + (retryAfterSeconds > 1 ? 's' : '') + '.';
+    }
+    return 'Le service IA est momentanément saturé. Veuillez réessayer plus tard.';
+}
+
+// ─── B1-B1 : extraction SANS invention de `retryAfter` ───
+// Seule source retenue : `data.retryAfter` du corps JSON (W2/W3 le fournissent).
+// Aucune valeur par défaut n'est fabriquée : absent ou invalide => null.
+function extraireRetryAfterSeconds(valeur) {
+    var n = Number(valeur);
+    if (!isFinite(n) || n <= 0) return null;
+    return n;
+}
+
+// ─── B1-B1 : état retourné au niveau appelant pour un HTTP 429 ───
+// AUCUN retry : une seule requête est émise, jamais de seconde tentative.
+function etatSaturation(retryAfterSeconds, estChat) {
+    return {
+        source: 'saturated',
+        analysis: messageSature(retryAfterSeconds),
+        corrections: [], explanations: [], suggestions: [],
+        iaUnavailable: true,
+        retryAfterSeconds: (typeof retryAfterSeconds === 'number' ? retryAfterSeconds : null),
+        isChatResponse: !!estChat,
+        isActivityResponse: !estChat
+    };
+}
+
 // ─── A1 : repli local via le moteur EXISTANT (275 règles, aucune réécriture) ───
 async function repliLocal(texte, estChat) {
     if (estChat) {
@@ -831,6 +873,20 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             if (window.AuthClient) window.AuthClient.clearToken();
             if (window.profileSelector) window.profileSelector.showLoginScreen();
             throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
+        // ─── B1-B1 : HTTP 429 traité EXPLICITEMENT (ne tombe plus dans le catch) ───
+        // 429 = saturation/quota : le Worker demande une temporisation. On ne réémet
+        // JAMAIS de requête ici (aucun retry) et on n'invente aucun délai : seul
+        // `data.retryAfter` du corps est lu (W2 legacy=5, W3 legacy=quota Groq).
+        // ⚠️ W1 (saturation V2, ai-pipeline-worker.js:1282) renvoie une ResponseV2
+        // `status:'throttled'` sans `retryAfter` => retryAfterSeconds = null.
+        if (response.status === 429) {
+            let corps429 = null;
+            try { corps429 = await response.json(); } catch (e) { corps429 = null; }
+            const ra429 = extraireRetryAfterSeconds(corps429 && corps429.retryAfter);
+            const estChat429 = (activityContext === 'chat' || activityContext.includes('chat'));
+            console.warn('⚠️ Worker: HTTP 429 (saturation)', { retryAfterSeconds: ra429 });
+            return etatSaturation(ra429, estChat429);
         }
         if (!response.ok) { throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`); }
         const data = await response.json();
