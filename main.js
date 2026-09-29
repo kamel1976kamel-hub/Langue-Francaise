@@ -42,35 +42,6 @@ window.appState = window.appState || {
 };
 
 /**
- * Met à jour le statut de l'IA dans l'interface
- * @param {string} statusText - Texte du statut
- * @param {string} bgColorClass - Classe CSS pour la couleur
- * @param {number} progressPercent - Pourcentage de progression
- */
-function setIaStatus(statusText, bgColorClass, progressPercent) {
-    const statusElement = document.getElementById('ia-status');
-    const progressBar = document.getElementById('ia-progress');
-    
-    try {
-        if (statusElement) {
-            statusElement.textContent = statusText;
-            statusElement.className = statusElement.className.replace(/bg-\w+-500/g, bgColorClass);
-        }
-        
-        if (progressBar) {
-            progressBar.style.width = `${Math.max(0, Math.min(100, progressPercent))}%`;
-            progressBar.className = `h-1 rounded-full transition-all duration-300 ${bgColorClass}`;
-        }
-        
-        if (window.APP_CONFIG.debug) {
-            console.log(`🤖 IA Status: ${statusText} (${progressPercent}%)`);
-        }
-    } catch (error) {
-        console.error('Erreur lors de la mise à jour du statut IA:', error);
-    }
-}
-
-/**
  * Vérifie si tous les modules requis sont prêts
  * @returns {boolean} True si tous les modules sont prêts
  */
