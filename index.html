@@ -5900,12 +5900,6 @@
       const profileSelector = new ProfileSelector();
 
       // Fonctions de compatibilité
-      function selectProfile(username) {
-        // Compatibilité : selectProfile sans mot de passe ne fonctionne plus
-        // L'authentification réelle nécessite login(username, password) via le formulaire
-        console.warn('selectProfile() sans mot de passe non supporté — utiliser le formulaire de connexion');
-        return false;
-      }
 
       // Rendre accessible globalement
       window.profileSelector = profileSelector;
@@ -6055,8 +6049,6 @@
         var resultModal = document.getElementById('adminResultModal');
         if (resultModal) resultModal.classList.add('hidden');
       };
-      window.selectProfile = selectProfile;
-      window.login = function(username) { return selectProfile(username); };
 
       // ============ NAVIGATION VUES ============
       // Les variables mainApp et activitiesContainer sont définies plus haut
