@@ -45,7 +45,7 @@ Correction automatique des réponses d'activités via `window.correctTextWithDat
 3. Décider de BUG-001 : `window.writingAssistant` inexistant mais appelé par 9+ champs (`index.html:5969,5977,6131,6138,6216,7979,8926`) et `setupRealTimeCorrectionForChat()` jamais définie (`index.html:9542,9549`).
 4. Ajouter des tests (zéro test aujourd'hui).
 5. Nettoyage : BUG-008 (`index.html:30` texte orphelin), BUG-009 (scripts de secours + `DEBUG_WICTIONARY=true:7450` + 190 console.log), BUG-006 (branches mortes hybrid/cloud, `migrate-from-js.js` erreur de syntaxe, message d'erreur « OpenAI » mensonger `main.js:124-136`).
-6. Trancher le sort des orphelins : `nlp/database/` (MySQL+Express), `nlp/python-server/` (spaCy), `activities-optimized.js`, `memory/student-profile-unified.js`, `contexts/*.md`, `src/style.css`.
+6. **État des anciens candidats orphelins :** `nlp/python-server/`, `activities-optimized.js`, `src/style.css` et les anciens composants MySQL/Express de `nlp/database/` ont été traités dans des lots séparés. Le fichier actif `nlp/database/init-browser-sqlite.js` est conservé comme source de règles vivante. `memory/student-profile-unified.js` et `contexts/*.md` restent des sujets distincts dont la décision n'est pas tranchée.
 
 ## Bugs critiques
 | ID | Résumé | Lieu |
