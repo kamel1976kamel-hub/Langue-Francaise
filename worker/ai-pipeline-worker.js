@@ -40,6 +40,18 @@
  * =================================================================
  */
 
+// =================================================================
+// CONTRAT V2 — Import du module de validation
+// =================================================================
+import {
+    validateRequestV2,
+    validateResponseV2,
+    isRequestV2,
+    buildEmptyResponseV2,
+    buildResponseV2,
+    CONTRACT_VERSION
+} from './contract-v2.js';
+
 const ALLOWED_ORIGIN = 'https://kamel1976kamel-hub.github.io';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'openai/gpt-oss-20b';
@@ -792,6 +804,322 @@ function synthetiserReponsePedagogique(etapes) {
     return parts.length > 0 ? parts.join('\n\n') : 'Analyse effectuée.';
 }
 
+// =================================================================
+// PIPELINE V2 — Prompts, helpers, et pipeline A22B/Tuteur/Cours
+// =================================================================
+
+// Construit la description du contexte pour les prompts V2
+function buildV2ContextPrompt(request) {
+    if (request.mode === 'chat' && request.context && request.context.chat) {
+        var c = request.context.chat;
+        return 'Contexte : discussion sur le thème « ' + (c.topic_title || c.topic) + ' ».\n' +
+            (c.topic_context ? c.topic_context + '\n' : '');
+    }
+    if (request.mode === 'activity' && request.context && request.context.activity) {
+        var a = request.context.activity;
+        return 'Contexte : activité « ' + (a.title || '') + ' » (type: ' + (a.type || 'général') + ').\n' +
+            (a.instructions ? 'Consignes : ' + a.instructions + '\n' : '');
+    }
+    return '';
+}
+
+// Construit la description des détections locales pour les prompts V2
+function buildV2DetectionsPrompt(request) {
+    if (!Array.isArray(request.local_detections) || request.local_detections.length === 0) {
+        return '';
+    }
+    var parts = ['Indications du moteur local (à vérifier, ne pas considérer comme des vérités absolues) :'];
+    for (var i = 0; i < request.local_detections.length; i++) {
+        var d = request.local_detections[i];
+        var line = '- « ' + (d.excerpt || '') + ' »';
+        if (d.correction) line += ' → correction suggérée : « ' + d.correction + ' »';
+        if (d.category) line += ' [' + d.category + ']';
+        parts.push(line);
+    }
+    return parts.join('\n');
+}
+
+// Ensemble des rule_id envoyés dans local_detections
+function buildLocalRuleIdSet(request) {
+    var set = {};
+    if (Array.isArray(request.local_detections)) {
+        for (var i = 0; i < request.local_detections.length; i++) {
+            var rid = request.local_detections[i] && request.local_detections[i].rule_id;
+            if (typeof rid === 'string' && rid) {
+                set[rid] = true;
+            }
+        }
+    }
+    return set;
+}
+
+// Sanitize un rule_id : ne garder que s'il est dans local_detections, sinon null
+function sanitizeRuleId(ruleId, localRuleIds) {
+    if (typeof ruleId !== 'string' || !ruleId) return null;
+    return localRuleIds[ruleId] ? ruleId : null;
+}
+
+// Prompt système pour l'étape 1 — ANALYSE V2
+function promptSystemeAnalyseV2() {
+    return 'Tu es un évaluateur rigoureux pour un élève de français.\n' +
+        'Analyse le texte original de l\'élève. Les indications locales sont des suggestions à vérifier.\n' +
+        'Réponds UNIQUEMENT avec un JSON compact valide, sans texte hors JSON.\n' +
+        'Format : {"diagnostic":"...","erreurs":[{"extrait":"...","type":"grammaire|orthographe|vocabulaire|conjugaison|style","correction":"..." ou null,"rule_id":"..." ou null,"model_confidence":0.0-1.0}],"priorite":"..."}\n' +
+        'Maximum 5 erreurs. rule_id uniquement si tu es sûr de la règle, sinon null.\n' +
+        'diagnostic ≤ 300 caractères. priorite ≤ 200 caractères.';
+}
+
+// Prompt système pour l'étape 2 — TUTEUR V2
+function promptSystemeTuteurV2() {
+    return 'Tu es un tuteur pédagogue empathique pour un élève de français.\n' +
+        'Explique pourquoi les erreurs sont importantes et comment les éviter.\n' +
+        'Ne répète pas simplement l\'analyse. Guide l\'élève vers la compréhension.\n' +
+        'Réponds UNIQUEMENT avec un JSON compact valide.\n' +
+        'Format : {"explanation":"...","advice":"...","example":"..."}\n' +
+        'explanation ≤ 400 caractères. advice ≤ 200 caractères. example ≤ 200 caractères.';
+}
+
+// Prompt système pour l'étape 3 — COURS V2
+function promptSystemeCoursV2() {
+    return 'Tu rattaches les erreurs au point de cours correspondant.\n' +
+        'N\'invente JAMAIS une règle : si les règles locales fournies couvrent le cas, appuie-toi dessus ;\n' +
+        'sinon reste générique.\n' +
+        'Réponds UNIQUEMENT avec un JSON compact valide.\n' +
+        'Format : {"point_cours":"...","regle":"...","exemple":"...","rule_id":"..." ou null}\n' +
+        'rule_id uniquement si c\'est une règle locale fournie. Sinon null.\n' +
+        'point_cours ≤ 300 caractères. regle ≤ 200 caractères. exemple ≤ 200 caractères.';
+}
+
+// Valide et normalise le résultat de l'étape Analyse
+function validateAnalyseV2(raw, localRuleIds) {
+    var result = extraireJSON(raw);
+    var diagnostic = typeof result.diagnostic === 'string' ? result.diagnostic.slice(0, 300) : '';
+    var priorite = typeof result.priorite === 'string' ? result.priorite.slice(0, 200) : '';
+    var erreurs = [];
+    if (Array.isArray(result.erreurs)) {
+        var max = Math.min(result.erreurs.length, 5);
+        for (var i = 0; i < max; i++) {
+            var e = result.erreurs[i];
+            if (!e || typeof e !== 'object') continue;
+            var excerpt = typeof e.extrait === 'string' ? e.extrait.slice(0, 100) : '';
+            var type = typeof e.type === 'string' ? e.type.slice(0, 30) : '';
+            var correction = (e.correction === null || e.correction === undefined) ? null : String(e.correction).slice(0, 150);
+            var ruleId = sanitizeRuleId(e.rule_id, localRuleIds);
+            var confidence = null;
+            if (typeof e.model_confidence === 'number' && e.model_confidence >= 0 && e.model_confidence <= 1) {
+                confidence = e.model_confidence;
+            }
+            erreurs.push({
+                excerpt: excerpt,
+                type: type,
+                correction: correction,
+                rule_id: ruleId,
+                model_confidence: confidence,
+                rule_known_locally: false, // Le Worker n'a PAS les 275 règles — ne peut pas savoir
+                local_detected: ruleId !== null, // Présent dans local_detections envoyées
+                model_suggested: ruleId !== null,
+                validated: false // Validation finale côté frontend uniquement
+            });
+        }
+    }
+    return { diagnostic: diagnostic, erreurs: erreurs, priorite: priorite };
+}
+
+// Valide et normalise le résultat de l'étape Tuteur
+function validateTuteurV2(raw) {
+    var result = extraireJSON(raw);
+    return {
+        explanation: typeof result.explication === 'string' ? result.explication.slice(0, 400) : '',
+        advice: typeof result.conseil === 'string' ? result.conseil.slice(0, 200) : '',
+        example: typeof result.exemple === 'string' ? result.exemple.slice(0, 200) : ''
+    };
+}
+
+// Valide et normalise le résultat de l'étape Cours
+function validateCoursV2(raw, localRuleIds) {
+    var result = extraireJSON(raw);
+    var ruleId = sanitizeRuleId(result.rule_id, localRuleIds);
+    return {
+        point_cours: typeof result.point_cours === 'string' ? result.point_cours.slice(0, 300) : '',
+        rule: typeof result.regle === 'string' ? result.regle.slice(0, 200) : '',
+        example: typeof result.exemple === 'string' ? result.exemple.slice(0, 200) : '',
+        rule_id: ruleId,
+        validated: false // Validation finale côté frontend uniquement
+    };
+}
+
+// Pipeline A22B V2 — 3 étapes
+async function pipelineA22BV2(request, cle) {
+    var textOriginal = request.student.text_original;
+    var contextPrompt = buildV2ContextPrompt(request);
+    var detectionsPrompt = buildV2DetectionsPrompt(request);
+    var localRuleIds = buildLocalRuleIdSet(request);
+    var localRulesUsed = Array.isArray(request.local_detections)
+        ? request.local_detections.map(function(d) { return d.rule_id; }).filter(Boolean)
+        : [];
+
+    // ÉTAPE 1 — ANALYSE
+    console.log('WORKER_V2: Début étape 1 (ANALYSE)');
+    var debut1 = Date.now();
+    var r1 = await appelerGroq(cle, [
+        { role: 'system', content: promptSystemeAnalyseV2() },
+        {
+            role: 'user',
+            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                contextPrompt +
+                (detectionsPrompt ? detectionsPrompt + '\n' : '')
+        }
+    ], 500, 0.2);
+    console.log('WORKER_V2: Fin étape 1 (ANALYSE)', { dureeMs: Date.now() - debut1 });
+    var analyse = validateAnalyseV2(r1.contenu, localRuleIds);
+
+    // ÉTAPE 2 — TUTEUR
+    console.log('WORKER_V2: Début étape 2 (TUTEUR)');
+    var debut2 = Date.now();
+    var r2 = await appelerGroq(cle, [
+        { role: 'system', content: promptSystemeTuteurV2() },
+        {
+            role: 'user',
+            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                contextPrompt +
+                'Résultat de l\'analyse : ' + JSON.stringify(analyse) + '\n' +
+                (detectionsPrompt ? detectionsPrompt + '\n' : '')
+        }
+    ], 500, 0.7);
+    console.log('WORKER_V2: Fin étape 2 (TUTEUR)', { dureeMs: Date.now() - debut2 });
+    var tuteur = validateTuteurV2(r2.contenu);
+
+    // ÉTAPE 3 — COURS
+    console.log('WORKER_V2: Début étape 3 (COURS)');
+    var debut3 = Date.now();
+    var r3 = await appelerGroq(cle, [
+        { role: 'system', content: promptSystemeCoursV2() },
+        {
+            role: 'user',
+            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                contextPrompt +
+                'Résultat de l\'analyse : ' + JSON.stringify(analyse) + '\n' +
+                'Explication du tuteur : ' + JSON.stringify(tuteur) + '\n' +
+                (detectionsPrompt ? detectionsPrompt + '\n' : '')
+        }
+    ], 400, 0.3);
+    console.log('WORKER_V2: Fin étape 3 (COURS)', { dureeMs: Date.now() - debut3 });
+    var cours = validateCoursV2(r3.contenu, localRuleIds);
+
+    // Construire la ResponseV2
+    return buildResponseV2({
+        source: 'remote_a22b',
+        status: 'ok',
+        diagnostic: analyse.diagnostic,
+        errors: analyse.erreurs,
+        priority: analyse.priorite,
+        tutorExplanation: tuteur.explanation,
+        tutorAdvice: tuteur.advice,
+        tutorExample: tuteur.example,
+        coursePoint: cours.point_cours,
+        courseRule: cours.rule,
+        courseExample: cours.example,
+        courseValidated: cours.validated,
+        courseRuleId: cours.rule_id,
+        model: GROQ_MODEL,
+        localRulesUsed: localRulesUsed
+    });
+}
+
+// Pipeline A22 V2 — fallback (1 seul appel)
+async function pipelineA22V2(request, cle) {
+    var textOriginal = request.student.text_original;
+    var contextPrompt = buildV2ContextPrompt(request);
+    var detectionsPrompt = buildV2DetectionsPrompt(request);
+    var localRuleIds = buildLocalRuleIdSet(request);
+    var localRulesUsed = Array.isArray(request.local_detections)
+        ? request.local_detections.map(function(d) { return d.rule_id; }).filter(Boolean)
+        : [];
+
+    var rA = await appelerGroq(cle, [
+        { role: 'system', content: promptSystemeA22() },
+        {
+            role: 'user',
+            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                contextPrompt +
+                (detectionsPrompt ? detectionsPrompt + '\n' : '')
+        }
+    ], 700, 0.5);
+
+    var a22 = extraireJSON(rA.contenu);
+
+    // Mapper A22 → ResponseV2
+    var analysePart = typeof a22.analyse === 'string' ? a22.analyse : '';
+    var tutorPart = typeof a22.pedagogie === 'string' ? a22.pedagogie : '';
+    var coursePart = typeof a22.reference === 'string' ? a22.reference : '';
+
+    return buildResponseV2({
+        source: 'remote_a22_fallback',
+        status: 'ok',
+        diagnostic: analysePart.slice(0, 300),
+        errors: [],
+        priority: '',
+        tutorExplanation: tutorPart.slice(0, 400),
+        tutorAdvice: '',
+        tutorExample: '',
+        coursePoint: coursePart.slice(0, 300),
+        courseRule: '',
+        courseExample: '',
+        courseValidated: false,
+        courseRuleId: null,
+        model: GROQ_MODEL,
+        localRulesUsed: localRulesUsed
+    });
+}
+
+// Fallback local V2 — exploite les détections locales
+function fallbackLocalV2(request) {
+    var localRulesUsed = Array.isArray(request.local_detections)
+        ? request.local_detections.map(function(d) { return d.rule_id; }).filter(Boolean)
+        : [];
+
+    var erreurs = [];
+    if (Array.isArray(request.local_detections)) {
+        for (var i = 0; i < request.local_detections.length && i < 5; i++) {
+            var d = request.local_detections[i];
+            if (!d) continue;
+            erreurs.push({
+                excerpt: typeof d.excerpt === 'string' ? d.excerpt : '',
+                type: typeof d.category === 'string' ? d.category : '',
+                correction: typeof d.correction === 'string' ? d.correction : null,
+                rule_id: typeof d.rule_id === 'string' ? d.rule_id : null,
+                model_confidence: null,
+                rule_known_locally: false, // Worker n'a pas les 275 règles
+                local_detected: true,
+                model_suggested: false,
+                validated: false // Validation finale côté frontend
+            });
+        }
+    }
+
+    var diagnostic = erreurs.length > 0
+        ? erreurs.length + ' erreur(s) détectée(s) par l\'analyse locale.'
+        : 'Aucune erreur détectée par l\'analyse locale.';
+
+    return buildResponseV2({
+        source: 'local_rules',
+        status: 'ok',
+        diagnostic: diagnostic,
+        errors: erreurs,
+        priority: '',
+        tutorExplanation: '',
+        tutorAdvice: '',
+        tutorExample: '',
+        coursePoint: '',
+        courseRule: '',
+        courseExample: '',
+        courseValidated: false,
+        courseRuleId: null,
+        model: null,
+        localRulesUsed: localRulesUsed
+    });
+}
+
 export default {
     async fetch(request, env, ctx) {
         // ─── Contrôle strict de l'origine CORS ───
@@ -934,6 +1262,78 @@ export default {
         if (!corps || typeof corps !== 'object') {
             return reponseJSON({ erreur: 'Corps de requête invalide' }, 400);
         }
+
+        // ─── CONTRAT V2 — Pipeline A22B complet ───
+        if (isRequestV2(corps)) {
+            console.log('WORKER_V2: Requête V2 détectée (contractVersion: "2.0")');
+            const v2Validation = validateRequestV2(corps);
+            if (!v2Validation.valid) {
+                console.log('WORKER_V2: Validation RequestV2 échouée', { errors: v2Validation.errors });
+                return reponseJSON({
+                    contractVersion: CONTRACT_VERSION,
+                    erreur: 'RequestV2 invalide',
+                    details: v2Validation.errors
+                }, 400);
+            }
+            console.log('WORKER_V2: RequestV2 validée', { mode: corps.mode });
+
+            // Protection anti-rafale
+            if (concurrentRequests >= MAX_CONCURRENT_REQUESTS) {
+                return reponseJSON(buildEmptyResponseV2(null, 'throttled', 'anti_rafale'), 429);
+            }
+            concurrentRequests++;
+
+            try {
+                const debutV2 = Date.now();
+                try {
+                    const v2Result = await pipelineA22BV2(corps, cle);
+                    console.log('WORKER_V2: Pipeline A22B V2 réussi', {
+                        dureeMs: Date.now() - debutV2,
+                        source: v2Result.source
+                    });
+
+                    // Valider la réponse avant envoi
+                    const respValidation = validateResponseV2(v2Result);
+                    if (!respValidation.valid) {
+                        console.error('WORKER_V2: ResponseV2 invalide construite', { errors: respValidation.errors });
+                    }
+                    return reponseJSON(v2Result, 200);
+
+                } catch (errV2) {
+                    console.error('WORKER_V2: Échec pipeline A22B V2', {
+                        type: errV2.constructor.name,
+                        message: errV2.message,
+                        dureeTotaleMs: Date.now() - debutTotal
+                    });
+
+                    // Fallback A22 si erreur transitoire
+                    if (estTransitoire(errV2)) {
+                        const retryAfter = errV2.retryAfter || 5;
+                        if (retryAfter <= 10) {
+                            await new Promise(function(resolve) { setTimeout(resolve, retryAfter * 1000); });
+                            try {
+                                console.log('WORKER_V2: Fallback A22 V2');
+                                const v2A22 = await pipelineA22V2(corps, cle);
+                                console.log('WORKER_V2: Fallback A22 V2 réussi');
+                                return reponseJSON(v2A22, 200);
+                            } catch (errA22V2) {
+                                console.error('WORKER_V2: Échec fallback A22 V2');
+                            }
+                        }
+                    }
+
+                    // Fallback local
+                    console.log('WORKER_V2: Fallback local V2');
+                    const v2Local = fallbackLocalV2(corps);
+                    return reponseJSON(v2Local, 200);
+                }
+            } finally {
+                // Le décrément est ici — exécuté exactement une fois, quel que soit le chemin.
+                concurrentRequests--;
+            }
+        }
+
+        // ─── CONTRAT LEGACY (V1) — Comportement existant ───
 
         // action : doit être "analyze" si présent
         if (corps.action !== undefined && corps.action !== 'analyze') {

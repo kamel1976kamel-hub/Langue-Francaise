@@ -26,6 +26,7 @@
     <script src="nlp/integrated-correction-system.js?v=70"></script>
     <script src="memory/student-profile-unified.js?v=44"></script>
     <script src="auth-client.js?v=80"></script>
+    <script src="src/request-builder-v2.js?v=1"></script>
     <script src="main.js?v=75"></script>
     
     // Debug script -->
@@ -63,6 +64,27 @@
     
     <!-- Fonctions pour le chat et l'analyse -->
     <script>
+        // Échappement HTML pour le chat — empêche l'injection de HTML/JS
+        // via les messages utilisateur ou les réponses IA
+        function _escapeHtmlChat(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ÉTAPE 7A : compteur de caractères du champ de saisie
+        function updateChatCharCount() {
+            const chatInput = document.getElementById('chatInput');
+            const counter = document.getElementById('chatCharCount');
+            if (chatInput && counter) {
+                counter.textContent = chatInput.value.length + ' / 2000';
+            }
+        }
+
         // Fonction pour ajouter un message au chat
         function addChatMessage(message, sender) {
             try {
@@ -121,6 +143,8 @@
                 
                 if (sender === 'user') {
                     // Message de l'utilisateur
+                    // SEC-XSS : le texte utilisateur est échappé via _escapeHtmlChat()
+                    // pour empêcher toute injection HTML/JS dans innerHTML
                     messageDiv.innerHTML = `
                         <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
                             <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,23 +153,25 @@
                         </div>
                         <div class="flex-1">
                             <div class="rounded-lg p-4" style="background-color: var(--bs-primary);">
-                                <p class="text-sm" style="color: white;">${message}</p>
+                                <p class="text-sm chat-msg-text" style="color: white;"></p>
                             </div>
                             <p class="text-xs mt-1" style="color: var(--bs-text-muted);">Vous • Maintenant</p>
                         </div>
                     `;
+                    messageDiv.querySelector('.chat-msg-text').textContent = message;
                 } else {
                     // Message de l'IA
+                    // SEC-XSS : la réponse IA est échappée via _escapeHtmlChat()
                     messageDiv.innerHTML = `
                         <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
                             <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 002 2v10a2 2 0 002 2z"/>
                             </svg>
                         </div>
                         <div class="flex-1">
                             <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                                 <div class="flex justify-between items-start">
-                                    <p class="text-sm flex-1" style="color: var(--bs-white);">${message}</p>
+                                    <p class="text-sm flex-1 chat-msg-text" style="color: var(--bs-white);"></p>
                                     <button 
                                         onclick="readText(this)"
                                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -160,10 +186,16 @@
                             <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
                         </div>
                     `;
+                    messageDiv.querySelector('.chat-msg-text').textContent = message;
                 }
                 
                 // Ajouter le message au conteneur
                 chatContainer.appendChild(messageDiv);
+                
+                // ÉTAPE 7B : persistance via l'infrastructure d'historique existante
+                if (window.currentDiscussion) {
+                    addMessageToHistory(window.currentDiscussion, message, sender === 'user' ? 'student' : 'ai');
+                }
                 
                 // Faire défiler vers le bas
                 chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -177,6 +209,11 @@
         
         // Fonctions pour l'analyse et la correction des questions
         window.analyzeQuestion = async function() {
+            // ─── 4C : garde anti-double envoi ───
+            if (window._chatIsSending) {
+                console.log('⏳ analyseQuestion : déjà en cours, ignoré');
+                return;
+            }
             try {
                 console.log('🔍 analyzeQuestion appelé');
                 
@@ -187,6 +224,9 @@
                     console.log('⚠️ Question vide');
                     return;
                 }
+                
+                // Verrouiller le verrou anti-double envoi
+                window._chatIsSending = true;
                 
                 console.log('📝 Question à analyser:', question);
                 
@@ -206,7 +246,7 @@
                 
                 if (window.correctTextWithDatabase) {
                     console.log('🚀 Utilisation de la base de données');
-                    window.correctTextWithDatabase(question)
+                    await window.correctTextWithDatabase(question)
                         .then(corrections => {
                             console.log('✅ Corrections reçues:', corrections);
                             displayCorrections(corrections, question);
@@ -227,6 +267,8 @@
                 
             } catch (error) {
                 console.error('❌ Erreur analyzeQuestion:', error);
+            } finally {
+                window._chatIsSending = false;
             }
         };
         
@@ -266,6 +308,7 @@
             
             errors.forEach((error, index) => {
                 const errorId = `error-${index}`;
+                // SEC-XSS : toutes les données dynamiques sont échappées via _escapeHtmlChat()
                 html += `
                     <div class="p-3 rounded-lg border" style="background-color: rgba(239, 68, 68, 0.05); border-color: #ef4444;">
                         <div class="flex items-start gap-3">
@@ -274,14 +317,14 @@
                             </div>
                             <div class="flex-1">
                                 <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-medium px-2 py-1 rounded" style="background-color: #ef4444; color: white;">${error.type || 'Erreur'}</span>
-                                    <span class="text-sm font-medium" style="color: #dc2626;">"${error.original || error.text}"</span>
+                                    <span class="text-xs font-medium px-2 py-1 rounded" style="background-color: #ef4444; color: white;">${_escapeHtmlChat(error.type || 'Erreur')}</span>
+                                    <span class="text-sm font-medium" style="color: #dc2626;">"${_escapeHtmlChat(error.original || error.text)}"</span>
                                 </div>
-                                <p class="text-sm" style="color: #7f1d1d;">${error.explanation || error.message}</p>
+                                <p class="text-sm" style="color: #7f1d1d;">${_escapeHtmlChat(error.explanation || error.message)}</p>
                                 ${error.suggestion ? `
                                     <div class="mt-2 p-2 rounded" style="background-color: rgba(34, 197, 94, 0.1);">
                                         <p class="text-xs font-medium text-green-800">💡 Suggestion :</p>
-                                        <p class="text-sm text-green-700">"${error.suggestion}"</p>
+                                        <p class="text-sm text-green-700">"${_escapeHtmlChat(error.suggestion)}"</p>
                                     </div>
                                 ` : ''}
                             </div>
@@ -295,7 +338,7 @@
                 html += `
                     <div class="p-3 rounded-lg" style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e;">
                         <p class="text-sm font-medium text-green-800 mb-2">✅ Question corrigée :</p>
-                        <p class="text-sm" style="color: #166534;">${corrections.correctedText}</p>
+                        <p class="text-sm" style="color: #166534;">${_escapeHtmlChat(corrections.correctedText)}</p>
                     </div>
                 `;
             }
@@ -347,6 +390,7 @@
         
         function displayError(error) {
             const correctionContent = document.getElementById('correctionContent');
+            // SEC-XSS : error.message est échappé via _escapeHtmlChat()
             correctionContent.innerHTML = `
                 <div class="p-3 rounded-lg" style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444;">
                     <div class="flex items-center gap-2">
@@ -355,7 +399,7 @@
                         </svg>
                         <span class="text-sm font-medium text-red-800">❌ Erreur lors de l'analyse</span>
                     </div>
-                    <p class="text-sm mt-2" style="color: #7f1d1d;">${error.message || 'Une erreur est survenue'}</p>
+                    <p class="text-sm mt-2" style="color: #7f1d1d;">${_escapeHtmlChat(error.message || 'Une erreur est survenue')}</p>
                 </div>
             `;
         }
@@ -394,6 +438,7 @@
                 }
                 
                 chatInput.value = correctedText;
+                updateChatCharCount();
                 console.log('✅ Corrections appliquées:', correctedText);
                 
                 // Mettre à jour le panneau
@@ -416,8 +461,46 @@
         };
         
         window.sendCorrectedQuestion = function() {
+            // ─── 4C : garde anti-double envoi ───
+            if (window._chatIsSending) {
+                console.log('⏳ sendCorrectedQuestion : déjà en cours, ignoré');
+                return;
+            }
             try {
                 console.log('🚀 sendCorrectedQuestion appelé');
+                window._chatIsSending = true;
+                
+                // ─── V2 : capturer le texte original AVANT applyAllCorrections() ───
+                const textOriginal = (typeof window.originalQuestion === 'string') ? window.originalQuestion : '';
+                
+                // ─── V2 : convertir les détections locales depuis window.currentCorrections ───
+                var localDetections = [];
+                if (window.currentCorrections && window.RequestBuilderV2) {
+                    if (Array.isArray(window.currentCorrections.corrections) && window.currentCorrections.corrections.length > 0) {
+                        localDetections = window.RequestBuilderV2.convertDatabaseCorrectionsToDetections(window.currentCorrections);
+                    } else if (Array.isArray(window.currentCorrections.errors) && window.currentCorrections.errors.length > 0) {
+                        localDetections = window.RequestBuilderV2.convertAnalyzeErrorsToDetections(window.currentCorrections);
+                    }
+                }
+                
+                // ─── V2 : construire le contexte chat ───
+                var chatContext = null;
+                if (window.RequestBuilderV2 && window.discussionData && window.currentDiscussion) {
+                    var innerChat = window.RequestBuilderV2.buildChatContext(window.currentDiscussion, window.discussionData);
+                    if (innerChat) {
+                        chatContext = { chat: innerChat };
+                    }
+                }
+                
+                // ─── V2 : assembler optionsV2 ───
+                var optionsV2 = null;
+                if (textOriginal && window.RequestBuilderV2) {
+                    optionsV2 = {
+                        textOriginal: textOriginal,
+                        localDetections: localDetections,
+                        context: chatContext
+                    };
+                }
                 
                 // Appliquer d'abord les corrections
                 applyAllCorrections();
@@ -432,10 +515,15 @@
                     
                     if (!message) {
                         console.log('⚠️ Message vide après correction');
+                        window._chatIsSending = false;
                         return;
                     }
                     
                     console.log('📝 Message corrigé à envoyer:', message);
+                    if (optionsV2) {
+                        console.log('📝 V2 text_original:', optionsV2.textOriginal.substring(0, 80));
+                        console.log('📝 V2 détections:', optionsV2.localDetections.length);
+                    }
                     
                     // Afficher le message de l'utilisateur dans le chat
                     addChatMessage(message, 'user');
@@ -446,7 +534,7 @@
                     // Envoyer le message via le système IA existant
                     if (window.demanderIA) {
                         console.log('📡 Appel de window.demanderIA...');
-                        window.demanderIA(message, 'chat')
+                        window.demanderIA(message, 'chat', optionsV2)
                             .then((response) => {
                                 console.log('✅ Message envoyé avec succès via window.demanderIA');
                                 console.log('📤 Réponse IA:', response);
@@ -480,21 +568,27 @@
                                 // Vider l'input
                                 chatInput.value = '';
                                 chatInput.style.height = 'auto';
+                                updateChatCharCount();
                             })
                             .catch((error) => {
                                 console.error('❌ Erreur lors de l\'envoi:', error);
                                 hideTypingIndicator();
                                 addChatMessage('Désolé, une erreur technique est survenue. Veuillez réessayer.', 'ai');
+                            })
+                            .finally(() => {
+                                window._chatIsSending = false;
                             });
                     } else {
                         console.error('❌ window.demanderIA non disponible');
                         hideTypingIndicator();
                         addChatMessage('Le service IA n\'est pas disponible actuellement.', 'ai');
+                        window._chatIsSending = false;
                     }
                 }, 300);
                 
             } catch (error) {
                 console.error('❌ Erreur sendCorrectedQuestion:', error);
+                window._chatIsSending = false;
             }
         };
         
@@ -723,12 +817,44 @@
         
         function processActivityCorrections(corrections, originalAnswer, chapterId, activityId) {
             try {
+                // ─── V2 : capturer le texte original AVANT toute correction ───
+                var textOriginal = (typeof originalAnswer === 'string') ? originalAnswer : '';
+                
+                // ─── V2 : convertir les détections locales ───
+                var localDetections = [];
+                if (corrections && window.RequestBuilderV2) {
+                    if (Array.isArray(corrections.corrections) && corrections.corrections.length > 0) {
+                        localDetections = window.RequestBuilderV2.convertDatabaseCorrectionsToDetections(corrections);
+                    } else if (Array.isArray(corrections.errors) && corrections.errors.length > 0) {
+                        localDetections = window.RequestBuilderV2.convertAnalyzeErrorsToDetections(corrections);
+                    }
+                }
+                
+                // ─── V2 : construire le contexte activité ───
+                var activityContext = null;
+                if (window.RequestBuilderV2 && window.activityContent) {
+                    var innerActivity = window.RequestBuilderV2.buildActivityContext(chapterId, activityId, window.activityContent);
+                    if (innerActivity) {
+                        activityContext = { activity: innerActivity };
+                    }
+                }
+                
+                // ─── V2 : assembler optionsV2 ───
+                var optionsV2 = null;
+                if (textOriginal && window.RequestBuilderV2) {
+                    optionsV2 = {
+                        textOriginal: textOriginal,
+                        localDetections: localDetections,
+                        context: activityContext
+                    };
+                }
+                
                 // Vérifier les deux formats possibles
                 const correctionList = corrections.corrections || corrections.errors || [];
                 
                 if (!corrections || correctionList.length === 0) {
                     console.log('✅ Aucune correction nécessaire, soumission directe');
-                    submitCorrectedActivity(originalAnswer, chapterId, activityId);
+                    submitCorrectedActivity(originalAnswer, chapterId, activityId, optionsV2);
                     return;
                 }
                 
@@ -758,21 +884,85 @@
                 }
                 
                 console.log('🚀 Soumission automatique de l\'activité corrigée:', correctedText);
+                if (optionsV2) {
+                    console.log('📝 V2 text_original:', optionsV2.textOriginal.substring(0, 80));
+                    console.log('📝 V2 détections:', optionsV2.localDetections.length);
+                }
                 
                 // Soumettre directement à l'IA
-                submitCorrectedActivity(correctedText, chapterId, activityId);
+                submitCorrectedActivity(correctedText, chapterId, activityId, optionsV2);
                 
             } catch (error) {
                 console.error('❌ Erreur processActivityCorrections:', error);
                 // En cas d'erreur, soumettre le texte original
-                submitCorrectedActivity(originalAnswer, chapterId, activityId);
+                submitCorrectedActivity(originalAnswer, chapterId, activityId, null);
             }
         }
         
-        function submitCorrectedActivity(answer, chapterId, activityId) {
+        /**
+         * Point d'entrée du bouton « Envoyer » pour les activités.
+         * Récupère le texte actuel, construit optionsV2 si possible,
+         * puis délègue à submitCorrectedActivity (chemin V2).
+         */
+        window.submitActivityWithV2 = function(chapterId, activityId) {
+            try {
+                var answer = getActivityAnswerText(chapterId, activityId);
+                if (!answer) {
+                    alert('⚠️ Veuillez d\'abord écrire une réponse.');
+                    return;
+                }
+
+                // Texte original = texte actuellement dans le textarea (après corrections éventuelles)
+                var textOriginal = answer;
+
+                // Construire optionsV2 si les données de correction sont disponibles
+                var optionsV2 = null;
+                var activityKey = chapterId + '-' + activityId;
+                var storedCorrections = window.currentActivityCorrections && window.currentActivityCorrections[activityKey];
+
+                var localDetections = [];
+                if (storedCorrections && storedCorrections.corrections && window.RequestBuilderV2) {
+                    if (Array.isArray(storedCorrections.corrections.corrections) && storedCorrections.corrections.corrections.length > 0) {
+                        localDetections = window.RequestBuilderV2.convertDatabaseCorrectionsToDetections(storedCorrections.corrections);
+                    } else if (Array.isArray(storedCorrections.corrections.errors) && storedCorrections.corrections.errors.length > 0) {
+                        localDetections = window.RequestBuilderV2.convertAnalyzeErrorsToDetections(storedCorrections.corrections);
+                    }
+                }
+
+                var activityContext = null;
+                if (window.RequestBuilderV2 && window.activityContent) {
+                    var innerActivity = window.RequestBuilderV2.buildActivityContext(chapterId, activityId, window.activityContent);
+                    if (innerActivity) {
+                        activityContext = { activity: innerActivity };
+                    }
+                }
+
+                if (window.RequestBuilderV2) {
+                    optionsV2 = {
+                        textOriginal: textOriginal,
+                        localDetections: localDetections,
+                        context: activityContext
+                    };
+                }
+
+                if (optionsV2) {
+                    console.log('📝 V2 text_original:', optionsV2.textOriginal.substring(0, 80));
+                    console.log('📝 V2 détections:', optionsV2.localDetections.length);
+                }
+
+                submitCorrectedActivity(answer, chapterId, activityId, optionsV2);
+            } catch (error) {
+                console.error('❌ Erreur submitActivityWithV2:', error);
+            }
+        };
+
+        function submitCorrectedActivity(answer, chapterId, activityId, optionsV2) {
             try {
                 console.log('🚀 submitCorrectedActivity appelé pour', chapterId, activityId);
                 console.log('📝 Réponse à soumettre:', answer);
+                if (optionsV2) {
+                    console.log('📝 V2 options présentes : textOriginal =', optionsV2.textOriginal ? optionsV2.textOriginal.substring(0, 60) : 'null');
+                }
                 
                 // Afficher l'indicateur de chargement
                 const feedbackDiv = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
@@ -788,7 +978,7 @@
                     // Utiliser un contexte d'activité par défaut
                     const activityContext = 'activité';
                     
-                    window.demanderIA(answer, activityContext)
+                    window.demanderIA(answer, activityContext, optionsV2)
                         .then((response) => {
                             console.log('✅ Réponse IA reçue pour l\'activité:', response);
                             
@@ -1063,132 +1253,7 @@
                 </div>
             `;
         }
-        
-        window.submitCorrectedActivity = function(chapterId, activityId) {
-            try {
-                console.log('🚀 submitCorrectedActivity appelé pour', chapterId, activityId);
                 
-                const answer = getActivityAnswerText(chapterId, activityId);
-                
-                if (!answer) {
-                    console.log('⚠️ Réponse vide');
-                    alert('⚠️ Veuillez d\'abord écrire une réponse.');
-                    return;
-                }
-                
-                console.log('📝 Réponse à soumettre:', answer);
-                
-                // Afficher l'indicateur de chargement
-                const feedbackDiv = document.getElementById(`activity-feedback-${chapterId}-${activityId}`);
-                const feedbackText = document.getElementById(`activity-feedback-text-${chapterId}-${activityId}`);
-                
-                feedbackDiv.classList.remove('hidden');
-                feedbackText.innerHTML = '<div class="text-center py-4"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div><p class="text-sm mt-2 text-blue-600">Analyse en cours...</p></div>';
-                
-                // Envoyer la réponse via le système IA
-                if (window.demanderIA) {
-                    console.log('📡 Appel de window.demanderIA pour l\'activité...');
-                    
-                    // Utiliser un contexte d'activité par défaut
-                    const activityContext = 'activité';
-                    
-                    window.demanderIA(answer, activityContext)
-                        .then((response) => {
-                            console.log('✅ Réponse IA reçue pour l\'activité:', response);
-                            
-                            // Afficher la réponse de l'IA
-                            if (response && response.analysis) {
-                                let messageToDisplay = response.analysis;
-                                
-                                if (typeof messageToDisplay === 'object') {
-                                    if (messageToDisplay.analysis) {
-                                        messageToDisplay = messageToDisplay.analysis;
-                                    } else if (messageToDisplay.response) {
-                                        messageToDisplay = messageToDisplay.response;
-                                    } else {
-                                        messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
-                                    }
-                                }
-                                
-                                if (typeof messageToDisplay === 'object') {
-                                    messageToDisplay = JSON.stringify(messageToDisplay, null, 2);
-                                }
-                                
-                                // Afficher avec le même format que les messages de chat
-                                feedbackText.innerHTML = `
-                                    <div class="flex gap-3">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
-                                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                            </svg>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-                                                <div class="flex justify-between items-start">
-                                                    <p class="text-sm flex-1" style="color: var(--bs-white);">${messageToDisplay}</p>
-                                                    <button 
-                                                        onclick="readText(this)"
-                                                        class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                                                        title="Lire à voix haute"
-                                                    >
-                                                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
-                                        </div>
-                                    </div>
-                                `;
-                            } else {
-                                feedbackText.innerHTML = `
-                                    <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-                                        <div class="flex items-center gap-2">
-                                            <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                            </svg>
-                                            <span class="text-sm font-medium text-yellow-800">⚠️ Réponse incomplète</span>
-                                        </div>
-                                        <p class="text-sm mt-2 text-yellow-700">Désolé, je n'ai pas pu générer de réponse complète.</p>
-                                    </div>
-                                `;
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('❌ Erreur lors de l\'analyse de l\'activité:', error);
-                            feedbackText.innerHTML = `
-                                <div class="p-3 rounded-lg bg-red-50 border border-red-200">
-                                    <div class="flex items-center gap-2">
-                                        <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        <span class="text-sm font-medium text-red-800">❌ Erreur technique</span>
-                                    </div>
-                                    <p class="text-sm mt-2 text-red-600">Une erreur technique est survenue. Veuillez réessayer.</p>
-                                </div>
-                            `;
-                        });
-                } else {
-                    console.error('❌ window.demanderIA non disponible pour l\'activité');
-                    feedbackText.innerHTML = `
-                        <div class="p-3 rounded-lg bg-gray-50 border border-gray-200">
-                            <div class="flex items-center gap-2">
-                                <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span class="text-sm font-medium text-gray-800">⚠️ Service indisponible</span>
-                            </div>
-                            <p class="text-sm mt-2 text-gray-600">Le service IA n'est pas disponible actuellement.</p>
-                        </div>
-                    `;
-                }
-                
-            } catch (error) {
-                console.error('❌ Erreur submitCorrectedActivity:', error);
-            }
-        };
-        
         window.applyActivityCorrections = function(chapterId, activityId) {
             try {
                 console.log('🔧 applyActivityCorrections appelé pour', chapterId, activityId);
@@ -3243,20 +3308,8 @@
                   <h2 id="chatTitle" class="text-lg font-semibold" style="color: var(--bs-white);">Techniques et pratiques de l'écrit</h2>
                 </div>
               </div>
-              <!-- Icônes Chat, YouTube et Livre -->
+              <!-- Icônes YouTube et Livre -->
               <div class="flex items-center gap-2">
-                <!-- Chat avec Enseignant -->
-                <button onclick="openChatWindow('teacher')" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: #f59e0b;" title="Chat avec Enseignant">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                  </svg>
-                </button>
-                <!-- Chat avec Étudiants -->
-                <button onclick="openChatWindow('students')" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: #10b981;" title="Chat avec Étudiants">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                  </svg>
-                </button>
                 <button onclick="toggleYoutubeModal()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: #FF0000;" title="Vidéos YouTube">
                   <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
@@ -3452,10 +3505,11 @@
                   <textarea 
                     id="chatInput" 
                     placeholder="Posez votre question..." 
+                    maxlength="2000"
                     class="flex-1 px-4 py-3 rounded-lg text-sm border resize-none min-h-[44px] max-h-[120px]"
                     style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
                     onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); analyzeQuestion(); }"
-                    oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px';"
+                    oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px'; updateChatCharCount();"
                     rows="1"
                   ></textarea>
                   <button 
@@ -3469,6 +3523,7 @@
                     </svg>
                   </button>
                 </div>
+                <p id="chatCharCount" class="text-xs mt-1 text-right" style="color: var(--bs-text-muted);">0 / 2000</p>
               </div>
               
               <!-- Zone de correction (cachée par défaut) -->
@@ -3802,20 +3857,8 @@
               <h2 id="activitiesTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Activités</h2>
               <p class="text-sm mt-1" style="color: var(--bs-text-muted);">Sélectionnez une activité pour commencer</p>
             </div>
-            <!-- Icônes Chat, YouTube et Livre -->
+            <!-- Icônes YouTube et Livre -->
             <div class="flex items-center gap-2">
-              <!-- Chat avec Enseignant -->
-              <button onclick="openChatWindow('teacher')" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5" style="color: #f59e0b;" title="Chat avec Enseignant">
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-              </button>
-              <!-- Chat avec Étudiants -->
-              <button onclick="openChatWindow('students')" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5" style="color: #10b981;" title="Chat avec Étudiants">
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-              </button>
               <button onclick="toggleParcoursYoutubeModal()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5" style="color: #FF0000;" title="Vidéos sur le type de texte">
                 <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
@@ -5406,24 +5449,6 @@
           },
         },
       };
-      async function verifierConnecteur() {
-        const phraseInput = document.getElementById("phrase");
-        const feedbackEl = document.getElementById("ia-feedback");
-
-        if (!phraseInput || !feedbackEl) return;
-
-        const phrase = phraseInput.value;
-        const consigne =
-          "L'élève doit utiliser un connecteur logique (car, donc, parce que...). Indique s'il a réussi et suggère une amélioration si besoin.";
-        
-        if (window.demanderIA) {
-          const reponse = await window.demanderIA(phrase, consigne);
-          feedbackEl.textContent = reponse || "";
-        } else {
-          feedbackEl.textContent = "L'IA n'est pas encore chargée.";
-        }
-      }
-
       // Gestion des hotspots (si contentBody existe)
       if (contentBody) {
         contentBody.addEventListener("click", (event) => {
@@ -5962,8 +5987,6 @@
         console.warn('selectProfile() sans mot de passe non supporté — utiliser le formulaire de connexion');
         return false;
       }
-      function logout() { profileSelector.logout(); }
-      function showLoginError(message) { profileSelector.showError(message); }
 
       // Rendre accessible globalement
       window.profileSelector = profileSelector;
@@ -5972,6 +5995,18 @@
       // ADMIN — Gestion des comptes (concepteur uniquement)
       // =================================================================
       var _adminTempPasswords = null; // Mémoire temporaire, effacée à la fermeture
+
+      // Échappement HTML pour les données provenant de D1/Worker
+      // Empêche l'injection de HTML/JS via display_name, username, etc.
+      function _escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
 
       window.openAdminPanel = function() {
         if (!window.AuthClient || !window.AuthClient.isAuthenticated()) return;
@@ -6007,13 +6042,13 @@
             var statusLabel = u.actif ? 'Actif' : 'Inactif';
             var mustChangeLabel = u.must_change ? '⚠️ À changer' : '✅ OK';
             html += '<label class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" style="border-color: var(--bs-border-color);">';
-            html += '<input type="checkbox" class="admin-user-check" value="' + u.id + '"' + (isSelf ? ' disabled' : '') + ' onchange="updateAdminResetBtn()">';
+            html += '<input type="checkbox" class="admin-user-check" value="' + _escapeHtml(u.id) + '"' + (isSelf ? ' disabled' : '') + ' onchange="updateAdminResetBtn()">';
             html += '<div class="flex-1 min-w-0">';
-            html += '<div class="text-sm font-medium truncate" style="color: var(--bs-heading-color);">' + (u.display_name || u.username) + '</div>';
-            html += '<div class="text-xs text-gray-500">' + u.username + ' · ' + roleLabel + ' · ' + statusLabel + ' · ' + mustChangeLabel + '</div>';
+            html += '<div class="text-sm font-medium truncate" style="color: var(--bs-heading-color);">' + _escapeHtml(u.display_name || u.username) + '</div>';
+            html += '<div class="text-xs text-gray-500">' + _escapeHtml(u.username) + ' · ' + roleLabel + ' · ' + statusLabel + ' · ' + mustChangeLabel + '</div>';
             html += '</div>';
             if (!isSelf) {
-              html += '<button type="button" onclick="adminResetSingle(\'' + u.id + '\')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
+              html += '<button type="button" onclick="adminResetSingle(\'' + _escapeHtml(u.id) + '\')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
             } else {
               html += '<span class="text-xs text-gray-400">Votre compte</span>';
             }
@@ -6066,8 +6101,8 @@
         for (var i = 0; i < results.length; i++) {
           var r = results[i];
           html += '<div class="rounded border p-3" style="border-color: var(--bs-border-color);">';
-          html += '<div class="text-sm font-medium" style="color: var(--bs-heading-color);">' + (r.displayName || r.username) + '</div>';
-          html += '<div class="mt-1 font-mono text-base font-bold text-amber-700 select-all" id="adminPw_' + i + '">' + r.temporaryPassword + '</div>';
+          html += '<div class="text-sm font-medium" style="color: var(--bs-heading-color);">' + _escapeHtml(r.displayName || r.username) + '</div>';
+          html += '<div class="mt-1 font-mono text-base font-bold text-amber-700 select-all" id="adminPw_' + i + '">' + _escapeHtml(r.temporaryPassword) + '</div>';
           html += '</div>';
         }
         content.innerHTML = html;
@@ -6103,7 +6138,6 @@
       };
       window.selectProfile = selectProfile;
       window.login = function(username) { return selectProfile(username); };
-      window.logout = logout;
 
       // ============ NAVIGATION VUES ============
       // Les variables mainApp, contentMeta, contentTitle, contentBody sont définies plus haut
@@ -6461,7 +6495,7 @@
                       Analyser
                     </button>
                     <button 
-                      onclick="submitCorrectedActivity('${chapterId}', '${id}')"
+                      onclick="submitActivityWithV2('${chapterId}', '${id}')"
                       class="px-4 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2"
                     >
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7630,242 +7664,6 @@
         }
       }
       
-      // Nouvelle fonction pour récupérer l'extrait brut
-      async function fetchWiktionaryExtract(word) {
-        try {
-          const normalizedWord = word.toLowerCase().trim();
-          const apiUrl = `https://fr.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(normalizedWord)}&prop=extracts&explaintext&exchars=3000&origin=*&format=json`;
-          
-          const response = await fetch(apiUrl);
-          if (!response.ok) return null;
-          
-          const data = await response.json();
-          const pages = data.query.pages;
-          const pageId = Object.keys(pages)[0];
-          
-          if (pageId === '-1') return null;
-          
-          let extract = pages[pageId].extract || '';
-          if (!extract) return null;
-          
-          // Nettoyer l'extrait : garder seulement la section Français
-          const frenchMatch = extract.match(/== Français ==([\s\S]*?)(?=== [A-Z]|$)/);
-          if (frenchMatch) {
-            extract = frenchMatch[1].trim();
-          }
-          
-          // Supprimer l'étymologie
-          extract = extract.replace(/=== Étymologie ===[\s\S]*?(?====|$)/, '');
-          
-          // Nettoyer les titres de section
-          extract = extract.replace(/=== (Verbe|Nom|Adjectif|Adverbe) ===/g, '**$1**');
-          extract = extract.replace(/=== Définition ===/g, '');
-          
-          return extract.trim();
-          
-        } catch (error) {
-          console.error('Erreur:', error);
-          return null;
-        }
-      }
-      
-      // ============ API WIKTIONARY ============
-      // Mode débogage - mettre à true pour voir les logs
-      const DEBUG_WICTIONARY = true;
-      
-      async function fetchWiktionaryDefinition(word) {
-        try {
-          const normalizedWord = word.toLowerCase().trim();
-          
-          if (DEBUG_WICTIONARY) console.log('=== WIKTIONARY DEBUG ===');
-          if (DEBUG_WICTIONARY) console.log('Mot recherché:', normalizedWord);
-          
-          // URL de l'API Wiktionary avec plus de contenu
-          const apiUrl = `https://fr.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(normalizedWord)}&prop=extracts&explaintext&exchars=3000&origin=*&format=json`;
-          
-          if (DEBUG_WICTIONARY) console.log('URL:', apiUrl);
-          
-          const response = await fetch(apiUrl);
-          if (!response.ok) throw new Error('Erreur API');
-          
-          const data = await response.json();
-          
-          if (DEBUG_WICTIONARY) console.log('Réponse API:', data);
-          
-          const pages = data.query.pages;
-          const pageId = Object.keys(pages)[0];
-          
-          if (DEBUG_WICTIONARY) console.log('Page ID:', pageId);
-          
-          if (pageId === '-1') {
-            if (DEBUG_WICTIONARY) console.log('Mot non trouvé dans Wiktionary');
-            return null;
-          }
-          
-          const page = pages[pageId];
-          let extract = page.extract || '';
-          
-          if (DEBUG_WICTIONARY) {
-            console.log('Extrait brut:');
-            console.log(extract);
-            console.log('========================');
-          }
-          
-          if (!extract) {
-            if (DEBUG_WICTIONARY) console.log('Pas d\'extrait trouvé');
-            return null;
-          }
-          
-          // Parser pour obtenir une définition exhaustive
-          const result = parseWiktionaryExtractComplete(extract, normalizedWord);
-          
-          if (DEBUG_WICTIONARY) {
-            console.log('Résultat parsé:');
-            console.log(result);
-            console.log('========================');
-          }
-          
-          return result;
-          
-        } catch (error) {
-          console.error('Erreur Wiktionary:', error);
-          if (DEBUG_WICTIONARY) console.log('Erreur complète:', error.stack);
-          return null;
-        }
-      }
-      
-      // Parser complet avec prononciation IPA et toutes les définitions
-      function parseWiktionaryExtractComplete(extract, word) {
-        const lines = extract.split('\n').filter(line => line.trim());
-        
-        let result = {
-          word: word,
-          ipa: '',
-          nature: '',
-          definitions: []
-        };
-        
-        let inDefinitionSection = false;
-        let skipEtymology = true;
-        let currentNature = '';
-        
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          
-          if (!line) continue;
-          
-          // Extraire la prononciation IPA (format: \xxx\)
-          const ipaMatch = line.match(/\\([^\\]+)\\/);
-          if (ipaMatch && !result.ipa) {
-            result.ipa = ipaMatch[1];
-          }
-          
-          // Détecter la nature grammaticale (ligne qui commence par Nom, Verbe, etc. suivi d'un numéro)
-          const natureMatch = line.match(/^(Nom|Verbe|Adjectif|Adverbe|Préposition|Conjonction|Pronom|Article|Interjection|Locution)\s*\d/i);
-          if (natureMatch) {
-            currentNature = natureMatch[1];
-            // Extraire les infos après le nom
-            const afterNature = line.substring(natureMatch[0].length - 1).trim();
-            let details = afterNature.replace(/^\d+\s*/, '').trim();
-            details = details.replace(/\(.*$/, '').trim();
-            details = details.replace(/\\[^\\]+\\/, '').trim();
-            result.nature = `${currentNature} ${details}`.trim();
-            continue;
-          }
-          
-          // Ignorer la ligne avec le mot + prononciation (déjà traitée)
-          if (line.includes('\\') && line.toLowerCase().includes(word.toLowerCase())) {
-            continue;
-          }
-          
-          // Sauter l'étymologie et les sections indésirables
-          if (skipEtymology && (
-              line.toLowerCase().includes('étymologie') || 
-              line.toLowerCase().includes('du latin') ||
-              line.toLowerCase().includes('du grec') ||
-              line.toLowerCase().includes('du moyen') ||
-              line.toLowerCase().includes('de l\'ancien') ||
-              line.toLowerCase().includes('synonyme') ||
-              line.toLowerCase().includes('antonyme') ||
-              line.toLowerCase().includes('dérivés') ||
-              line.toLowerCase().includes('voir aussi') ||
-              (line.toLowerCase().includes('vers') && line.match(/\d{3,4}/))
-          )) {
-            continue;
-          }
-          
-          // Détecter le début des définitions
-          if (line.toLowerCase().includes('définition') || 
-              /^\d+\./.test(line) ||
-              /^[a-z]\)/i.test(line)) {
-            skipEtymology = false;
-            inDefinitionSection = true;
-          }
-          
-          // Ignorer les titres de section
-          if (line.startsWith('=') || line.startsWith('[')) continue;
-          
-          // Collecter les définitions
-          if (inDefinitionSection && line.length > 5 && !line.startsWith('=')) {
-            // Ignorer les exemples qui commencent par une majuscule et contiennent le mot
-            if (line.match(/^[A-Z]/) && line.toLowerCase().includes(word.toLowerCase())) {
-              continue;
-            }
-            // Ignorer les citations entre parenthèses
-            if (line.startsWith('(') || line.startsWith('—')) {
-              continue;
-            }
-            const def = cleanDefinitionComplete(line);
-            if (def && def.length > 5 && !result.definitions.includes(def)) {
-              result.definitions.push(def);
-            }
-          }
-          
-          // Limiter à 4 définitions
-          if (result.definitions.length >= 4) break;
-        }
-        
-        // Si pas de définitions trouvées, chercher différemment
-        if (result.definitions.length === 0) {
-          for (let line of lines) {
-            line = line.trim();
-            // Chercher des lignes qui ressemblent à des définitions
-            if (line.length > 10 && line.length < 200 && 
-                !line.startsWith('=') && 
-                !line.startsWith('[') &&
-                !line.toLowerCase().includes('étymologie') &&
-                !line.toLowerCase().includes('du latin') &&
-                !line.toLowerCase().includes('synonyme') &&
-                !line.match(/^(Nom|Verbe|Adjectif)/i)) {
-              const def = cleanDefinitionComplete(line);
-              if (def && def.length > 10) {
-                result.definitions.push(def);
-                if (result.definitions.length >= 3) break;
-              }
-            }
-          }
-        }
-        
-        // Construire le texte final
-        let output = '';
-        
-        if (result.nature) {
-          output += `**${result.nature}**\n`;
-        }
-        
-        if (result.ipa) {
-          output += `[${result.ipa}]\n\n`;
-        }
-        
-        if (result.definitions.length > 0) {
-          output += result.definitions.map((def, idx) => `${idx + 1}. ${def}`).join('\n\n');
-        } else {
-          output += 'Définition non disponible.';
-        }
-        
-        return output || null;
-      }
-      
       function cleanDefinitionComplete(line) {
         return line
           .replace(/^\d+\.\s*/, '')
@@ -7874,91 +7672,6 @@
           .replace(/\{.*?\}/g, '')
           .replace(/\s+/g, ' ')
           .trim();
-      }
-      
-      function parseWiktionaryExtract(extract, word) {
-        // Diviser par lignes
-        const lines = extract.split('\n').filter(line => line.trim());
-        
-        let definitions = [];
-        let nature = ''; // Nom, verbe, adjectif...
-        let inDefinitionSection = false;
-        let skipEtymology = true; // Sauter l'étymologie au début
-        
-        for (let i = 0; i < lines.length && definitions.length < 3; i++) {
-          const line = lines[i].trim();
-          
-          // Ignorer les lignes vides
-          if (!line) continue;
-          
-          // Détecter la nature grammaticale (Nom, Verbe, Adjectif...)
-          if (line.match(/^(Nom|Verbe|Adjectif|Adverbe|Préposition|Conjonction|Pronom|Article|Interjection)\s+\d/)) {
-            nature = line.replace(/\d.*/, '').trim();
-            continue;
-          }
-          
-          // Sauter l'étymologie (tout au début avant les définitions)
-          if (skipEtymology && (line.toLowerCase().includes('étymologie') || 
-              line.toLowerCase().includes('du latin') ||
-              line.toLowerCase().includes('du grec') ||
-              line.toLowerCase().includes('vers') && line.match(/\d{3,4}/))) {
-            continue;
-          }
-          
-          // Arrêter de sauter l'étymologie quand on trouve une définition
-          if (/^\d+\./.test(line) || line.toLowerCase().includes('définition')) {
-            skipEtymology = false;
-          }
-          
-          // Ignorer les titres de section
-          if (line.startsWith('=') || line.startsWith('[')) continue;
-          
-          // Détecter le début des définitions
-          if (line.toLowerCase().includes('définition') || 
-              line.toLowerCase().includes('sens') ||
-              /^\d+\./.test(line)) {
-            inDefinitionSection = true;
-            
-            // Si la ligne contient déjà une définition (commence par un numéro)
-            if (/^\d+\./.test(line)) {
-              const def = cleanDefinition(line);
-              if (def && def.length > 10) definitions.push(def);
-            }
-            continue;
-          }
-          
-          // Collecter les définitions
-          if (inDefinitionSection && line.length > 10 && !line.startsWith('=')) {
-            const def = cleanDefinition(line);
-            if (def && def.length > 10 && !definitions.includes(def)) {
-              definitions.push(def);
-            }
-          }
-        }
-        
-        // Construire le résultat final
-        let result = '';
-        if (nature) {
-          result += `**${nature}**\n\n`;
-        }
-        
-        if (definitions.length > 0) {
-          result += definitions.slice(0, 3).map((def, idx) => `${idx + 1}. ${def}`).join('\n\n');
-        } else {
-          // Fallback : chercher n'importe quelle ligne pertinente
-          for (let line of lines) {
-            line = line.trim();
-            if (line.length > 20 && line.length < 300 && 
-                !line.startsWith('=') && !line.startsWith('[') &&
-                !line.toLowerCase().includes('étymologie') &&
-                !line.toLowerCase().includes('du latin')) {
-              result += cleanDefinition(line);
-              break;
-            }
-          }
-        }
-        
-        return result || null;
       }
       
       function cleanDefinition(line) {
@@ -7970,69 +7683,6 @@
           .replace(/^\s*[-–—]\s*/, '') // Tirets au début
           .replace(/\s+/g, ' ') // Espaces multiples
           .trim();
-      }
-      
-      function generateMockDefinition(word) {
-        return `Définition non disponible pour "${word}". Vérifiez l'orthographe ou essayez un autre mot.`;
-      }
-      
-      function showDefinitionCloud(word, definition, rect, isLoading = false) {
-        hideDefinitionPopup(); // Supprimer l'ancien
-        
-        const scrollX = window.scrollX || window.pageXOffset;
-        const scrollY = window.scrollY || window.pageYOffset;
-        
-        definitionPopup = document.createElement('div');
-        definitionPopup.className = 'definition-popup';
-        
-        // Créer le contenu HTML
-        const cloudHTML = `
-          <div class="definition-cloud" id="definitionCloudContent" style="position: relative; padding: 20px;">
-            <!-- Bouton fermer -->
-            <button onclick="window.hideDefinitionPopup()" 
-                    style="position: absolute; top: 8px; left: 12px; background: none; border: none; color: rgba(255,255,255,0.6); font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; line-height: 24px;"
-                    onmouseover="this.style.color='white'" 
-                    onmouseout="this.style.color='rgba(255,255,255,0.6)'">×</button>
-            
-            ${!isLoading ? `
-              <!-- Bouton audio -->
-              <button onclick="window.speakWord('${escapeHtml(word)}')" 
-                      style="position: absolute; top: 8px; right: 12px; background: rgba(255,255,255,0.2); border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center;"
-                      onmouseover="this.style.background='rgba(255,255,255,0.4)'" 
-                      onmouseout="this.style.background='rgba(255,255,255,0.2)'"
-                      title="Écouter">
-                <span style="color: white; font-size: 14px;">
-                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.5 5 4.5V8c0-1-.62-1.02-1.64-2.5-1.77V3.23z"/>
-                </svg>
-              </span>
-              </button>
-            ` : ''}
-            
-            <!-- Mot -->
-            <div style="text-align: center; margin: 10px 0 15px 0;">
-              <span style="color: white; font-size: 18px; font-weight: bold;">${escapeHtml(word)}</span>
-            </div>
-            
-            <!-- Définition -->
-            <div id="definitionText" style="color: rgba(255,255,255,0.9); font-size: 13px; line-height: 1.5; max-height: 200px; overflow-y: auto;">
-              ${isLoading ? '<span style="opacity: 0.7;">⏳ Chargement...</span>' : formatDefinitionSimple(definition)}
-            </div>
-          </div>
-        `;
-        
-        definitionPopup.innerHTML = cloudHTML;
-        
-        // Positionner
-        definitionPopup.style.left = (rect.left + rect.width / 2 - 140 + scrollX) + 'px';
-        definitionPopup.style.top = (rect.top - 100 + scrollY) + 'px';
-        
-        document.body.appendChild(definitionPopup);
-        
-        // Prononcer automatiquement
-        if (!isLoading && 'speechSynthesis' in window) {
-          setTimeout(() => window.speakWord(word), 300);
-        }
       }
       
       function formatDefinitionSimple(definition) {
@@ -8112,13 +7762,6 @@
         }
       }
       
-      function updateDefinitionCloud(word, definition) {
-        const textEl = document.getElementById('definitionText');
-        if (textEl) {
-          textEl.innerHTML = formatDefinition(definition);
-        }
-      }
-
       // ============ MESSAGERIE ENSEIGNANT-ÉTUDIANT ============
       window.openTeacherStudentChat = function(studentId, studentName) {
         // Fermer la fenêtre de détails
@@ -8578,53 +8221,6 @@
       // Afficher le premier conteneur par défaut
       document.getElementById('chatMessages-techniques').classList.remove('hidden');
 
-      // ============ SÉLECTION DE DISCUSSION ============
-      window.selectDiscussion = function(topic) {
-        window.currentDiscussion = topic;
-        const data = window.discussionData[topic];
-        
-        // Mettre à jour l'apparence des boutons
-        document.querySelectorAll('.discussion-item').forEach(btn => {
-          btn.classList.remove('active');
-          btn.style.backgroundColor = '';
-          btn.style.color = 'var(--bs-text-muted)';
-          const indicator = btn.querySelector('.indicator');
-          indicator.style.backgroundColor = '';
-          indicator.classList.add('bg-gray-500');
-        });
-        
-        const activeBtn = document.querySelector(`[data-topic="${topic}"]`);
-        activeBtn.classList.add('active');
-        activeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
-        activeBtn.style.color = 'var(--bs-white)';
-        const activeIndicator = activeBtn.querySelector('.indicator');
-        activeIndicator.classList.remove('bg-gray-500');
-        activeIndicator.style.backgroundColor = 'var(--bs-primary)';
-        
-        // Mettre à jour le titre dans la colonne 3
-        document.getElementById('chatTitle').textContent = data.title;
-        
-        // Mettre à jour la description
-        const descriptionEl = document.getElementById('discussionDescription');
-        if (descriptionEl) {
-          descriptionEl.textContent = data.description || '';
-        }
-        
-        // Cacher tous les conteneurs de chat
-        document.querySelectorAll('[id^="chatMessages-"]').forEach(container => {
-          container.classList.add('hidden');
-        });
-        
-        // Afficher le conteneur de chat correspondant
-        const targetChatContainer = document.getElementById(`chatMessages-${topic}`);
-        if (targetChatContainer) {
-          targetChatContainer.classList.remove('hidden');
-        }
-        
-        // Mettre à jour la colonne 4
-        updateColumn4(data.column4);
-      };
-      
       // ============ GESTION DE L'HISTORIQUE DES CHATS ============
       function loadChatHistory(topic) {
         try {
@@ -8838,82 +8434,6 @@
         console.log('Conversation réinitialisée:', window.currentDiscussion);
       };
 
-      function createMessageHTML(msg) {
-        const isStudent = msg.sender === 'student';
-        const time = new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        
-        if (isStudent) {
-          return `
-            <div class="flex gap-3">
-              <div class="flex-1">
-                <div class="rounded-lg p-4" style="background-color: var(--bs-primary); margin-left: auto; max-width: 80%;">
-                  <p class="text-sm text-white">${escapeHtml(msg.text)}</p>
-                </div>
-                <p class="text-xs mt-1 text-right" style="color: var(--bs-text-muted);">Vous • ${time}</p>
-              </div>
-              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-secondary);">
-                <span class="text-white text-xs font-bold">V</span>
-              </div>
-            </div>
-          `;
-        } else {
-          return `
-            <div class="flex gap-3">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
-                <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-              </div>
-              <div class="flex-1">
-                <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05); max-width: 80%;">
-                  <div class="flex justify-between items-start">
-                    <p class="text-sm flex-1" style="color: var(--bs-white);">${escapeHtml(msg.text)}</p>
-                    <button 
-                      onclick="speakChatAIResponse(this)"
-                      class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                      title="Lire la réponse de l'IA"
-                    >
-                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • ${time}</p>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      function updateColumn4(data) {
-        const column4 = document.getElementById('chatColumn4');
-        if (!column4) return;
-        
-        // Mettre à jour le titre avec l'ID
-        const titleElement = document.getElementById('chatModuleTitle');
-        if (titleElement) {
-          titleElement.textContent = data.title;
-        }
-        
-        // Mettre à jour les sections avec les IDs
-        const finalitiesElement = document.getElementById('chatModuleFinalities');
-        const objectivesList = document.getElementById('chatModuleObjectives');
-        const contentElement = document.getElementById('chatModuleContent');
-        
-        if (finalitiesElement) {
-          finalitiesElement.textContent = data.finalities;
-        }
-        
-        if (objectivesList) {
-          objectivesList.innerHTML = data.objectives.map(obj => `<li class="list-disc list-inside">${obj}</li>`).join('');
-        }
-        
-        if (contentElement) {
-          contentElement.textContent = data.content;
-        }
-      }
-
       // ============ CHAT AVEC IA (vue Chat) ============
       // Anciennes fonctions supprimées - utilise chat-system-simple.js
 
@@ -9062,276 +8582,6 @@
       window.toggleColumn4 = function() {
         const column4 = document.getElementById('chatColumn4');
         column4.classList.toggle('hidden');
-      };
-
-      // ============ FENÊTRES DE CHAT FLOTTANTES ============
-      window.openChatWindow = function(chatType) {
-        const chatId = chatType === 'teacher' ? 'chatTeacher' : 'chatStudents';
-        const chatTitle = chatType === 'teacher' ? 'Chat avec Enseignant' : 'Chat avec Étudiants';
-        const chatColor = chatType === 'teacher' ? '#f59e0b' : '#10b981';
-        
-        // Vérifier si la fenêtre existe déjà
-        let existingWindow = document.getElementById(chatId + 'Window');
-        if (existingWindow) {
-          existingWindow.classList.remove('hidden');
-          return;
-        }
-        
-        // Créer la fenêtre flottante
-        const chatWindow = document.createElement('div');
-        chatWindow.id = chatId + 'Window';
-        chatWindow.className = 'fixed z-50 rounded-lg shadow-2xl overflow-hidden';
-        chatWindow.style.cssText = `
-          width: 380px;
-          height: 500px;
-          bottom: 20px;
-          ${chatType === 'teacher' ? 'right: 20px;' : 'right: 410px;'}
-          background-color: var(--bs-body-bg);
-          border: 1px solid var(--bs-border-color);
-        `;
-        
-        chatWindow.innerHTML = `
-          <!-- En-tête -->
-          <div class="flex items-center justify-between px-4 py-3" style="background-color: ${chatColor};">
-            <div class="flex items-center gap-2">
-              <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                ${chatType === 'teacher' 
-                  ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>'
-                  : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>'
-                }
-              </svg>
-              <span class="text-white font-semibold text-sm">${chatTitle}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button onclick="minimizeChatWindow('${chatId}')" class="text-white/80 hover:text-white" title="Minimiser">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-                </svg>
-              </button>
-              <button onclick="closeChatWindow('${chatId}')" class="text-white/80 hover:text-white" title="Fermer">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Messages -->
-          <div id="${chatId}Messages" class="h-[380px] overflow-y-auto p-4 space-y-3" style="background-color: var(--bs-body-bg);">
-            <div class="flex gap-2">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: ${chatColor};">
-                <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  ${chatType === 'teacher' 
-                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>'
-                    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>'
-                  }
-                </svg>
-              </div>
-              <div class="flex-1">
-                <div class="rounded-lg px-3 py-2 text-sm" style="background-color: var(--bs-secondary-bg); color: var(--bs-body-color);">
-                  <p class="font-medium text-xs mb-1" style="color: ${chatColor};">${chatType === 'teacher' ? 'Enseignant' : 'Groupe'}</p>
-                  <p>${chatType === 'teacher' ? 'Bonjour ! Je suis disponible pour répondre à vos questions.' : 'Bienvenue dans le chat groupe ! Discutez avec vos camarades.'}</p>
-                </div>
-                <span class="text-[10px]" style="color: var(--bs-text-muted);">À l\'instant</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Input -->
-          <div class="absolute bottom-0 left-0 right-0 p-3 border-t" style="background-color: var(--bs-body-bg); border-color: var(--bs-border-color);">
-            <div class="flex gap-2">
-              <input 
-                type="text" 
-                id="${chatId}Input"
-                placeholder="Écrire un message..."
-                class="flex-1 px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2"
-                style="background-color: var(--bs-body-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);"
-                onkeypress="if(event.key==='Enter')sendChatMessage('${chatId}')"
-                oninput="window.writingAssistant && window.writingAssistant.checkText(this)"
-              >
-              <button 
-                onclick="sendChatMessage('${chatId}')"
-                class="px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:opacity-90"
-                style="background-color: ${chatColor};"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-        `;
-        
-        document.body.appendChild(chatWindow);
-      };
-
-      window.closeChatWindow = function(chatId) {
-        const chatWindow = document.getElementById(chatId + 'Window');
-        if (chatWindow) {
-          chatWindow.remove();
-        }
-      };
-
-      window.minimizeChatWindow = function(chatId) {
-        const chatWindow = document.getElementById(chatId + 'Window');
-        const messagesDiv = document.getElementById(chatId + 'Messages');
-        const inputDiv = chatWindow.querySelector('.absolute');
-        
-        if (messagesDiv.classList.contains('hidden')) {
-          // Restaurer
-          messagesDiv.classList.remove('hidden');
-          inputDiv.classList.remove('hidden');
-          chatWindow.style.height = '500px';
-        } else {
-          // Minimiser
-          messagesDiv.classList.add('hidden');
-          inputDiv.classList.add('hidden');
-          chatWindow.style.height = 'auto';
-        }
-      };
-
-      window.sendChatMessage = function(chatId) {
-        const input = document.getElementById(chatId + 'Input');
-        const message = input.value.trim();
-        
-        if (!message) return;
-        
-        const messagesDiv = document.getElementById(chatId + 'Messages');
-        const isTeacher = chatId === 'chatTeacher';
-        const color = isTeacher ? '#f59e0b' : '#10b981';
-        
-        // Ajouter le message de l'utilisateur
-        const userMsg = document.createElement('div');
-        userMsg.className = 'flex gap-2 justify-end';
-        userMsg.innerHTML = `
-          <div class="flex-1 flex justify-end">
-            <div class="max-w-[80%]">
-              <div class="rounded-lg px-3 py-2 text-sm text-white" style="background-color: var(--bs-primary);">
-                <p class="font-medium text-xs mb-1">Vous</p>
-                <p>${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-              </div>
-              <span class="text-[10px]" style="color: var(--bs-text-muted);">À l'instant</span>
-            </div>
-          </div>
-        `;
-        messagesDiv.appendChild(userMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        
-        input.value = '';
-        
-        // Simuler une réponse (pour démo)
-        setTimeout(() => {
-          const replyMsg = document.createElement('div');
-          replyMsg.className = 'flex gap-2';
-          replyMsg.innerHTML = `
-            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: ${color};">
-              <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                ${isTeacher 
-                  ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>'
-                  : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>'
-                }
-              </svg>
-            </div>
-            <div class="flex-1">
-              <div class="rounded-lg px-3 py-2 text-sm" style="background-color: var(--bs-secondary-bg); color: var(--bs-body-color);">
-                <p class="font-medium text-xs mb-1" style="color: ${color};">${isTeacher ? 'Enseignant' : 'Groupe'}</p>
-                <p>${isTeacher ? 'Merci pour votre message. Je vous réponds dès que possible.' : 'Message reçu ! 📩'}</p>
-              </div>
-              <span class="text-[10px]" style="color: var(--bs-text-muted);">À l\'instant</span>
-            </div>
-          `;
-          messagesDiv.appendChild(replyMsg);
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }, 1000);
-      };
-
-      // ============ ACTIVITÉS RÉALITÉ AUGMENTÉE ============
-      window.openARActivity = function(activityId, contentType) {
-        const contentTypes = {
-          audio: { icon: '🔊', label: 'Audio', desc: 'Écoute une explication audio superposée', color: '#f59e0b' },
-          video: { icon: '🎬', label: 'Vidéo', desc: 'Regarde une vidéo en réalité augmentée', color: '#ef4444' },
-          image: { icon: '🖼️', label: 'Image', desc: 'Découvre des images enrichies', color: '#10b981' },
-          '3d': { icon: '🧊', label: '3D', desc: 'Manipule un objet 3D en AR', color: '#8b5cf6' }
-        };
-        
-        const type = contentTypes[contentType];
-        
-        // Créer l'overlay AR
-        const overlay = document.createElement('div');
-        overlay.id = 'arOverlay';
-        overlay.className = 'ar-overlay';
-        overlay.innerHTML = `
-          <div class="ar-container">
-            <button onclick="closeARActivity()" class="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-            
-            <div class="mb-4">
-              <span class="text-4xl">${type.icon}</span>
-            </div>
-            
-            <h3 class="text-xl font-bold text-slate-900 mb-2">
-              Activité AR - ${type.label}
-            </h3>
-            
-            <p class="text-sm text-slate-600 mb-4">
-              ${type.desc}
-            </p>
-            
-            <div class="ar-qr-code">
-              <div class="ar-qr-pattern"></div>
-              <span class="ar-badge">AR</span>
-            </div>
-            
-            <p class="text-xs text-slate-500 mb-3">
-              Scanne ce QR code avec l'appareil photo de ton téléphone
-            </p>
-            
-            <div class="ar-content-preview">
-              <div class="ar-content-icon" style="background: ${type.color}20; color: ${type.color};">
-                ${type.icon}
-              </div>
-              <div class="ar-content-icon" style="background: #f0f0f0; color: #666;">
-                📱
-              </div>
-              <div class="ar-content-icon" style="background: #f0f0f0; color: #666;">
-                👆
-              </div>
-            </div>
-            
-            <div class="mt-4 p-3 bg-slate-50 rounded-lg text-left">
-              <p class="text-xs font-semibold text-slate-700 mb-1">Instructions :</p>
-              <ol class="text-xs text-slate-600 space-y-1 list-decimal list-inside">
-                <li>Ouvre l'appareil photo de ton téléphone</li>
-                <li>Pointe vers ce QR code</li>
-                <li>Clique sur la notification qui apparaît</li>
-                <li>Autorise l'accès à la caméra pour l'AR</li>
-                <li>Pointe ton téléphone vers l'écran de l'ordinateur</li>
-              </ol>
-            </div>
-            
-            <button onclick="closeARActivity()" class="mt-4 w-full py-2 rounded-lg text-white font-medium" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-              Fermer
-            </button>
-          </div>
-        `;
-        
-        document.body.appendChild(overlay);
-        
-        // Animation d'entrée
-        setTimeout(() => {
-          overlay.style.opacity = '1';
-        }, 10);
-      };
-
-      window.closeARActivity = function() {
-        const overlay = document.getElementById('arOverlay');
-        if (overlay) {
-          overlay.style.opacity = '0';
-          setTimeout(() => overlay.remove(), 300);
-        }
       };
 
       // Toggle sections dans les paramètres
@@ -9582,7 +8832,6 @@
     <!-- IA chargée directement sans module pour éviter CORS en local -->
     <script>
     // Pipeline à 4 modèles inline pour éviter les problèmes de module/CORS
-    let pipelineEngine = null;
     
     function setIaStatus(text, color, progress) {
       const statusEl = document.getElementById("ia-status");
@@ -9600,110 +8849,16 @@
     }
     </script>
     
-    <!-- Scripts JavaScript essentiels -->
-    <!-- REMARQUE: Les scripts sont déjà chargés dans le head avec versioning -->
-    <!-- Les lignes suivantes ont été commentées pour éviter les doublons -->
-    <!-- <script src="./main.js"></script> -->
-    <!-- <script src="./activities.js"></script> -->
-    <!-- <script src="./chat-system-unified.js"></script> -->
-    
     <!-- Script de compatibilité IA -->
     <script>
         // Utiliser la version améliorée de demanderIA depuis main.js
         // Pas besoin de redéfinir ici - main.js gère déjà l'attente intelligente
         
-        // Fonction pour simuler l'effet de frappe pour le chat
-        window.simulateTypingEffectForChat = function(text) {
-            const chatMessages = document.getElementById('chatMessages');
-            
-            // Créer le message de l'IA
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'flex gap-3';
-            messageDiv.innerHTML = `
-                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
-                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
-                        <div class="flex justify-between items-start">
-                            <p class="text-sm flex-1" style="color: var(--bs-white);"><span class="typing-text"></span></p>
-                            <button 
-                                onclick="speakChatAIResponse(this)"
-                                class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                                title="Lire la réponse de l'IA"
-                            >
-                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <p class="text-xs mt-1" style="color: var(--bs-text-muted);">IA • Maintenant</p>
-                </div>
-            `;
-            
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Effet de frappe caractère par caractère
-            const typingElement = messageDiv.querySelector('.typing-text');
-            let charIndex = 0;
-            
-            function typeChar() {
-                if (charIndex < text.length) {
-                    typingElement.textContent += text[charIndex];
-                    charIndex++;
-                    setTimeout(typeChar, 30); // 30ms par caractère
-                }
-            }
-            
-            typeChar();
-        };
-
         // Assistant d'écriture chargé
         console.log('✅ Assistant d\'écriture chargé');
         
         console.log("Script IA chargé");
     </script>
-    <script>
-      // Démarrer l'IA au chargement
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function() {
-          console.log("Application chargée — pipeline IA Worker");
-          // Configurer l'analyse en temps réel pour les chats
-          if (typeof setupRealTimeCorrectionForChat === 'function') {
-            setupRealTimeCorrectionForChat();
-          }
-        });
-      } else {
-        console.log("Application chargée — pipeline IA Worker");
-        // Configurer l'analyse en temps réel pour les chats
-        if (typeof setupRealTimeCorrectionForChat === 'function') {
-          setupRealTimeCorrectionForChat();
-        }
-      }
-    </script>
-    
-    <!-- Scripts SPAcy désactivés (conflits et erreurs) -->
-    <!-- <script src="spacy-rules-style.js"></script> -->
-    <!-- <script src="spacy-rules-conjugaison.js"></script> -->
-    <!-- <script src="spacy-rules-orthographe.js"></script> -->
-    <!-- <script src="spacy-rules-vocabulaire.js"></script> -->
-    <!-- <script src="spacy-rules-loader.js"></script> -->
-    
-    <!-- Script de l'assistant d'écriture avec spaCy lg (Large) - IA ultra-avancée -->
-    <!-- <script src="spacy-lg-interface.js"></script> -->
-    <!-- <script src="spacy-custom-rules.js"></script> -->
-    <!-- <script src="spacy-rule-examples.js"></script> -->
-    <!-- <script src="writing-assistant-spacy-lg.js"></script> -->
-    
-    <!-- Scripts spaCy lg désactivés -->
-    <!-- <script src="spacy-lg-interface.js"></script> -->
-    <!-- <script src="spacy-custom-rules.js"></script> -->
-    <!-- <script src="spacy-rule-examples.js"></script> -->
-    <!-- <script src="writing-assistant-spacy-lg.js"></script> -->
     
   </body>
 </html>

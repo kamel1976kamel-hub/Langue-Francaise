@@ -111,13 +111,13 @@ function addError(error, context = 'general') {
  * @param {string} activityType - Type d'activité
  * @returns {Promise<string>} Réponse de l'IA
  */
-async function runFourModelPipelineWithFallback(studentAnswer, activityContext, activityType = 'general') {
+async function runFourModelPipelineWithFallback(studentAnswer, activityContext, activityType, optionsV2) {
     try {
         setIaStatus("IA : analyse en cours...", "bg-blue-500", 25);
         
         if (typeof window.runFourModelPipeline === 'function') {
             setIaStatus("IA : traitement intelligent...", "bg-purple-500", 50);
-            const result = await window.runFourModelPipeline(studentAnswer, activityContext, activityType);
+            const result = await window.runFourModelPipeline(studentAnswer, activityContext, activityType, optionsV2);
             // ACTION 20: distinguer l'origine — le repli local est retourné sans exception
             // quand l'IA distante n'est pas configurée.
             var isLocalAnalysis = !!(result && result.source === 'locale');
@@ -180,7 +180,33 @@ async function initIA() {
  * @param {string} contexte - Contexte de la demande
  * @returns {Promise<string>} Réponse de l'IA
  */
-window.demanderIA = async function(prompt, contexte) {
+
+// ─── V2 : helpers globaux pour détecter et normaliser les ResponseV2 ───
+function isResponseV2(data) {
+    if (window.RequestBuilderV2 && typeof window.RequestBuilderV2.isResponseV2 === 'function') {
+        return window.RequestBuilderV2.isResponseV2(data);
+    }
+    return data && typeof data === 'object' && data.contractVersion === '2.0';
+}
+
+function normalizeResponseV2(responseV2) {
+    if (window.RequestBuilderV2 && typeof window.RequestBuilderV2.normalizeResponseV2 === 'function') {
+        return window.RequestBuilderV2.normalizeResponseV2(responseV2);
+    }
+    // Fallback minimal si le module n'est pas chargé
+    var parts = [];
+    if (responseV2 && responseV2.analysis) {
+        if (typeof responseV2.analysis === 'string') parts.push(responseV2.analysis);
+        else if (responseV2.analysis.diagnostic) parts.push(responseV2.analysis.diagnostic);
+    }
+    return {
+        analysisText: parts.length > 0 ? parts.join('\n\n') : 'Analyse effectuée.',
+        source: responseV2 ? responseV2.source : null,
+        status: responseV2 ? responseV2.status : 'unknown'
+    };
+}
+
+window.demanderIA = async function(prompt, contexte, optionsV2) {
     try {
         if (!appState.iaReady) {
             return {
@@ -191,21 +217,53 @@ window.demanderIA = async function(prompt, contexte) {
             };
         }
 
-        const result = await runFourModelPipelineWithFallback(prompt, contexte);
+        const result = await runFourModelPipelineWithFallback(prompt, contexte, 'general', optionsV2);
         
-        // Extraire le texte original de l'étudiant depuis le contexte
+        // ─── V2 : détecter si le résultat est une ResponseV2 ───
+        var isV2 = isResponseV2(result);
+        
+        // Extraire le texte original de l'étudiant
         let originalText = '';
-        try {
-            const contextObj = typeof contexte === 'string' ? JSON.parse(contexte) : contexte;
-            if (contextObj && contextObj.student_message) {
-                originalText = contextObj.student_message;
+        if (isV2 && optionsV2 && optionsV2.textOriginal) {
+            // V2 : le texte original vient directement de optionsV2
+            originalText = optionsV2.textOriginal;
+        } else {
+            // Legacy : tenter d'extraire depuis le contexte
+            try {
+                const contextObj = typeof contexte === 'string' ? JSON.parse(contexte) : contexte;
+                if (contextObj && contextObj.student_message) {
+                    originalText = contextObj.student_message;
+                }
+            } catch (e) {
+                // Réduit le bruit console
             }
-        } catch (e) {
-            // console.log('⚠️ Impossible de parser le contexte pour extraire le texte original'); // Réduit le bruit console
         }
         
-        // Améliorer la qualité de la réponse avec le texte original
-        const improvedResult = improveResponseQuality(result, originalText);
+        // ─── V2 : normaliser la réponse ───
+        var analysisText;
+        var resultSource;
+        
+        if (isV2) {
+            // ResponseV2 : extraire le contenu pédagogique
+            var normalized = normalizeResponseV2(result);
+            analysisText = normalized.analysisText;
+            resultSource = normalized.source;
+        } else {
+            // Legacy : comportement existant
+            // Améliorer la qualité de la réponse avec le texte original
+            var improvedResult = improveResponseQuality(result, originalText);
+            analysisText = improvedResult;
+            
+            // ACTION 20: remonter le marqueur d'origine au niveau supérieur
+            if (typeof result === 'object' && result && result.source) {
+                resultSource = result.source;
+            } else if (typeof result === 'string') {
+                try {
+                    var parsed = JSON.parse(result);
+                    if (parsed && parsed.source) resultSource = parsed.source;
+                } catch (e) { /* pas de source si pas JSON */ }
+            }
+        }
         
         // Analyser le texte original pour les corrections
         let corrections = [];
@@ -225,22 +283,9 @@ window.demanderIA = async function(prompt, contexte) {
             }
         }
         
-        // ACTION 20: remonter le marqueur d'origine au niveau supérieur
-        // (le repli retourne un objet; l'UI lit improvedResult.analysis pour le contenu).
-        // Le champ source peut venir du Worker (remote_a22b, remote_a22_fallback, local_requis)
-        // ou du fallback local (locale).
-        var resultSource = undefined;
-        if (typeof result === 'object' && result && result.source) {
-            resultSource = result.source;
-        } else if (typeof result === 'string') {
-            try {
-                var parsed = JSON.parse(result);
-                if (parsed && parsed.source) resultSource = parsed.source;
-            } catch (e) { /* pas de source si pas JSON */ }
-        }
         return {
             source: resultSource,
-            analysis: improvedResult,
+            analysis: analysisText,
             corrections: corrections,
             explanations: explanations,
             suggestions: suggestions
@@ -313,7 +358,7 @@ function improveResponseQuality(response, originalText = '') {
         'C\'est quoi un texte descriptif': 'Qu\'est-ce qu\'un texte descriptif',
         'Par où commencerons-nous': 'Par où commencerons-nous',
         'Je vais vous aider avec ça': 'Je vais vous aider avec cela',
-        'au moins entre 4 à 6 lignes': 'au main.js?v=44 à 6 lignes'
+        'au moins entre 4 à 6 lignes': 'au moins entre 4 à 6 lignes'
     };
     
     Object.keys(reformulations).forEach(maladroit => {
@@ -659,26 +704,50 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Pipeline IA — Worker Cloudflare avec fallback local
-window.runFourModelPipeline = async function(studentAnswer, activityContext, activityType = 'general') {
+window.runFourModelPipeline = async function(studentAnswer, activityContext, activityType, optionsV2) {
     console.log('🚀 Pipeline IA activé (Worker Cloudflare)');
     console.log('📝 Réponse étudiant:', studentAnswer);
     console.log('📝 Contexte activité:', activityContext);
+    
+    // ─── V2 : déterminer le mode et construire le body ───
+    var useV2 = !!(optionsV2 && optionsV2.textOriginal && window.RequestBuilderV2);
+    var requestBody;
+    
+    if (useV2) {
+        // Déterminer le mode V2
+        var mode = (activityContext === 'chat' || activityContext.includes('chat')) ? 'chat' : 'activity';
+        
+        // Construire RequestV2 via le module dédié
+        var requestV2 = window.RequestBuilderV2.buildRequestV2({
+            mode: mode,
+            textOriginal: optionsV2.textOriginal,
+            localDetections: optionsV2.localDetections || [],
+            context: optionsV2.context || null
+        });
+        
+        console.log('📝 V2 Request construite:', {
+            contractVersion: requestV2.contractVersion,
+            mode: requestV2.mode,
+            textOriginalLength: requestV2.student.text_original.length,
+            detections: requestV2.local_detections.length
+        });
+        
+        requestBody = JSON.stringify(requestV2);
+    }
     
     try {
         // Appel du Worker Cloudflare avec timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
-        // Déterminer le type de prompt selon le contexte
+        // Déterminer le type de prompt selon le contexte (legacy V1)
         let systemPrompt;
         let userPrompt;
         
         if (activityContext === 'chat' || activityContext.includes('chat')) {
-            // Mode chat : répondre directement aux questions
             systemPrompt = `Tu es un assistant expert en français et en pédagogie. Réponds de manière claire, utile et encourageante aux questions de l'étudiant. Sois précis et donne des exemples quand c'est pertinent. Utilise un langage simple mais correct.`;
             userPrompt = `Question de l'étudiant : "${studentAnswer}"`;
         } else if (activityContext === 'activité') {
-            // Mode activité : analyser la réponse de manière pédagogique
             systemPrompt = `Tu es un professeur de français. Analyse la réponse de l'étudiant de manière pédagogique et encourageante. 
             - Identifie les erreurs de grammaire, orthographe, vocabulaire
             - Explique les règles de manière simple
@@ -689,7 +758,6 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             Réponds de manière naturelle et conversationnelle, pas en JSON.`;
             userPrompt = `Réponse de l'étudiant : "${studentAnswer}". Analyse cette réponse et donne des conseils constructifs.`;
         } else {
-            // Mode analyse pédagogique : analyser la réponse
             systemPrompt = `Tu es un expert en français et en pédagogie. Analyse la réponse de l'étudiant avec le contexte suivant : ${activityContext}. Sois encourageant mais précis. Identifie les points forts et les axes d'amélioration. Formatage JSON avec les champs : analysis, error_type, rule, hint, example, exercise, validation, confidence.`;
             userPrompt = `Texte de l'étudiant : "${studentAnswer}"`;
         }
@@ -700,19 +768,25 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
             console.warn('⚠️ Requête IA throttled (anti-rafale)');
             return { source: 'throttled', analysis: 'Trop de requêtes en cours. Veuillez patienter.', corrections: [], explanations: [], suggestions: [], throttled: true };
         }
-        const response = await fetch(workerUrl, {
-            method: 'POST',
-            headers: window.AuthClient
-                ? window.AuthClient.withAuthHeaders({ 'Content-Type': 'application/json' })
-                : { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        
+        // ─── Body : V2 ou V1 ───
+        var bodyPayload = useV2
+            ? requestBody
+            : JSON.stringify({
                 action: 'analyze',
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
                 context: activityContext,
                 maxTokens: activityContext === 'chat' ? 500 : 300,
                 temperature: 0.7
-            }),
+            });
+        
+        const response = await fetch(workerUrl, {
+            method: 'POST',
+            headers: window.AuthClient
+                ? window.AuthClient.withAuthHeaders({ 'Content-Type': 'application/json' })
+                : { 'Content-Type': 'application/json' },
+            body: bodyPayload,
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -724,6 +798,29 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
         }
         if (!response.ok) { throw new Error(`Erreur Worker: ${response.status} ${response.statusText}`); }
         const data = await response.json();
+        
+        // ─── V2 : détecter ResponseV2 et la retourner directement ───
+        if (isResponseV2(data)) {
+            console.log('✅ ResponseV2 reçue du Worker:', {
+                contractVersion: data.contractVersion,
+                source: data.source,
+                status: data.status
+            });
+
+            // ─── V2 : validation centralisée des rule_id côté frontend ───
+            // validateResponseRuleIds applique directement les résultats in-place
+            // sur analysis.errors[] et course (rule_known_locally, local_detected,
+            // model_suggested, validated, rule_id).
+            if (window.RequestBuilderV2 && typeof window.RequestBuilderV2.validateResponseRuleIds === 'function') {
+                var sentDetections = (optionsV2 && Array.isArray(optionsV2.localDetections)) ? optionsV2.localDetections : [];
+                window.RequestBuilderV2.validateResponseRuleIds(data, sentDetections);
+            }
+
+            // Retourner l'objet ResponseV2 validé — demanderIA() le normalisera
+            return data;
+        }
+        
+        // ─── Legacy V1 : comportement existant ───
         const aiResponse = data.choices?.[0]?.message?.content || data.analysis || 'Réponse IA non disponible';
         const workerSource = data.source || 'remote_unknown';
         console.log('✅ Réponse Worker reçue:', { source: workerSource, length: aiResponse.length });
