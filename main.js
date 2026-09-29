@@ -190,6 +190,14 @@ window.demanderIA = async function(prompt, contexte, optionsV2) {
 
         const result = await runFourModelPipelineWithFallback(prompt, contexte, 'general', optionsV2);
         
+        // ─── A1 : repli local (source=local_requis) — transmettre TEL QUEL ───
+        // Sans ce passage direct, `demanderIA` recalculerait `corrections` via
+        // `analyzeTextLocal` (plus bas) et écraserait les corrections locales déjà
+        // produites par `repliLocal()` (275 règles).
+        if (result && result.source === 'local_requis') {
+            return result;
+        }
+
         // ─── V2 : détecter si le résultat est une ResponseV2 ───
         var isV2 = isResponseV2(result);
         
@@ -674,6 +682,63 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
+// ─── A1 : garde de disponibilité RÉELLE du moteur local ───
+// `window.NLPRules` n'est peuplé qu'après `nlp-database-ready`
+// (nlp/database-integration.js:73, via integrateRules()). Tester seulement
+// `window.correctTextWithDatabase` laisserait passer un moteur aux règles vides.
+function isLocalEngineReady() {
+    if (typeof window.correctTextWithDatabase !== 'function') return false;
+    var rules = window.NLPRules;
+    if (!rules || typeof rules !== 'object') return false;
+    return Object.keys(rules).some(function (cat) {
+        return Array.isArray(rules[cat]) && rules[cat].length > 0;
+    });
+}
+
+// ─── A1 : message honnête quand aucun moteur local n'est disponible ───
+function messageServiceIndisponible(contexte) {
+    if (contexte === 'chat') {
+        return 'Le service IA est momentanément indisponible. Votre question n\u2019a pas pu recevoir de réponse pour le moment. Merci de réessayer dans quelques instants.';
+    }
+    return 'Le service IA et l\u2019analyse locale sont momentanément indisponibles. Votre réponse n\u2019a pas pu être analysée pour le moment. Merci de réessayer dans quelques instants.';
+}
+
+// ─── A1 : repli local via le moteur EXISTANT (275 règles, aucune réécriture) ───
+async function repliLocal(texte, estChat) {
+    if (estChat) {
+        return {
+            source: 'local_requis',
+            analysis: messageServiceIndisponible('chat'),
+            corrections: [], explanations: [], suggestions: [],
+            isChatResponse: true, iaUnavailable: true
+        };
+    }
+    if (!isLocalEngineReady()) {
+        return {
+            source: 'local_requis',
+            analysis: messageServiceIndisponible('activite'),
+            corrections: [], explanations: [], suggestions: [],
+            isActivityResponse: true, iaUnavailable: true
+        };
+    }
+    const resultat = await window.correctTextWithDatabase(texte);
+    const corrections = (resultat && Array.isArray(resultat.corrections)) ? resultat.corrections : [];
+    console.log('✅ Analyse locale utilisée (source=local_requis):', { corrections: corrections.length });
+    let texteFinal = 'Analyse locale (service IA momentanément indisponible).';
+    if (corrections.length > 0) {
+        texteFinal += ' ' + corrections.length + ' correction(s) détectée(s) :\n' +
+            corrections.map(function (c) { return '• « ' + c.original + ' » → « ' + c.corrected + ' »'; }).join('\n');
+    } else {
+        texteFinal += ' Aucune correction automatique n\u2019a été détectée par les règles locales.';
+    }
+    return {
+        source: 'local_requis',
+        analysis: texteFinal,
+        corrections: corrections, explanations: [], suggestions: [],
+        isActivityResponse: true, localFallback: true
+    };
+}
+
 // Pipeline IA — Worker Cloudflare avec fallback local
 window.runFourModelPipeline = async function(studentAnswer, activityContext, activityType, optionsV2) {
     console.log('🚀 Pipeline IA activé (Worker Cloudflare)');
@@ -789,6 +854,17 @@ window.runFourModelPipeline = async function(studentAnswer, activityContext, act
 
             // Retourner l'objet ResponseV2 validé — demanderIA() le normalisera
             return data;
+        }
+
+        // ─── A1 : contrat Worker « local_requis » (fallback local requis côté client) ───
+        // Le Worker peut renvoyer ce signal en HTTP 200 (ai-pipeline-worker.js:1550/1557/1565) :
+        // le corps ne porte alors ni `choices` ni `analysis`. Sans ce test, le client affichait
+        // la chaîne littérale « Réponse IA non disponible » au lieu d'une réponse.
+        // ⚠️ HTTP 429 (saturation/quota) n'atteint pas ce point : `!response.ok` (l.770) lève déjà.
+        if (data.source === 'local_requis') {
+            console.warn('⚠️ Worker: repli local requis (source=local_requis)');
+            const _estChat = (activityContext === 'chat' || activityContext.includes('chat'));
+            return await repliLocal(studentAnswer, _estChat);
         }
         
         // ─── Legacy V1 : comportement existant ───
