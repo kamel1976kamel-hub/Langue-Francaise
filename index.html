@@ -6184,16 +6184,16 @@
         members: {
           listKey: 'members', wrapper: 'pedagogieListGroupMembers',
           statusOptions: ['active', 'ended', 'all'],
-          filters: [{ key: 'groupId', label: 'ID groupe (requis)', type: 'number', valType: 'int', required: true }],
+          filters: [{ key: 'groupId', label: 'Groupe (requis)', type: 'select', valType: 'int', dyn: 'groups', required: true }],
           columns: [{ label: 'ID', key: 'id' }, { label: 'studentId', key: 'studentId' }, { label: 'Nom étudiant', key: 'studentDisplayName' }, { label: 'Matricule', key: 'matricule' }, { label: 'groupId', key: 'groupId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }]
         },
         assignments: {
           listKey: 'assignments', wrapper: 'pedagogieListTeacherAssignments',
           statusOptions: ['active', 'archived', 'orphan', 'all'],
           filters: [
-            { key: 'teacherUserId', label: 'ID user enseignant', type: 'text', valType: 'string' },
+            { key: 'teacherUserId', label: 'Enseignant', type: 'select', valType: 'string', dyn: 'teachers' },
             { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', moduleCatalog: true },
-            { key: 'academicYearId', label: 'ID année', type: 'number', valType: 'int' }
+            { key: 'academicYearId', label: 'Année académique', type: 'select', valType: 'int', dyn: 'years' }
           ],
           columns: [{ label: 'ID', key: 'id' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Module', key: 'chapterId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Créé le', key: 'createdAt' }]
         },
@@ -6201,10 +6201,10 @@
           listKey: 'offerings', wrapper: 'pedagogieListModuleOfferings',
           statusOptions: ['active', 'archived', 'orphan', 'all'],
           filters: [
-            { key: 'groupId', label: 'ID groupe', type: 'number', valType: 'int' },
+            { key: 'groupId', label: 'Groupe', type: 'select', valType: 'int', dyn: 'groups' },
             { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', moduleCatalog: true },
-            { key: 'teacherUserId', label: 'ID user enseignant', type: 'text', valType: 'string' },
-            { key: 'academicYearId', label: 'ID année', type: 'number', valType: 'int' }
+            { key: 'teacherUserId', label: 'Enseignant', type: 'select', valType: 'string', dyn: 'teachers' },
+            { key: 'academicYearId', label: 'Année académique', type: 'select', valType: 'int', dyn: 'years' }
           ],
           columns: [{ label: 'ID', key: 'id' }, { label: 'Groupe', key: 'groupId' }, { label: 'Module', key: 'chapterId' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }]
         },
@@ -6260,8 +6260,11 @@
         var input;
         if (f.type === 'select') {
           input = '<select id="pgf-' + f.key + '" class="mt-1 rounded border px-2 py-1 text-sm" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
-          input += '<option value="">— Tous —</option>';
-          if (f.moduleCatalog) {
+          input += '<option value="">' + (f.required ? '— Choisir —' : '— Tous —') + '</option>';
+          if (f.dyn) {
+            // Liste dynamique de filtre : memes loaders/sources que les formulaires.
+            input += _pedagogyDynFilterOptions(f, val == null ? '' : String(val));
+          } else if (f.moduleCatalog) {
             input += _pedagogyModuleOptionsHtml(val == null ? '' : String(val));
           } else {
             for (var i = 0; i < f.options.length; i++) {
@@ -6276,6 +6279,53 @@
           input = '<input id="pgf-' + f.key + '" type="' + t + '"' + extra + ' value="' + _escapeHtml(val == null ? '' : String(val)) + '" class="mt-1 rounded border px-2 py-1 text-sm" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
         }
         return '<label class="flex flex-col text-xs" style="color: var(--bs-text-muted);">' + _escapeHtml(f.label) + input + '</label>';
+      }
+
+      // Filtres dynamiques : options construites depuis les memes loaders que les
+      // formulaires (_PEDAGOGY_OPT_LOADERS + _pedagogyFormOptions). La valeur
+      // memorisee est preservee meme si elle ne fait plus partie de la liste
+      // rechargee (reinjectee temporairement comme option). Tout est echappe.
+      var _pedagogyFilterOptToken = 0;
+
+      function _pedagogyDynFilterOptions(f, val) {
+        var L = _PEDAGOGY_OPT_LOADERS[f.dyn];
+        var arr = (L && _pedagogyFormOptions[f.dyn]) || [];
+        var opts = '';
+        var found = false;
+        for (var i = 0; i < arr.length; i++) {
+          var v = String(arr[i][L.value]);
+          var sel = (val !== '' && v === val);
+          if (sel) found = true;
+          opts += '<option value="' + _escapeHtml(v) + '"' + (sel ? ' selected' : '') + '>' + _escapeHtml(String(L.label(arr[i]))) + '</option>';
+        }
+        if (!found && val !== '') {
+          opts = '<option value="' + _escapeHtml(val) + '" selected>' + _escapeHtml(val) + '</option>' + opts;
+        }
+        return opts;
+      }
+
+      function _pedagogyCollectFilterDyn(cfg) {
+        var seen = {}, out = [];
+        for (var i = 0; i < cfg.filters.length; i++) {
+          var f = cfg.filters[i];
+          if (f.dyn && !seen[f.dyn]) { seen[f.dyn] = 1; out.push(f.dyn); }
+        }
+        return out;
+      }
+
+      function _pedagogyRefreshFilterSelects(section) {
+        var cfg = _PEDAGOGY_READ_CONFIG[section];
+        var st = _pedagogyState(section);
+        if (!cfg || !st) return;
+        for (var i = 0; i < cfg.filters.length; i++) {
+          var f = cfg.filters[i];
+          if (!f.dyn) continue;
+          var el = document.getElementById('pgf-' + f.key);
+          if (!el) continue;
+          // Preferer la valeur en cours de saisie ; sinon la valeur memorisee.
+          var val = el.value ? String(el.value) : (st.filters[f.key] == null ? '' : String(st.filters[f.key]));
+          el.innerHTML = '<option value="">' + (f.required ? '— Choisir —' : '— Tous —') + '</option>' + _pedagogyDynFilterOptions(f, val);
+        }
       }
 
       function _pedagogyToolbarHtml(cfg, st) {
@@ -6467,6 +6517,17 @@
         if (!content) return;
         content.innerHTML = _pedagogyToolbarHtml(cfg, st);
         _pedagogyLoadSection(section);
+        // Charger les options des filtres dynamiques (memes sources que les
+        // formulaires). Supersession : une reponse tardive ne doit pas remplir
+        // les selects d'une section obsolète.
+        var dynKeys = _pedagogyCollectFilterDyn(cfg);
+        if (dynKeys.length) {
+          var ftoken = ++_pedagogyFilterOptToken;
+          _pedagogyLoadOptions(dynKeys, function () {
+            if (ftoken !== _pedagogyFilterOptToken || _pedagogyCurrentSection !== section) return;
+            _pedagogyRefreshFilterSelects(section);
+          });
+        }
       };
 
       window.applyPedagogyFilters = function() {
