@@ -862,13 +862,15 @@
                     return;
                 }
 
-                // Texte original = texte actuellement dans le textarea (après corrections éventuelles)
-                var textOriginal = answer;
-
                 // Construire optionsV2 si les données de correction sont disponibles
                 var optionsV2 = null;
                 var activityKey = chapterId + '-' + activityId;
                 var storedCorrections = window.currentActivityCorrections && window.currentActivityCorrections[activityKey];
+
+                // LOT C4 — Le contrat V2 exige `text_original` IMMUTABLE ; jamais remplacé par le
+                // texte corrigé. Si le panneau de correction a stocké la réponse D'ORIGINE, on
+                // l'utilise ; sinon le textarea contient déjà l'original (aucune correction analysée).
+                var textOriginal = (storedCorrections && typeof storedCorrections.originalAnswer === 'string') ? storedCorrections.originalAnswer : answer;
 
                 var localDetections = [];
                 if (storedCorrections && storedCorrections.corrections && window.RequestBuilderV2) {
