@@ -3581,10 +3581,77 @@
         <aside id="learningPathColumn" class="overflow-y-auto flex-shrink-0" style="width: 378px; background-color: var(--bs-body-bg); color: var(--bs-body-color);">
           <div class="p-4 border-b" style="border-color: var(--bs-border-color);">
             <h1 class="text-lg font-semibold" style="color: var(--bs-body-color);">Parcours</h1>
-            <p class="text-xs mt-1" style="color: var(--bs-text-muted);">4 types de texte</p>
+            <p class="text-xs mt-1" style="color: var(--bs-text-muted);">Parcours PEP · Première et deuxième année</p>
           </div>
           
           <nav class="p-2 space-y-1" id="pathsNav">
+            <!-- LOT C6.2 — Arborescence des parcours (AFFICHAGE uniquement).
+                 Les niveaux PEP / année / semestre / module sont de simples ancêtres
+                 visuels gérés par toggleTree(). Les 5 types de textes et leurs 4 modules
+                 restent le contenu EXISTANT, avec leurs identifiants techniques inchangés
+                 ({type}-{1..4}), togglePath(), selectModule(), chapters, activityContent.
+                 Aucun nouveau chapterId, aucun code pédagogique affiché. -->
+            <div class="path-item">
+              <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('pep')">
+                <svg id="tarrow-pep" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-xs font-semibold uppercase tracking-wide text-white truncate">Parcours PEP — Professeur de l'École Primaire</span>
+              </button>
+              <div id="tree-pep" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                <div class="path-item">
+                  <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p1')">
+                    <svg id="tarrow-p1" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <span class="text-sm font-medium text-white truncate">Première année</span>
+                  </button>
+                  <div id="tree-p1" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                    <div class="path-item">
+                      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('s1')">
+                        <svg id="tarrow-s1" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span class="text-sm font-medium text-white truncate">Semestre 1</span>
+                      </button>
+                      <div id="tree-s1" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                        <!-- 13 modules de structure (aucun contenu pédagogique dans le dépôt).
+                             data-nav-node = identifiant interne de navigation, jamais un chapterId V2. -->
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-ulm-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-tpo-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratique de l’oral 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-tpe-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratique de l’écrit 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-graphie-dictee-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Graphie et dictée 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-lecture-oeuvres-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la lecture des &#339;uvres littéraires 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-theatre-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la langue française par le théâtre 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-phonetique-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Phonétique fonctionnelle 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-mtu-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Méthodologie du travail universitaire 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-informatique-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Informatique 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-arabe-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue arabe 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-anglais-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-histoire-algerie-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Histoire de l’Algérie 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-nationalisme-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Nationalisme et Citoyenneté 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                      </div>
+                    </div>
+                    <div class="path-item">
+                      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('s2')">
+                        <svg id="tarrow-s2" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span class="text-sm font-medium text-white truncate">Semestre 2</span>
+                      </button>
+                      <div id="tree-s2" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                        <!-- Semestre 2, première année : 13 modules au total, dont
+                             « Techniques et pratique de l’écrit 2 » qui porte les 5 types de textes. -->
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-ulm-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-tpo-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratique de l’oral 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="path-item">
+                          <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('tpe')">
+                            <svg id="tarrow-tpe" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            <span class="text-sm font-medium text-white truncate">Techniques et pratique de l’écrit 2</span>
+                          </button>
+                          <div id="tree-tpe" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
             <!-- Parcours Narratif -->
             <div class="path-item" data-path="narratif">
               <button class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="togglePath('narratif')">
@@ -3804,6 +3871,86 @@
                     Vérifier la fidélité
                   </span>
                 </button>
+              </div>
+            </div>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-graphie-dictee-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Graphie et dictée 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-lecture-oeuvres-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la lecture des &#339;uvres littéraires 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-theatre-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la langue française par le théâtre 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-phonetique-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Phonétique fonctionnelle 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-mtu-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Méthodologie du travail universitaire 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-informatique-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Informatique 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-arabe-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue arabe 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-anglais-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-histoire-algerie-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Histoire de l’Algérie 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-nationalisme-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Nationalisme et Citoyenneté 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                      </div>
+                    </div>
+                    <div class="path-item">
+                      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p2')">
+                        <svg id="tarrow-p2" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span class="text-sm font-medium text-white truncate">Deuxième année</span>
+                      </button>
+                      <div id="tree-p2" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                        <!-- Deuxième année : simples noeuds de structure.
+                             Les homonymes des deux années portent des data-nav-node
+                             distincts (p1s1-* / p2s1-* / p2s2-*), jamais des chapterId. -->
+                        <div class="path-item">
+                          <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p2s1')">
+                            <svg id="tarrow-p2s1" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            <span class="text-sm font-medium text-white truncate">Semestre 1</span>
+                          </button>
+                          <div id="tree-p2s1" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-ulm-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-tpo-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’oral 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-tpe-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’écrit 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-theatre-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue française et expression théâtrale 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-lecture-textes-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Lecture des textes littéraires 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-linguistique-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Linguistique générale 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-psychologie-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Psychologie de l’enfant et de l’adolescent 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-ia-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Intelligence artificielle dans l’apprentissage 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-anglais-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                          </div>
+                        </div>
+                        <div class="path-item">
+                          <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p2s2')">
+                            <svg id="tarrow-p2s2" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            <span class="text-sm font-medium text-white truncate">Semestre 2</span>
+                          </button>
+                          <div id="tree-p2s2" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-ulm-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue française 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-tpo-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’oral 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-tpe-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’écrit 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-theatre-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue française et expressions théâtrales 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-lecture-oeuvres-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Lecture des &#339;uvres littéraires 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-linguistique-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Linguistique générale 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-psychologie-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Psychologie de l’enfant et de l’adolescent 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-anglais-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="path-item">
+              <div class="flex items-center gap-2 px-3 py-2 text-sm text-slate-400">
+                <span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span>
+                Parcours PEM — Professeur de l'Enseignement Moyen
+              </div>
+            </div>
+            <div class="path-item">
+              <div class="flex items-center gap-2 px-3 py-2 text-sm text-slate-400">
+                <span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span>
+                Parcours PES — Professeur de l'Enseignement Secondaire
               </div>
             </div>
           </nav>
@@ -5978,6 +6125,27 @@
         } else {
           modulesDiv.classList.add("hidden");
           arrow.style.transform = "rotate(0deg)";
+        }
+      };
+
+      // ============ LOT C6.2 — OUVERTURE/FERMETURE DES NŒUDS D'ANCRE ============
+      // toggleTree() ne gère QUE les niveaux d'affichage ajoutés (pep, p1, s1, s2,
+      // tpe, p2). Il n'interagit ni avec les chapterId ({type}-{1..4}), ni avec
+      // togglePath()/selectModule()/selectDiscussion(), qui restent la seule logique
+      // métier des modules et des discussions CHAT.
+      window.toggleTree = function(nodeId) {
+        if (typeof nodeId !== 'string' || nodeId === '') return;
+
+        const subtree = document.getElementById(`tree-${nodeId}`);
+        if (!subtree) return;
+        const arrow = document.getElementById(`tarrow-${nodeId}`);
+
+        if (subtree.classList.contains("hidden")) {
+          subtree.classList.remove("hidden");
+          if (arrow) arrow.style.transform = "rotate(90deg)";
+        } else {
+          subtree.classList.add("hidden");
+          if (arrow) arrow.style.transform = "rotate(0deg)";
         }
       };
 
