@@ -469,7 +469,15 @@
                 window._chatIsSending = true;
                 
                 // ─── V2 : capturer le texte original AVANT applyAllCorrections() ───
-                const textOriginal = (typeof window.originalQuestion === 'string') ? window.originalQuestion : '';
+                // LOT C5 — En CHAT, text_original = la question saisie ; window.originalQuestion
+                // (posé par le panneau de correction) sert de valeur D'ORIGINE si disponible,
+                // sinon le message brut du champ de saisie. Garantit que le CHAT passe toujours
+                // par le contrat V2 (mode:'chat') et n'emprunte jamais le chemin V1 de correction.
+                var _chatInputC5 = document.getElementById('chatInput');
+                var _msgBrutC5 = (_chatInputC5 && typeof _chatInputC5.value === 'string') ? _chatInputC5.value.trim() : '';
+                const textOriginal = (typeof window.originalQuestion === 'string' && window.originalQuestion)
+                    ? window.originalQuestion
+                    : _msgBrutC5;
                 
                 // ─── V2 : convertir les détections locales depuis window.currentCorrections ───
                 var localDetections = [];
