@@ -559,6 +559,78 @@ async function requireConcepteur(request, env) {
     return { session, user };
 }
 
+async function requirePedagogieAdmin(request, env) {
+    const db = env.DB;
+    if (!db) return { error: reponseJSON({ erreur: 'Service non configuré' }, 503) };
+
+    const { session, error } = await requireSession(request, env);
+    if (error) return { error };
+
+    if (!PEDAGOGIE_ADMIN_IDS.includes(session.user_id)) {
+        return { error: reponseJSON({ erreur: 'Accès refusé' }, 403) };
+    }
+
+    const user = await db.prepare(
+        'SELECT id, username, display_name, role, concepteur, actif FROM users WHERE id = ?'
+    ).bind(session.user_id).first();
+
+    if (!user || !user.actif) {
+        return { error: reponseJSON({ erreur: 'Compte désactivé ou introuvable' }, 403) };
+    }
+
+    return { session, user };
+}
+
+// Helper : parse et valide limit/offset pour les routes pedagogie.
+function parsePagination(body) {
+    let limit = (body.limit === undefined || body.limit === null) ? 100 : body.limit;
+    let offset = (body.offset === undefined || body.offset === null) ? 0 : body.offset;
+    if (!Number.isInteger(limit) || limit < 1) return { error: 'limit doit être un entier positif' };
+    if (!Number.isInteger(offset) || offset < 0) return { error: 'offset doit être un entier ≥ 0' };
+    if (limit > 500) limit = 500;
+    return { limit, offset };
+}
+
+// Helper : valide le paramètre status contre la liste autorisée.
+function validateStatus(body, allowed) {
+    let status = (body.status === undefined || body.status === null) ? 'active' : body.status;
+    if (typeof status !== 'string' || !allowed.includes(status)) {
+        return { error: 'status invalide (valeurs autorisées: ' + allowed.join(', ') + ')' };
+    }
+    return { status };
+}
+
+// Helper : valide une date stricte YYYY-MM-DD (calendrier grégorien proleptique).
+function isValidDate(str) {
+    if (typeof str !== 'string') return false;
+    const m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return false;
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    if (month < 1 || month > 12 || day < 1) return false;
+    const d = new Date(Date.UTC(year, month - 1, day));
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
+}
+
+// Helper : normalise un nom d'affichage (trim + réduction des espaces internes).
+// Retourne null si la valeur n'est pas une chaîne.
+function normalizeDisplayName(value) {
+    if (typeof value !== 'string') return null;
+    return value.trim().replace(/\s+/g, ' ');
+}
+
+// Allowlist canonique des 20 chapter_id pédagogiques (IDs techniques du frontend).
+// IMPORTANT : le préfixe (chapter_id.split('-')[0]) est un TYPE DE DISCOURS, jamais un
+// parcours. Ne jamais en déduire pep/pem/pes. La validation serveur utilise cette liste.
+const PEDAGOGY_CHAPTER_IDS = [
+    'narratif-1', 'narratif-2', 'narratif-3', 'narratif-4',
+    'descriptif-1', 'descriptif-2', 'descriptif-3', 'descriptif-4',
+    'explicatif-1', 'explicatif-2', 'explicatif-3', 'explicatif-4',
+    'argumentatif-1', 'argumentatif-2', 'argumentatif-3', 'argumentatif-4',
+    'resume-1', 'resume-2', 'resume-3', 'resume-4'
+];
+
 // Rate limiting pour les opérations de reset (par session concepteur).
 // Retourne le nombre de resets effectués dans la fenêtre glissante.
 async function getResetCount(db, concepteurId) {
@@ -590,6 +662,7 @@ async function recordResetOperation(db, concepteurId) {
 // Autorisation via secret Worker BOOTSTRAP_KEY (header X-Bootstrap-Key).
 // SUPPRIMER le secret BOOTSTRAP_KEY après utilisation pour désactiver définitivement.
 const BOOTSTRAP_TARGET_ID = 'teacher_001';
+const PEDAGOGIE_ADMIN_IDS = ['teacher_001'];
 
 async function handleBootstrapSetPassword(request, env) {
     const db = env.DB;
@@ -1198,6 +1271,1036 @@ function fallbackLocalV2(request) {
     });
 }
 
+// ─── GESTION PÉDAGOGIQUE — Handlers de lecture ───
+
+async function handlePedagogieListAcademicYears(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'archived', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    const { status } = statusResult;
+
+    const where = status !== 'all' ? 'WHERE status = ?' : '';
+    const filterParams = status !== 'all' ? [status] : [];
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM academic_years ${where}`
+    ).bind(...filterParams).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT id, label, starts_on, ends_on, status, created_at, updated_at FROM academic_years ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...filterParams, pag.limit, pag.offset).all();
+
+    const academicYears = (rows.results || []).map(r => ({
+        id: r.id, label: r.label, startsOn: r.starts_on, endsOn: r.ends_on,
+        status: r.status, createdAt: r.created_at, updatedAt: r.updated_at
+    }));
+    return reponseJSON({ academicYears, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+async function handlePedagogieListTeachers(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'inactive', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    const { status } = statusResult;
+
+    const where = status !== 'all' ? 'WHERE status = ?' : '';
+    const filterParams = status !== 'all' ? [status] : [];
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM teachers ${where}`
+    ).bind(...filterParams).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT id, user_id, display_name, status, created_at, updated_at FROM teachers ${where} ORDER BY display_name ASC LIMIT ? OFFSET ?`
+    ).bind(...filterParams, pag.limit, pag.offset).all();
+
+    const teachers = (rows.results || []).map(r => ({
+        id: r.id, userId: r.user_id, displayName: r.display_name,
+        status: r.status, createdAt: r.created_at, updatedAt: r.updated_at
+    }));
+    return reponseJSON({ teachers, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+async function handlePedagogieListStudents(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'inactive', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    const { status } = statusResult;
+
+    // group_id : optional filter, must be integer > 0 if present
+    let groupId = null;
+    if (body.group_id !== undefined && body.group_id !== null) {
+        if (!Number.isInteger(body.group_id) || body.group_id < 1) {
+            return reponseJSON({ erreur: 'group_id doit être un entier > 0' }, 400);
+        }
+        groupId = body.group_id;
+    }
+
+    const conditions = [];
+    const params = [];
+    if (status !== 'all') { conditions.push('s.status = ?'); params.push(status); }
+
+    let sql, countSql;
+    if (groupId !== null) {
+        conditions.push(`EXISTS (SELECT 1 FROM student_group_memberships m WHERE m.student_id = s.id AND m.group_id = ? AND m.valid_to IS NULL AND m.status = 'active')`);
+        params.push(groupId);
+        const whereStr = 'WHERE ' + conditions.join(' AND ');
+        countSql = `SELECT COUNT(*) AS cnt FROM students s ${whereStr}`;
+        sql = `SELECT s.id, s.user_id, s.matricule, s.display_name, s.status, s.created_at, s.updated_at FROM students s ${whereStr} ORDER BY s.display_name ASC LIMIT ? OFFSET ?`;
+    } else {
+        const whereStr = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        countSql = `SELECT COUNT(*) AS cnt FROM students s ${whereStr}`;
+        sql = `SELECT s.id, s.user_id, s.matricule, s.display_name, s.status, s.created_at, s.updated_at FROM students s ${whereStr} ORDER BY s.display_name ASC LIMIT ? OFFSET ?`;
+    }
+
+    const countResult = await db.prepare(countSql).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(sql).bind(...params, pag.limit, pag.offset).all();
+
+    const students = (rows.results || []).map(r => ({
+        id: r.id, userId: r.user_id, matricule: r.matricule, displayName: r.display_name,
+        status: r.status, createdAt: r.created_at, updatedAt: r.updated_at
+    }));
+    return reponseJSON({ students, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+async function handlePedagogieListGroups(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'inactive', 'archived', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    const { status } = statusResult;
+
+    // Validate optional filters strictly
+    if (body.parcours !== undefined && body.parcours !== null) {
+        if (!['pep', 'pem', 'pes'].includes(body.parcours)) {
+            return reponseJSON({ erreur: 'parcours invalide (pep, pem ou pes attendu)' }, 400);
+        }
+    }
+    if (body.year_number !== undefined && body.year_number !== null) {
+        if (!Number.isInteger(body.year_number) || body.year_number < 1 || body.year_number > 2) {
+            return reponseJSON({ erreur: 'year_number invalide (1 ou 2 attendu)' }, 400);
+        }
+    }
+    if (body.semester_number !== undefined && body.semester_number !== null) {
+        if (!Number.isInteger(body.semester_number) || body.semester_number < 1 || body.semester_number > 2) {
+            return reponseJSON({ erreur: 'semester_number invalide (1 ou 2 attendu)' }, 400);
+        }
+    }
+    if (body.academic_year_id !== undefined && body.academic_year_id !== null) {
+        if (!Number.isInteger(body.academic_year_id) || body.academic_year_id < 1) {
+            return reponseJSON({ erreur: 'academic_year_id doit être un entier > 0' }, 400);
+        }
+    }
+
+    const conditions = [];
+    const params = [];
+    if (status !== 'all') { conditions.push('g.status = ?'); params.push(status); }
+    if (body.academic_year_id != null) { conditions.push('g.academic_year_id = ?'); params.push(body.academic_year_id); }
+    if (body.parcours != null) { conditions.push('g.parcours = ?'); params.push(body.parcours); }
+    if (body.year_number != null) { conditions.push('g.year_number = ?'); params.push(body.year_number); }
+    if (body.semester_number != null) { conditions.push('g.semester_number = ?'); params.push(body.semester_number); }
+
+    const whereStr = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM groups g ${whereStr}`
+    ).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT g.id, g.academic_year_id, ay.label AS academic_year_label, g.parcours, g.year_number, g.semester_number, g.name, g.code, g.status, g.capacity, g.created_at, g.updated_at FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id ${whereStr} ORDER BY ay.label DESC, g.parcours ASC, g.year_number ASC, g.semester_number ASC, g.name ASC LIMIT ? OFFSET ?`
+    ).bind(...params, pag.limit, pag.offset).all();
+
+    const groups = (rows.results || []).map(r => ({
+        id: r.id, academicYearId: r.academic_year_id, academicYearLabel: r.academic_year_label,
+        parcours: r.parcours, yearNumber: r.year_number, semesterNumber: r.semester_number,
+        name: r.name, code: r.code, status: r.status, capacity: r.capacity,
+        createdAt: r.created_at, updatedAt: r.updated_at
+    }));
+    return reponseJSON({ groups, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+// Lit les membres d'un groupe. Filtre de lecture uniquement (route deja garde
+// par requirePedagogieAdmin). JOIN 1:1 sur students (PK) -> pas de duplication.
+async function handlePedagogieListGroupMembers(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'ended', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const { status } = statusResult;
+
+    const conditions = ['m.group_id = ?'];
+    const params = [body.groupId];
+    if (status !== 'all') { conditions.push('m.status = ?'); params.push(status); }
+    const whereStr = 'WHERE ' + conditions.join(' AND ');
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM student_group_memberships m JOIN students s ON s.id = m.student_id ${whereStr}`
+    ).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT m.id, m.student_id, m.group_id, m.status, m.valid_from, m.valid_to, s.display_name AS student_display_name, s.matricule AS matricule FROM student_group_memberships m JOIN students s ON s.id = m.student_id ${whereStr} ORDER BY m.id ASC LIMIT ? OFFSET ?`
+    ).bind(...params, pag.limit, pag.offset).all();
+
+    const members = (rows.results || []).map(r => ({
+        id: r.id, studentId: r.student_id, groupId: r.group_id, status: r.status,
+        validFrom: r.valid_from, validTo: r.valid_to,
+        studentDisplayName: r.student_display_name, matricule: r.matricule
+    }));
+    return reponseJSON({ members, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+// Liste les affectations enseignant/module. Filtres optionnels ; chapterId valide
+// contre PEDAGOGY_CHAPTER_IDS. Ordre stable id ASC.
+async function handlePedagogieListTeacherAssignments(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'archived', 'orphan', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    const { status } = statusResult;
+
+    const conditions = [];
+    const params = [];
+    if (body.teacherUserId !== undefined && body.teacherUserId !== null) {
+        if (typeof body.teacherUserId !== 'string' || !body.teacherUserId.trim()) {
+            return reponseJSON({ erreur: 'teacherUserId invalide' }, 400);
+        }
+        conditions.push('teacher_user_id = ?'); params.push(body.teacherUserId.trim());
+    }
+    if (body.chapterId !== undefined && body.chapterId !== null) {
+        if (typeof body.chapterId !== 'string' || !PEDAGOGY_CHAPTER_IDS.includes(body.chapterId)) {
+            return reponseJSON({ erreur: 'chapterId invalide (ID technique attendu)' }, 400);
+        }
+        conditions.push('chapter_id = ?'); params.push(body.chapterId);
+    }
+    if (body.academicYearId !== undefined && body.academicYearId !== null) {
+        if (!Number.isInteger(body.academicYearId) || body.academicYearId < 1) {
+            return reponseJSON({ erreur: 'academicYearId doit être un entier > 0' }, 400);
+        }
+        conditions.push('academic_year_id = ?'); params.push(body.academicYearId);
+    }
+    if (status !== 'all') { conditions.push('status = ?'); params.push(status); }
+    const whereStr = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM teacher_module_assignments ${whereStr}`
+    ).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT id, teacher_user_id, chapter_id, academic_year_id, status, valid_from, valid_to, created_at FROM teacher_module_assignments ${whereStr} ORDER BY id ASC LIMIT ? OFFSET ?`
+    ).bind(...params, pag.limit, pag.offset).all();
+
+    const assignments = (rows.results || []).map(r => ({
+        id: r.id, teacherUserId: r.teacher_user_id, chapterId: r.chapter_id,
+        academicYearId: r.academic_year_id, status: r.status, validFrom: r.valid_from,
+        validTo: r.valid_to, createdAt: r.created_at
+    }));
+    return reponseJSON({ assignments, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+// Liste les offerings. academicYearId filtre via JOIN groups (offering ne stocke
+// pas l'annee). JOIN 1:1 sur groups (PK) -> pas de duplication. teacher_user_id
+// nullable reste null. Ordre stable o.id ASC.
+async function handlePedagogieListModuleOfferings(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const statusResult = validateStatus(body, ['active', 'archived', 'orphan', 'all']);
+    if (statusResult.error) return reponseJSON({ erreur: statusResult.error }, 400);
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+    const { status } = statusResult;
+
+    const conditions = [];
+    const params = [];
+    if (body.groupId !== undefined && body.groupId !== null) {
+        if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+            return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+        }
+        conditions.push('o.group_id = ?'); params.push(body.groupId);
+    }
+    if (body.chapterId !== undefined && body.chapterId !== null) {
+        if (typeof body.chapterId !== 'string' || !PEDAGOGY_CHAPTER_IDS.includes(body.chapterId)) {
+            return reponseJSON({ erreur: 'chapterId invalide (ID technique attendu)' }, 400);
+        }
+        conditions.push('o.chapter_id = ?'); params.push(body.chapterId);
+    }
+    if (body.teacherUserId !== undefined && body.teacherUserId !== null) {
+        if (typeof body.teacherUserId !== 'string' || !body.teacherUserId.trim()) {
+            return reponseJSON({ erreur: 'teacherUserId invalide' }, 400);
+        }
+        conditions.push('o.teacher_user_id = ?'); params.push(body.teacherUserId.trim());
+    }
+    if (body.academicYearId !== undefined && body.academicYearId !== null) {
+        if (!Number.isInteger(body.academicYearId) || body.academicYearId < 1) {
+            return reponseJSON({ erreur: 'academicYearId doit être un entier > 0' }, 400);
+        }
+        conditions.push('g.academic_year_id = ?'); params.push(body.academicYearId);
+    }
+    if (status !== 'all') { conditions.push('o.status = ?'); params.push(status); }
+    const whereStr = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM group_module_offerings o JOIN groups g ON g.id = o.group_id ${whereStr}`
+    ).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT o.id, o.group_id, o.chapter_id, o.teacher_user_id, o.status, o.valid_from, o.valid_to, o.created_at, g.academic_year_id AS academic_year_id FROM group_module_offerings o JOIN groups g ON g.id = o.group_id ${whereStr} ORDER BY o.id ASC LIMIT ? OFFSET ?`
+    ).bind(...params, pag.limit, pag.offset).all();
+
+    const offerings = (rows.results || []).map(r => ({
+        id: r.id, groupId: r.group_id, chapterId: r.chapter_id, teacherUserId: r.teacher_user_id,
+        academicYearId: r.academic_year_id, status: r.status, validFrom: r.valid_from,
+        validTo: r.valid_to, createdAt: r.created_at
+    }));
+    return reponseJSON({ offerings, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+// Lit l'audit log (traceabilite admin). Filtres optionnels ; ces valeurs sont des
+// filtres de lecture, JAMAIS une identite d'acteur. Ordre at DESC, id DESC.
+async function handlePedagogieListAuditLog(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+
+    const conditions = [];
+    const params = [];
+    if (body.actorUserId !== undefined && body.actorUserId !== null) {
+        if (typeof body.actorUserId !== 'string' || !body.actorUserId.trim()) {
+            return reponseJSON({ erreur: 'actorUserId invalide' }, 400);
+        }
+        conditions.push('actor_user_id = ?'); params.push(body.actorUserId.trim());
+    }
+    if (body.entityType !== undefined && body.entityType !== null) {
+        if (typeof body.entityType !== 'string' || !body.entityType.trim()) {
+            return reponseJSON({ erreur: 'entityType invalide' }, 400);
+        }
+        conditions.push('entity_type = ?'); params.push(body.entityType.trim());
+    }
+    if (body.entityId !== undefined && body.entityId !== null) {
+        if (typeof body.entityId !== 'string' && typeof body.entityId !== 'number') {
+            return reponseJSON({ erreur: 'entityId invalide' }, 400);
+        }
+        const v = String(body.entityId).trim();
+        if (!v) return reponseJSON({ erreur: 'entityId invalide' }, 400);
+        conditions.push('entity_id = ?'); params.push(v);
+    }
+    const whereStr = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const countResult = await db.prepare(
+        `SELECT COUNT(*) AS cnt FROM audit_log ${whereStr}`
+    ).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(
+        `SELECT id, actor_user_id, action, entity_type, entity_id, old_values, new_values, at FROM audit_log ${whereStr} ORDER BY at DESC, id DESC LIMIT ? OFFSET ?`
+    ).bind(...params, pag.limit, pag.offset).all();
+
+    const auditEntries = (rows.results || []).map(r => ({
+        id: r.id, actorUserId: r.actor_user_id, action: r.action, entityType: r.entity_type,
+        entityId: r.entity_id, oldValues: r.old_values, newValues: r.new_values, at: r.at
+    }));
+    return reponseJSON({ auditEntries, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
+// ─── GESTION PÉDAGOGIQUE — Handlers d'écriture ───
+
+// Crée une année académique avec le rôle 'active' forcé côté serveur.
+// Concurrence : un seul INSERT conditionnel (INSERT ... SELECT ... WHERE NOT EXISTS)
+// garantit qu'au plus une année active peut exister. L'INSERT, l'audit et la
+// relecture sont regroupés dans db.batch() (même transaction D1) : si l'audit
+// échoue, la création est annulée. L'audit est lui-même conditionné par
+// `WHERE changes() = 1` afin de ne rien journaliser si l'INSERT n'a rien inséré
+// (année active déjà présente).
+async function handlePedagogieCreateAcademicYear(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    // label : chaîne obligatoire, trimée, non vide, <= 50 caractères.
+    if (typeof body.label !== 'string') {
+        return reponseJSON({ erreur: 'label doit être une chaîne de caractères' }, 400);
+    }
+    const label = body.label.trim();
+    if (!label) {
+        return reponseJSON({ erreur: 'label ne peut pas être vide' }, 400);
+    }
+    if (label.length > 50) {
+        return reponseJSON({ erreur: 'label ne peut pas dépasser 50 caractères' }, 400);
+    }
+
+    // startsOn / endsOn : optionnels (null autorisé) mais format strict YYYY-MM-DD.
+    const startsOn = (body.startsOn === undefined) ? null : body.startsOn;
+    const endsOn = (body.endsOn === undefined) ? null : body.endsOn;
+    if (startsOn !== null && (typeof startsOn !== 'string' || !isValidDate(startsOn))) {
+        return reponseJSON({ erreur: 'startsOn doit être une date valide au format YYYY-MM-DD' }, 400);
+    }
+    if (endsOn !== null && (typeof endsOn !== 'string' || !isValidDate(endsOn))) {
+        return reponseJSON({ erreur: 'endsOn doit être une date valide au format YYYY-MM-DD' }, 400);
+    }
+    if (startsOn !== null && endsOn !== null && startsOn > endsOn) {
+        return reponseJSON({ erreur: 'startsOn ne peut pas être postérieure à endsOn' }, 400);
+    }
+
+    // 'active' est une constante SQL (non issue de l'utilisateur). Toutes les
+    // valeurs utilisateur passent par .bind().
+    const newValues = JSON.stringify({ label, startsOn, endsOn, status: 'active' });
+
+    const insertStmt = db.prepare(
+        `INSERT INTO academic_years (label, starts_on, ends_on, status)
+         SELECT ?, ?, ?, 'active'
+         WHERE NOT EXISTS (SELECT 1 FROM academic_years WHERE status = 'active')`
+    ).bind(label, startsOn, endsOn);
+
+    // actor = user.id (exclusivement, fourni par le dispatcher après
+    // requirePedagogieAdmin). entity_id = identifiant de la nouvelle année via
+    // last_insert_rowid() (évalue l'INSERT academic_years qui précède). Le
+    // timestamp de audit_log est laissé à sa valeur DEFAULT.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'create_academic_year', 'academic_year', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    // Relecture par label (colonne UNIQUE) : last_insert_rowid() ne serait plus
+    // fiable ici car auditStmt vient de s'exécuter.
+    const selectStmt = db.prepare(
+        `SELECT id, label, starts_on, ends_on, status, created_at, updated_at FROM academic_years WHERE label = ?`
+    ).bind(label);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, auditStmt, selectStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        // Seule contrainte UNIQUE impliquée ici : academic_years.label.
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: 'Une année portant ce label existe déjà' }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-create-academic-year (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const insertMeta = (results && results[0] && results[0].meta) ? results[0].meta : {};
+    const changes = insertMeta.changes || 0;
+    if (changes === 0) {
+        // Une année active existe déjà : rien inséré, rien journalisé (transaction valide).
+        return reponseJSON({ erreur: 'Une année académique active existe déjà' }, 409);
+    }
+
+    const fetched = (results && results[2] && Array.isArray(results[2].results)) ? results[2].results : [];
+    const row = fetched[0];
+    if (!row) {
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const academicYear = {
+        id: row.id,
+        label: row.label,
+        startsOn: row.starts_on,
+        endsOn: row.ends_on,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+    };
+    return reponseJSON({ academicYear }, 201);
+}
+
+// Crée un profil enseignant lié à un users.id existant avec role='teacher'.
+// Intégrité/concurrence : INSERT conditionnel (WHERE EXISTS user teacher) +
+// audit gardé par `WHERE changes() = 1`, le tout dans une transaction db.batch().
+// La relecture se fait par user_id (colonne UNIQUE), insensible à last_insert_rowid().
+async function handlePedagogieCreateTeacher(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    // userId : chaîne non vide après trim.
+    const userId = (typeof body.userId === 'string') ? body.userId.trim() : '';
+    if (!userId) {
+        return reponseJSON({ erreur: 'userId doit être une chaîne non vide' }, 400);
+    }
+
+    // displayName : chaîne obligatoire, normalisée, longueur 1..120.
+    const displayName = normalizeDisplayName(body.displayName);
+    if (displayName === null || displayName.length < 1 || displayName.length > 120) {
+        return reponseJSON({ erreur: 'displayName invalide (1 à 120 caractères)' }, 400);
+    }
+
+    // status jamais accepté depuis le client : 'active' est imposé côté serveur.
+    // Pré-lecture de classification : users.id existe-t-il ? role = teacher ?
+    const target = await db.prepare('SELECT id, role FROM users WHERE id = ?').bind(userId).first();
+    if (!target) {
+        return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    }
+    if (target.role !== 'teacher') {
+        return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
+    }
+
+    const newValues = JSON.stringify({ userId, displayName, status: 'active' });
+
+    const insertStmt = db.prepare(
+        `INSERT INTO teachers (user_id, display_name, status)
+         SELECT ?, ?, 'active'
+         WHERE EXISTS (SELECT 1 FROM users WHERE id = ? AND role = 'teacher')`
+    ).bind(userId, displayName, userId);
+
+    // actor = user.id (session), jamais depuis le body. entity_id = teachers.id.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'create_teacher', 'teacher', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    const selectStmt = db.prepare(
+        `SELECT id, user_id, display_name, status, created_at, updated_at FROM teachers WHERE user_id = ?`
+    ).bind(userId);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, auditStmt, selectStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: 'Ce userId a déjà un profil enseignant' }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-create-teacher (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        // Course : le target n'est plus un enseignant éligible à l'écriture.
+        return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    }
+
+    const fetched = (results && results[2] && Array.isArray(results[2].results)) ? results[2].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+
+    const teacher = {
+        id: row.id, userId: row.user_id, displayName: row.display_name,
+        status: row.status, createdAt: row.created_at, updatedAt: row.updated_at
+    };
+    return reponseJSON({ teacher }, 201);
+}
+
+// Crée un profil étudiant. userId et matricule optionnels (NULL autorisé).
+// Relecture par id = last_insert_rowid() AVANT l'audit (le SELECT intermédiaire ne
+// modifie ni last_insert_rowid() ni changes()), puis audit gardé par changes() = 1.
+async function handlePedagogieCreateStudent(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    // displayName : chaîne obligatoire, normalisée, 1..120.
+    const displayName = normalizeDisplayName(body.displayName);
+    if (displayName === null || displayName.length < 1 || displayName.length > 120) {
+        return reponseJSON({ erreur: 'displayName invalide (1 à 120 caractères)' }, 400);
+    }
+
+    // userId : absent/null -> NULL ; fourni -> chaîne non vide après trim.
+    let userId = null;
+    if (body.userId !== undefined && body.userId !== null) {
+        if (typeof body.userId !== 'string') {
+            return reponseJSON({ erreur: 'userId doit être une chaîne' }, 400);
+        }
+        const trimmed = body.userId.trim();
+        if (!trimmed) {
+            return reponseJSON({ erreur: 'userId ne peut pas être vide' }, 400);
+        }
+        userId = trimmed;
+    }
+
+    // matricule : absent/null -> NULL ; fourni -> chaîne non vide après trim, <= 64.
+    let matricule = null;
+    if (body.matricule !== undefined && body.matricule !== null) {
+        if (typeof body.matricule !== 'string') {
+            return reponseJSON({ erreur: 'matricule doit être une chaîne' }, 400);
+        }
+        const trimmed = body.matricule.trim();
+        if (!trimmed) {
+            return reponseJSON({ erreur: 'matricule ne peut pas être vide' }, 400);
+        }
+        if (trimmed.length > 64) {
+            return reponseJSON({ erreur: 'matricule ne peut pas dépasser 64 caractères' }, 400);
+        }
+        matricule = trimmed;
+    }
+
+    // Si userId fourni : doit exister dans users (aucune exigence de rôle).
+    if (userId !== null) {
+        const target = await db.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first();
+        if (!target) {
+            return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+        }
+    }
+
+    const newValues = JSON.stringify({ userId, matricule, displayName, status: 'active' });
+
+    // INSERT : conditionné par l'existence users.id si userId fourni, sinon simple.
+    const insertStmt = (userId !== null)
+        ? db.prepare(
+            `INSERT INTO students (user_id, matricule, display_name, status)
+             SELECT ?, ?, ?, 'active'
+             WHERE EXISTS (SELECT 1 FROM users WHERE id = ?)`
+        ).bind(userId, matricule, displayName, userId)
+        : db.prepare(
+            `INSERT INTO students (user_id, matricule, display_name, status)
+             VALUES (NULL, ?, ?, 'active')`
+        ).bind(matricule, displayName);
+
+    // Relecture par id = last_insert_rowid() (= students.id), AVANT l'audit.
+    const selectStmt = db.prepare(
+        `SELECT id, user_id, matricule, display_name, status, created_at, updated_at FROM students WHERE id = last_insert_rowid()`
+    );
+
+    // Audit gardé par changes() = 1 ; entity_id = students.id (last_insert_rowid()).
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'create_student', 'student', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/students\.user_id/i.test(msg)) {
+            return reponseJSON({ erreur: 'Ce userId est déjà associé à un profil étudiant' }, 409);
+        }
+        if (/students\.matricule/i.test(msg)) {
+            return reponseJSON({ erreur: 'Ce matricule est déjà utilisé' }, 409);
+        }
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: 'Valeur déjà utilisée' }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-create-student (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        // Course : userId fourni mais disparu entre pré-lecture et batch.
+        return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    }
+
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+
+    const student = {
+        id: row.id, userId: row.user_id, matricule: row.matricule, displayName: row.display_name,
+        status: row.status, createdAt: row.created_at, updatedAt: row.updated_at
+    };
+    return reponseJSON({ student }, 201);
+}
+
+// Crée un groupe pédagogique dans une année académique ACTIVE.
+// Intégrité : INSERT conditionnel (WHERE EXISTS année active) ; l'unicité du code est
+// portée par la contrainte DDL UNIQUE(academic_year_id, parcours, year_number,
+// semester_number, code) -> doublon = 409. Audit gardé par changes() = 1 dans le même batch.
+async function handlePedagogieCreateGroup(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.academicYearId) || body.academicYearId < 1) {
+        return reponseJSON({ erreur: 'academicYearId doit être un entier > 0' }, 400);
+    }
+    const academicYearId = body.academicYearId;
+    const parcours = body.parcours;
+    if (!['pep', 'pem', 'pes'].includes(parcours)) {
+        return reponseJSON({ erreur: 'parcours invalide (pep, pem ou pes attendu)' }, 400);
+    }
+    const yearNumber = body.yearNumber;
+    if (!Number.isInteger(yearNumber) || (yearNumber !== 1 && yearNumber !== 2)) {
+        return reponseJSON({ erreur: 'yearNumber invalide (1 ou 2 attendu)' }, 400);
+    }
+    const semesterNumber = body.semesterNumber;
+    if (!Number.isInteger(semesterNumber) || (semesterNumber !== 1 && semesterNumber !== 2)) {
+        return reponseJSON({ erreur: 'semesterNumber invalide (1 ou 2 attendu)' }, 400);
+    }
+    const name = normalizeDisplayName(body.name);
+    if (name === null || name.length < 1 || name.length > 120) {
+        return reponseJSON({ erreur: 'name invalide (1 à 120 caractères)' }, 400);
+    }
+    const code = normalizeDisplayName(body.code);
+    if (code === null || code.length < 1 || code.length > 50) {
+        return reponseJSON({ erreur: 'code invalide (1 à 50 caractères)' }, 400);
+    }
+    let capacity = null;
+    if (body.capacity !== undefined && body.capacity !== null) {
+        if (!Number.isInteger(body.capacity) || body.capacity <= 0) {
+            return reponseJSON({ erreur: 'capacity doit être un entier strictement positif' }, 400);
+        }
+        capacity = body.capacity;
+    }
+    // status jamais accepté depuis le client : 'active' imposé côté serveur.
+
+    // Pré-lecture de classification uniquement (choix du code HTTP) ; la décision
+    // d'insertion est reprise dans l'INSERT conditionnel ci-dessous.
+    const year = await db.prepare('SELECT id, status FROM academic_years WHERE id = ?').bind(academicYearId).first();
+    if (!year) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
+    if (year.status !== 'active') return reponseJSON({ erreur: 'Création impossible dans une année non active' }, 409);
+
+    const newValues = JSON.stringify({ academicYearId, parcours, yearNumber, semesterNumber, name, code, status: 'active', capacity });
+
+    const insertStmt = db.prepare(
+        `INSERT INTO groups (academic_year_id, parcours, year_number, semester_number, name, code, status, capacity)
+         SELECT ?, ?, ?, ?, ?, ?, 'active', ?
+         WHERE EXISTS (SELECT 1 FROM academic_years WHERE id = ? AND status = 'active')`
+    ).bind(academicYearId, parcours, yearNumber, semesterNumber, name, code, capacity, academicYearId);
+
+    const selectStmt = db.prepare(
+        `SELECT g.id, g.academic_year_id, ay.label AS academic_year_label, g.parcours, g.year_number, g.semester_number, g.name, g.code, g.status, g.capacity, g.created_at, g.updated_at
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id
+         WHERE g.id = last_insert_rowid()`
+    );
+
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'create_group', 'group', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: 'Un groupe avec ce code existe déjà pour cette période' }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-create-group (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        return reponseJSON({ erreur: 'Création impossible dans une année non active' }, 409);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    const group = {
+        id: row.id, academicYearId: row.academic_year_id, academicYearLabel: row.academic_year_label,
+        parcours: row.parcours, yearNumber: row.year_number, semesterNumber: row.semester_number,
+        name: row.name, code: row.code, status: row.status, capacity: row.capacity,
+        createdAt: row.created_at, updatedAt: row.updated_at
+    };
+    return reponseJSON({ group }, 201);
+}
+
+// Ajoute un étudiant à un groupe. Règle critique : un seul membership actif
+// (status='active' AND valid_to IS NULL) par (année + parcours + année + semestre).
+// Le contrôle NOT EXISTS est INTÉGRÉ à l'INSERT conditionnel (atomique, résistant
+// à la concurrence D1). Audit gardé par changes() = 1 dans le même batch.
+async function handlePedagogieAddStudentToGroup(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.studentId) || body.studentId < 1) {
+        return reponseJSON({ erreur: 'studentId doit être un entier > 0' }, 400);
+    }
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const studentId = body.studentId;
+    const groupId = body.groupId;
+
+    // Pré-lecture de classification uniquement (codes HTTP) ; décision d'insertion dans l'INSERT.
+    const student = await db.prepare('SELECT id FROM students WHERE id = ?').bind(studentId).first();
+    if (!student) return reponseJSON({ erreur: 'Étudiant introuvable' }, 404);
+
+    const grp = await db.prepare(
+        `SELECT g.id, g.status, ay.status AS year_status
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id
+         WHERE g.id = ?`
+    ).bind(groupId).first();
+    if (!grp) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (grp.status !== 'active') return reponseJSON({ erreur: 'Groupe non actif' }, 409);
+    if (grp.year_status !== 'active') return reponseJSON({ erreur: 'Année académique du groupe non active' }, 409);
+
+    const newValues = JSON.stringify({ studentId, groupId, status: 'active' });
+
+    const insertStmt = db.prepare(
+        `INSERT INTO student_group_memberships (student_id, group_id, status, valid_from, valid_to)
+         SELECT ?, ?, 'active', datetime('now'), NULL
+         WHERE EXISTS (
+             SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
+             WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active'
+         )
+         AND EXISTS (SELECT 1 FROM students WHERE id = ?)
+         AND NOT EXISTS (
+             SELECT 1 FROM student_group_memberships m
+             JOIN groups g2 ON g2.id = m.group_id
+             JOIN groups gt ON gt.id = ?
+             WHERE m.student_id = ? AND m.status = 'active' AND m.valid_to IS NULL
+               AND g2.academic_year_id = gt.academic_year_id
+               AND g2.parcours = gt.parcours
+               AND g2.year_number = gt.year_number
+               AND g2.semester_number = gt.semester_number
+         )`
+    ).bind(studentId, groupId, groupId, studentId, groupId, studentId);
+
+    const selectStmt = db.prepare(
+        `SELECT id, student_id, group_id, status, valid_from, valid_to FROM student_group_memberships WHERE id = last_insert_rowid()`
+    );
+
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'add_student_to_group', 'student_group_membership', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-add-student-to-group (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        return reponseJSON({ erreur: "L'étudiant a déjà un groupe actif pour cette période" }, 409);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    const membership = {
+        id: row.id, studentId: row.student_id, groupId: row.group_id,
+        status: row.status, validFrom: row.valid_from, validTo: row.valid_to
+    };
+    return reponseJSON({ membership }, 201);
+}
+
+// Affecte un module (chapter_id) à un enseignant pour une année académique.
+// teacher_user_id = users.id (JAMAIS teachers.id). Validation : users existe,
+// role='teacher', profil teachers présent, chapter_id dans l'allowlist, année active.
+// Doublon actif (teacher+chapter+année) -> 409, contrôlé dans l'INSERT conditionnel.
+async function handlePedagogieAssignTeacherModule(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    const teacherUserId = (typeof body.teacherUserId === 'string') ? body.teacherUserId.trim() : '';
+    if (!teacherUserId) return reponseJSON({ erreur: 'teacherUserId doit être une chaîne non vide' }, 400);
+    const chapterId = body.chapterId;
+    if (typeof chapterId !== 'string' || !PEDAGOGY_CHAPTER_IDS.includes(chapterId)) {
+        return reponseJSON({ erreur: 'chapterId invalide (ID technique attendu)' }, 400);
+    }
+    if (!Number.isInteger(body.academicYearId) || body.academicYearId < 1) {
+        return reponseJSON({ erreur: 'academicYearId doit être un entier > 0' }, 400);
+    }
+    const academicYearId = body.academicYearId;
+
+    const t = await db.prepare(
+        `SELECT u.id, u.role, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id LIMIT 1) AS has_profile
+         FROM users u WHERE u.id = ?`
+    ).bind(teacherUserId).first();
+    if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
+    if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
+    if (!t.has_profile) return reponseJSON({ erreur: "Profil enseignant inexistant pour cet utilisateur" }, 404);
+
+    const year = await db.prepare('SELECT id, status FROM academic_years WHERE id = ?').bind(academicYearId).first();
+    if (!year) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
+    if (year.status !== 'active') return reponseJSON({ erreur: 'Affectation impossible dans une année non active' }, 409);
+
+    const newValues = JSON.stringify({ teacherUserId, chapterId, academicYearId, status: 'active' });
+
+    const insertStmt = db.prepare(
+        `INSERT INTO teacher_module_assignments (teacher_user_id, chapter_id, academic_year_id, status, valid_from, valid_to)
+         SELECT ?, ?, ?, 'active', datetime('now'), NULL
+         WHERE EXISTS (
+             SELECT 1 FROM users u JOIN teachers te ON te.user_id = u.id
+             WHERE u.id = ? AND u.role = 'teacher'
+         )
+         AND EXISTS (SELECT 1 FROM academic_years WHERE id = ? AND status = 'active')
+         AND NOT EXISTS (
+             SELECT 1 FROM teacher_module_assignments
+             WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active'
+         )`
+    ).bind(teacherUserId, chapterId, academicYearId, teacherUserId, academicYearId, teacherUserId, chapterId, academicYearId);
+
+    const selectStmt = db.prepare(
+        `SELECT id, teacher_user_id, chapter_id, academic_year_id, status, valid_from, valid_to FROM teacher_module_assignments WHERE id = last_insert_rowid()`
+    );
+
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'assign_teacher_module', 'teacher_module_assignment', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-assign-teacher-module (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        return reponseJSON({ erreur: 'Affectation active déjà existante pour ce teacher/module/année' }, 409);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    const assignment = {
+        id: row.id, teacherUserId: row.teacher_user_id, chapterId: row.chapter_id,
+        academicYearId: row.academic_year_id, status: row.status, validFrom: row.valid_from, validTo: row.valid_to
+    };
+    return reponseJSON({ assignment }, 201);
+}
+
+// Crée une offering (groupe/module, enseignant optionnel).
+// Règle : offering ⊆ teacher_module_assignments — si un teacher est fourni, il doit
+// avoir une affectation active (teacher + chapter + année du groupe). Une seule
+// offering active par (group_id, chapter_id). Contrôles INTÉGRÉS à l'INSERT conditionnel.
+async function handlePedagogieCreateModuleOffering(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const groupId = body.groupId;
+    const chapterId = body.chapterId;
+    if (typeof chapterId !== 'string' || !PEDAGOGY_CHAPTER_IDS.includes(chapterId)) {
+        return reponseJSON({ erreur: 'chapterId invalide (ID technique attendu)' }, 400);
+    }
+    let teacherUserId = null;
+    if (body.teacherUserId !== undefined && body.teacherUserId !== null) {
+        if (typeof body.teacherUserId !== 'string') {
+            return reponseJSON({ erreur: 'teacherUserId doit être une chaîne' }, 400);
+        }
+        const trimmed = body.teacherUserId.trim();
+        if (!trimmed) return reponseJSON({ erreur: 'teacherUserId ne peut pas être vide' }, 400);
+        teacherUserId = trimmed;
+    }
+
+    const grp = await db.prepare(
+        `SELECT g.id, g.academic_year_id, g.status, ay.status AS year_status
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id
+         WHERE g.id = ?`
+    ).bind(groupId).first();
+    if (!grp) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (grp.status !== 'active') return reponseJSON({ erreur: 'Groupe non actif' }, 409);
+    if (grp.year_status !== 'active') return reponseJSON({ erreur: 'Année académique du groupe non active' }, 409);
+
+    if (teacherUserId !== null) {
+        const t = await db.prepare(
+            `SELECT u.id, u.role, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id LIMIT 1) AS has_profile
+             FROM users u WHERE u.id = ?`
+        ).bind(teacherUserId).first();
+        if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
+        if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
+        if (!t.has_profile) return reponseJSON({ erreur: 'Profil enseignant inexistant pour cet utilisateur' }, 404);
+
+        const authorized = await db.prepare(
+            `SELECT 1 AS ok FROM teacher_module_assignments
+             WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active'`
+        ).bind(teacherUserId, chapterId, grp.academic_year_id).first();
+        if (!authorized) return reponseJSON({ erreur: "Ce teacher n'est pas autorisé sur ce module pour cette année" }, 409);
+    }
+
+    const newValues = JSON.stringify({ groupId, chapterId, teacherUserId, status: 'active' });
+
+    const insertStmt = db.prepare(
+        `INSERT INTO group_module_offerings (group_id, chapter_id, teacher_user_id, status, valid_from, valid_to)
+         SELECT ?, ?, ?, 'active', datetime('now'), NULL
+         WHERE EXISTS (
+             SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
+             WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active'
+         )
+         AND NOT EXISTS (
+             SELECT 1 FROM group_module_offerings
+             WHERE group_id = ? AND chapter_id = ? AND status = 'active'
+         )
+         AND (? IS NULL OR EXISTS (
+             SELECT 1 FROM teacher_module_assignments tma
+             JOIN users u ON u.id = tma.teacher_user_id
+             JOIN teachers te ON te.user_id = u.id
+             WHERE tma.teacher_user_id = ? AND tma.chapter_id = ?
+               AND tma.academic_year_id = (SELECT academic_year_id FROM groups WHERE id = ?)
+               AND tma.status = 'active' AND u.role = 'teacher'
+         ))`
+    ).bind(groupId, chapterId, teacherUserId, groupId, groupId, chapterId, teacherUserId, teacherUserId, chapterId, groupId);
+
+    const selectStmt = db.prepare(
+        `SELECT id, group_id, chapter_id, teacher_user_id, status, valid_from, valid_to FROM group_module_offerings WHERE id = last_insert_rowid()`
+    );
+
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'create_module_offering', 'group_module_offering', CAST(last_insert_rowid() AS TEXT), NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newValues);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-create-module-offering (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        return reponseJSON({ erreur: 'Une offering active existe déjà pour ce groupe et ce module' }, 409);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    const offering = {
+        id: row.id, groupId: row.group_id, chapterId: row.chapter_id,
+        teacherUserId: row.teacher_user_id, status: row.status, validFrom: row.valid_from, validTo: row.valid_to
+    };
+    return reponseJSON({ offering }, 201);
+}
+
 export default {
     async fetch(request, env, ctx) {
         // ─── Contrôle strict de l'origine CORS ───
@@ -1304,6 +2407,85 @@ export default {
             const { user, error } = await requireConcepteur(request, env);
             if (error) return error;
             return await handleAdminResetBatch(request, env, user);
+        }
+
+        // ─── GESTION PÉDAGOGIQUE — Lecture (allowlist users.id) ───
+        if (actionAuth === 'pedagogie-list-academic-years') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListAcademicYears(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-teachers') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListTeachers(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-students') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListStudents(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-groups') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListGroups(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-group-members') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListGroupMembers(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-teacher-assignments') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListTeacherAssignments(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-module-offerings') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListModuleOfferings(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-audit-log') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListAuditLog(env, corpsBrut);
+        }
+
+        // ─── GESTION PÉDAGOGIQUE — Écriture (allowlist users.id) ───
+        if (actionAuth === 'pedagogie-create-academic-year') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateAcademicYear(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-create-teacher') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateTeacher(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-create-student') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateStudent(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-create-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateGroup(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-add-student-to-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieAddStudentToGroup(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-assign-teacher-module') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieAssignTeacherModule(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-create-module-offering') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateModuleOffering(env, user, corpsBrut);
         }
 
         // ─── PIPELINE IA — Session requise ───

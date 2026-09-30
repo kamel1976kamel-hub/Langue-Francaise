@@ -2033,6 +2033,37 @@
       </div>
     </div>
 
+    <!-- Modal administration pédagogique (F2 : coquille UI, aucune donnée / aucun appel API) -->
+    <div id="pedagogyModal" class="fixed inset-0 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4" style="background-color: rgba(38, 38, 38, 0.6);">
+      <div class="w-full max-w-4xl max-h-[85vh] rounded-lg border shadow-xl flex flex-col overflow-hidden" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
+        <!-- En-tête -->
+        <div class="flex items-center justify-between p-4 border-b flex-shrink-0" style="border-color: var(--bs-border-color);">
+          <h2 class="text-lg font-bold" style="color: var(--bs-heading-color);">Administration pédagogique</h2>
+          <button type="button" onclick="closePedagogyAdminPanel()" class="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Fermer">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <!-- Corps : navigation interne + contenu -->
+        <div class="flex flex-1 min-h-0 flex-col sm:flex-row">
+          <!-- Navigation interne (8 sections, sans données) -->
+          <nav id="pedagogyNav" class="flex-shrink-0 sm:w-56 border-b sm:border-b-0 sm:border-r p-2 grid grid-cols-2 sm:grid-cols-1 gap-1 overflow-y-auto" style="border-color: var(--bs-border-color);">
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="years" onclick="showPedagogySection('years')">Années académiques</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="teachers" onclick="showPedagogySection('teachers')">Enseignants</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="students" onclick="showPedagogySection('students')">Étudiants</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="groups" onclick="showPedagogySection('groups')">Groupes</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="members" onclick="showPedagogySection('members')">Membres des groupes</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="assignments" onclick="showPedagogySection('assignments')">Affectations enseignants/modules</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="offerings" onclick="showPedagogySection('offerings')">Modules proposés aux groupes</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="audit" onclick="showPedagogySection('audit')">Journal d'audit</button>
+          </nav>
+          <!-- Contenu principal (placeholder F3) -->
+          <div id="pedagogyContent" class="flex-1 min-h-0 overflow-y-auto p-6">
+            <p class="text-sm" style="color: var(--bs-text-muted);">Sélectionnez une section.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- INTERFACE PRINCIPALE - 4 COLONNES VERTICALES -->
     <div id="mainApp" class="hidden min-h-screen" style="background-color: var(--bs-body-bg);">
       <div class="flex h-screen">
@@ -2166,6 +2197,16 @@
               <span class="text-[8px] mt-1 text-center leading-tight" style="color: var(--bs-text-muted);">Mode</span>
             </button>
             
+            <!-- Gestion pédagogique (UX uniquement — l'autorité réelle est le Worker) -->
+            <button id="pedagogyAdminBtn" class="hidden flex-col items-center group" title="Gestion pédagogique" onclick="openPedagogyAdminPanel()">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors" style="color: var(--bs-text-muted);" onmouseover="this.style.color='var(--bs-primary)'" onmouseout="this.style.color='var(--bs-text-muted)'">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+              </div>
+              <span class="text-[8px] mt-1 text-center leading-tight" style="color: var(--bs-text-muted);">Pédagogie</span>
+            </button>
+
             <!-- Gestion des comptes (concepteur uniquement) -->
             <button id="adminPanelBtn" class="hidden flex-col items-center group" title="Gestion des comptes" onclick="openAdminPanel()">
               <div class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors" style="color: var(--bs-text-muted);" onmouseover="this.style.color='var(--bs-warning)'" onmouseout="this.style.color='var(--bs-text-muted)'">
@@ -5897,6 +5938,18 @@
               adminBtn.classList.remove('flex');
             }
           }
+          // Afficher l'entrée pédagogique (UX UNIQUEMENT — la véritable autorité est
+          // le Worker : allowlist users.id + actif, sinon 403). Ce n'est PAS une sécurité.
+          var pedagogyBtn = document.getElementById('pedagogyAdminBtn');
+          if (pedagogyBtn) {
+            if (this.currentUser.concepteur) {
+              pedagogyBtn.classList.remove('hidden');
+              pedagogyBtn.classList.add('flex');
+            } else {
+              pedagogyBtn.classList.add('hidden');
+              pedagogyBtn.classList.remove('flex');
+            }
+          }
           console.log('🔐 Utilisateur authentifié:', meUser.username);
         }
 
@@ -5995,6 +6048,659 @@
         var modal = document.getElementById('adminModal');
         if (modal) modal.classList.add('hidden');
       };
+
+      // =================================================================
+      // ADMINISTRATION PÉDAGOGIQUE — Écrans READ-only (F3)
+      // Uniquement les 8 actions READ d'auth-client.js. Aucun WRITE, aucun CRUD,
+      // aucun fetch direct, aucune donnée inventée. Le Worker reste l'autorité.
+      // =================================================================
+      var _PEDAGOGY_SECTIONS = {
+        years: 'Années académiques',
+        teachers: 'Enseignants',
+        students: 'Étudiants',
+        groups: 'Groupes',
+        members: 'Membres des groupes',
+        assignments: 'Affectations enseignants/modules',
+        offerings: 'Modules proposés aux groupes',
+        audit: "Journal d'audit"
+      };
+
+      // Les 20 chapter_id canoniques (identiques au backend). N'utiliser aucun
+      // identifiant de l'ancien schéma de parcours, ni de découpe/reconstruction
+      // approximative du moduleId : uniquement les identifiants listés ci-dessous.
+      var _PEDAGOGY_CHAPTER_IDS = [
+        'narratif-1', 'narratif-2', 'narratif-3', 'narratif-4',
+        'descriptif-1', 'descriptif-2', 'descriptif-3', 'descriptif-4',
+        'explicatif-1', 'explicatif-2', 'explicatif-3', 'explicatif-4',
+        'argumentatif-1', 'argumentatif-2', 'argumentatif-3', 'argumentatif-4',
+        'resume-1', 'resume-2', 'resume-3', 'resume-4'
+      ];
+
+      // Contrat READ par section. Les clés de filtres respectent EXACTEMENT le corps
+      // attendu par chaque handler Worker (snake_case pour students/groups, camelCase
+      // pour members/assignments/offerings/audit, tels que lus par le Worker).
+      var _PEDAGOGY_READ_CONFIG = {
+        years: {
+          listKey: 'academicYears', wrapper: 'pedagogieListAcademicYears',
+          statusOptions: ['active', 'archived', 'all'], filters: [],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Libellé', key: 'label' }, { label: 'Début', key: 'startsOn' }, { label: 'Fin', key: 'endsOn' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }]
+        },
+        teachers: {
+          listKey: 'teachers', wrapper: 'pedagogieListTeachers',
+          statusOptions: ['active', 'inactive', 'all'], filters: [],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'userId', key: 'userId' }, { label: 'Nom', key: 'displayName' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }]
+        },
+        students: {
+          listKey: 'students', wrapper: 'pedagogieListStudents',
+          statusOptions: ['active', 'inactive', 'all'],
+          filters: [{ key: 'group_id', label: 'ID groupe', type: 'number', valType: 'int' }],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'userId', key: 'userId' }, { label: 'Matricule', key: 'matricule' }, { label: 'Nom', key: 'displayName' }, { label: 'Statut', key: 'status' }]
+        },
+        groups: {
+          listKey: 'groups', wrapper: 'pedagogieListGroups',
+          statusOptions: ['active', 'inactive', 'archived', 'all'],
+          filters: [
+            { key: 'academic_year_id', label: 'ID année', type: 'number', valType: 'int' },
+            { key: 'parcours', label: 'Parcours', type: 'select', valType: 'string', options: ['pep', 'pem', 'pes'] },
+            { key: 'year_number', label: 'Année (1/2)', type: 'select', valType: 'int', options: ['1', '2'] },
+            { key: 'semester_number', label: 'Semestre (1/2)', type: 'select', valType: 'int', options: ['1', '2'] }
+          ],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Année', key: 'academicYearLabel' }, { label: 'Parcours', key: 'parcours' }, { label: 'Niv.', key: 'yearNumber' }, { label: 'Sem.', key: 'semesterNumber' }, { label: 'Nom', key: 'name' }, { label: 'Code', key: 'code' }, { label: 'Statut', key: 'status' }, { label: 'Capacité', key: 'capacity' }]
+        },
+        members: {
+          listKey: 'members', wrapper: 'pedagogieListGroupMembers',
+          statusOptions: ['active', 'ended', 'all'],
+          filters: [{ key: 'groupId', label: 'ID groupe (requis)', type: 'number', valType: 'int', required: true }],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'studentId', key: 'studentId' }, { label: 'Nom étudiant', key: 'studentDisplayName' }, { label: 'Matricule', key: 'matricule' }, { label: 'groupId', key: 'groupId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }]
+        },
+        assignments: {
+          listKey: 'assignments', wrapper: 'pedagogieListTeacherAssignments',
+          statusOptions: ['active', 'archived', 'orphan', 'all'],
+          filters: [
+            { key: 'teacherUserId', label: 'ID user enseignant', type: 'text', valType: 'string' },
+            { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'academicYearId', label: 'ID année', type: 'number', valType: 'int' }
+          ],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Module', key: 'chapterId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Créé le', key: 'createdAt' }]
+        },
+        offerings: {
+          listKey: 'offerings', wrapper: 'pedagogieListModuleOfferings',
+          statusOptions: ['active', 'archived', 'orphan', 'all'],
+          filters: [
+            { key: 'groupId', label: 'ID groupe', type: 'number', valType: 'int' },
+            { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'teacherUserId', label: 'ID user enseignant', type: 'text', valType: 'string' },
+            { key: 'academicYearId', label: 'ID année', type: 'number', valType: 'int' }
+          ],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Groupe', key: 'groupId' }, { label: 'Module', key: 'chapterId' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }]
+        },
+        audit: {
+          listKey: 'auditEntries', wrapper: 'pedagogieListAuditLog',
+          statusOptions: null,
+          filters: [
+            { key: 'actorUserId', label: 'Acteur', type: 'text', valType: 'string' },
+            { key: 'entityType', label: 'Type entité', type: 'text', valType: 'string' },
+            { key: 'entityId', label: 'ID entité', type: 'text', valType: 'string' }
+          ],
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Acteur', key: 'actorUserId' }, { label: 'Action', key: 'action' }, { label: 'Type', key: 'entityType' }, { label: 'Entité', key: 'entityId' }, { label: 'Date', key: 'at' }]
+        }
+      };
+
+      var _pedagogyCurrentSection = null;
+      var _pedagogySectionState = {};
+      // Jeton de supersession : seule la derniere chargement lance peut ecrire
+      // dans le DOM (evite qu'une reponse tardive d'un appel precedent
+      // (changement de section / filtre / pagination) ecrase l'etat visible.
+      var _pedagogyLoadToken = 0;
+
+      function _pedagogyState(section) {
+        var cfg = _PEDAGOGY_READ_CONFIG[section];
+        if (!_pedagogySectionState[section]) {
+          var defStatus = null;
+          if (cfg.statusOptions && cfg.statusOptions.length) {
+            defStatus = cfg.statusOptions.indexOf('active') >= 0 ? 'active' : cfg.statusOptions[0];
+          }
+          _pedagogySectionState[section] = { limit: 100, offset: 0, status: defStatus, filters: {}, total: null };
+        }
+        return _pedagogySectionState[section];
+      }
+
+      function _pedagogyNavActive(section) {
+        var buttons = document.querySelectorAll('.pedagogy-nav-btn');
+        for (var i = 0; i < buttons.length; i++) {
+          var b = buttons[i];
+          if (b.getAttribute('data-section') === section) {
+            b.style.backgroundColor = 'var(--bs-primary-bg-subtle)';
+            b.style.color = 'var(--bs-primary)';
+            b.setAttribute('aria-current', 'true');
+          } else {
+            b.style.backgroundColor = 'transparent';
+            b.style.color = 'var(--bs-body-color)';
+            b.removeAttribute('aria-current');
+          }
+        }
+      }
+
+      function _pedagogyFieldHtml(f, st) {
+        var val = st.filters[f.key];
+        var input;
+        if (f.type === 'select') {
+          input = '<select id="pgf-' + f.key + '" class="mt-1 rounded border px-2 py-1 text-sm" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
+          input += '<option value="">— Tous —</option>';
+          for (var i = 0; i < f.options.length; i++) {
+            var o = String(f.options[i]);
+            input += '<option value="' + _escapeHtml(o) + '"' + (val === o ? ' selected' : '') + '>' + _escapeHtml(o) + '</option>';
+          }
+          input += '</select>';
+        } else {
+          var t = f.type === 'number' ? 'number' : 'text';
+          var extra = f.type === 'number' ? ' min="1" step="1"' : '';
+          input = '<input id="pgf-' + f.key + '" type="' + t + '"' + extra + ' value="' + _escapeHtml(val == null ? '' : String(val)) + '" class="mt-1 rounded border px-2 py-1 text-sm" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
+        }
+        return '<label class="flex flex-col text-xs" style="color: var(--bs-text-muted);">' + _escapeHtml(f.label) + input + '</label>';
+      }
+
+      function _pedagogyToolbarHtml(cfg, st) {
+        var label = _PEDAGOGY_SECTIONS[_pedagogyCurrentSection];
+        var h = '<h3 class="text-base font-semibold mb-3" style="color: var(--bs-heading-color);">' + _escapeHtml(label) + '</h3>';
+        h += '<div class="flex flex-wrap items-end gap-3 mb-2">';
+        if (cfg.statusOptions) {
+          h += '<label class="flex flex-col text-xs" style="color: var(--bs-text-muted);">Statut<select id="pgf-status" class="mt-1 rounded border px-2 py-1 text-sm" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
+          for (var s = 0; s < cfg.statusOptions.length; s++) {
+            var opt = cfg.statusOptions[s];
+            h += '<option value="' + _escapeHtml(opt) + '"' + (st.status === opt ? ' selected' : '') + '>' + _escapeHtml(opt) + '</option>';
+          }
+          h += '</select></label>';
+        }
+        for (var i = 0; i < cfg.filters.length; i++) h += _pedagogyFieldHtml(cfg.filters[i], st);
+        h += '<div class="flex gap-2">';
+        h += '<button type="button" onclick="applyPedagogyFilters()" class="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Appliquer</button>';
+        h += '<button type="button" onclick="refreshPedagogySection()" class="rounded-lg bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Actualiser</button>';
+        if (_PEDAGOGY_WRITE_CONFIG[_pedagogyCurrentSection]) {
+          h += '<button type="button" id="pgFormToggle" onclick="togglePedagogyForm()" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">＋ ' + _escapeHtml(_PEDAGOGY_WRITE_CONFIG[_pedagogyCurrentSection].buttonLabel) + '</button>';
+        }
+        h += '</div></div>';
+        h += '<div id="pedagogyResults" class="min-h-[40px]"></div>';
+        h += '<div class="flex items-center gap-3 mt-3">';
+        h += '<button type="button" id="pgPrev" onclick="pedagogyPrev()" class="rounded-lg border px-3 py-1 text-sm" style="border-color: var(--bs-border-color); color: var(--bs-body-color);">← Précédent</button>';
+        h += '<span id="pgInfo" class="text-xs" style="color: var(--bs-text-muted);"></span>';
+        h += '<button type="button" id="pgNext" onclick="pedagogyNext()" class="rounded-lg border px-3 py-1 text-sm" style="border-color: var(--bs-border-color); color: var(--bs-body-color);">Suivant →</button>';
+        h += '</div>';
+        h += '<div id="pedagogyFormWrap" class="mt-4"></div>';
+        return h;
+      }
+
+      function _pedagogyMissingRequired(cfg, st) {
+        for (var i = 0; i < cfg.filters.length; i++) {
+          var f = cfg.filters[i];
+          if (f.required) {
+            var v = st.filters[f.key];
+            if (v === undefined || v === null || v === '') return f.label;
+          }
+        }
+        return null;
+      }
+
+      // Construit le corps exactement selon le contrat du handler (aucun paramètre inventé).
+      function _pedagogyBuildParams(cfg, st) {
+        var params = { limit: st.limit, offset: st.offset };
+        if (cfg.statusOptions && st.status) params.status = st.status;
+        for (var i = 0; i < cfg.filters.length; i++) {
+          var f = cfg.filters[i];
+          var raw = st.filters[f.key];
+          if (raw === undefined || raw === null || raw === '') continue;
+          if (f.valType === 'int') {
+            if (/^\d+$/.test(raw) && parseInt(raw, 10) >= 1) params[f.key] = parseInt(raw, 10);
+            else params[f.key] = raw; // laisse le serveur valider (→ 400)
+          } else {
+            params[f.key] = raw;
+          }
+        }
+        return params;
+      }
+
+      function _pedagogyLoadSection(section) {
+        var cfg = _PEDAGOGY_READ_CONFIG[section];
+        var st = _pedagogyState(section);
+        var resultsEl = document.getElementById('pedagogyResults');
+        if (!cfg || !resultsEl) return;
+        var token = ++_pedagogyLoadToken;
+        _pedagogyUpdatePagination(cfg, st);
+        var missing = _pedagogyMissingRequired(cfg, st);
+        if (missing) {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-warning);">' + _escapeHtml(missing) + ' : valeur requise pour charger cette liste.</p>';
+          return;
+        }
+        resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-text-muted);">Chargement…</p>';
+        var wrapper = window.AuthClient && window.AuthClient[cfg.wrapper];
+        if (typeof wrapper !== 'function') {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Wrapper indisponible : ' + _escapeHtml(cfg.wrapper) + '</p>';
+          return;
+        }
+        var params = _pedagogyBuildParams(cfg, st);
+        Promise.resolve(wrapper.call(window.AuthClient, params)).then(function (res) {
+          if (token !== _pedagogyLoadToken) return; // reponse obsolete, supersdee
+          _pedagogyRender(cfg, st, res, resultsEl);
+        }).catch(function () {
+          if (token !== _pedagogyLoadToken) return; // reponse obsolete, supersdee
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Erreur réseau lors du chargement.</p>';
+          _pedagogyUpdatePagination(cfg, st);
+        });
+      }
+
+      function _pedagogyRender(cfg, st, res, resultsEl) {
+        if (!res || typeof res.status !== 'number') {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Réponse invalide du serveur.</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        var status = res.status, data = res.data || {};
+        // 403 = refus d'accès, JAMAIS traité comme une liste vide.
+        if (status === 403) {
+          resultsEl.innerHTML = '<p class="text-sm font-medium" style="color: var(--bs-warning);">Accès refusé par le serveur (403). Cette section n’est pas autorisée pour la session courante.</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        if (status === 400) {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Paramètres invalides (400) : ' + _escapeHtml(data.erreur || 'requête incorrecte') + '</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        if (status === 404) {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Ressource introuvable (404) : ' + _escapeHtml(data.erreur || '') + '</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        if (status === 503) {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Service indisponible (503).</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        if (status !== 200) {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-danger);">Erreur inattendue (' + _escapeHtml(String(status)) + ') : ' + _escapeHtml(data.erreur || '') + '</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        var items = data[cfg.listKey];
+        if (!Array.isArray(items)) items = [];
+        st.total = (typeof data.total === 'number') ? data.total : items.length;
+        if (typeof data.limit === 'number') st.limit = data.limit;
+        if (typeof data.offset === 'number') st.offset = data.offset;
+        if (items.length === 0) {
+          resultsEl.innerHTML = '<p class="text-sm" style="color: var(--bs-text-muted);">Aucun résultat pour ces critères.</p>';
+          _pedagogyUpdatePagination(cfg, st); return;
+        }
+        resultsEl.innerHTML = _pedagogyTableHtml(cfg, items);
+        _pedagogyUpdatePagination(cfg, st);
+      }
+
+      function _pedagogyCell(v) {
+        if (v === null || v === undefined || v === '') return '<span style="color: var(--bs-text-muted);">—</span>';
+        return _escapeHtml(String(v));
+      }
+
+      function _pedagogyTableHtml(cfg, items) {
+        var cols = cfg.columns;
+        var html = '<div class="overflow-x-auto"><table class="min-w-full text-sm" style="color: var(--bs-body-color);"><thead><tr>';
+        for (var c = 0; c < cols.length; c++) {
+          html += '<th class="text-left font-semibold px-3 py-2 whitespace-nowrap" style="color: var(--bs-heading-color); border-bottom: 1px solid var(--bs-border-color);">' + _escapeHtml(cols[c].label) + '</th>';
+        }
+        html += '</tr></thead><tbody>';
+        for (var i = 0; i < items.length; i++) {
+          html += '<tr>';
+          for (var c2 = 0; c2 < cols.length; c2++) {
+            html += '<td class="px-3 py-2 whitespace-nowrap" style="border-bottom: 1px solid var(--bs-border-color);">' + _pedagogyCell(items[i][cols[c2].key]) + '</td>';
+          }
+          html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+        return html;
+      }
+
+      function _pedagogyUpdatePagination(cfg, st) {
+        var prev = document.getElementById('pgPrev');
+        var next = document.getElementById('pgNext');
+        var info = document.getElementById('pgInfo');
+        var total = (typeof st.total === 'number') ? st.total : null;
+        if (info) {
+          if (total == null) info.textContent = '';
+          else if (total === 0) info.textContent = '0 résultat';
+          else info.textContent = (st.offset + 1) + '–' + Math.min(st.offset + st.limit, total) + ' sur ' + total;
+        }
+        if (prev) prev.disabled = st.offset <= 0;
+        if (next) next.disabled = (total == null) ? true : ((st.offset + st.limit) >= total);
+      }
+
+      // UX uniquement : l'affichage du bouton n'est pas une sécurité ; le Worker
+      // garde l'autorité réelle (allowlist users.id + actif, sinon 403).
+      window.openPedagogyAdminPanel = function() {
+        if (!window.AuthClient || !window.AuthClient.isAuthenticated()) return;
+        var modal = document.getElementById('pedagogyModal');
+        if (modal) modal.classList.remove('hidden');
+        showPedagogySection('years');
+      };
+
+      window.closePedagogyAdminPanel = function() {
+        var modal = document.getElementById('pedagogyModal');
+        if (modal) modal.classList.add('hidden');
+      };
+
+      window.showPedagogySection = function(section) {
+        if (!_PEDAGOGY_READ_CONFIG[section]) return;
+        _pedagogyCurrentSection = section;
+        _pedagogyNavActive(section);
+        var cfg = _PEDAGOGY_READ_CONFIG[section];
+        var st = _pedagogyState(section);
+        var content = document.getElementById('pedagogyContent');
+        if (!content) return;
+        content.innerHTML = _pedagogyToolbarHtml(cfg, st);
+        _pedagogyLoadSection(section);
+      };
+
+      window.applyPedagogyFilters = function() {
+        var section = _pedagogyCurrentSection; if (!section) return;
+        var cfg = _PEDAGOGY_READ_CONFIG[section]; var st = _pedagogyState(section);
+        st.filters = {};
+        for (var i = 0; i < cfg.filters.length; i++) {
+          var f = cfg.filters[i];
+          var el = document.getElementById('pgf-' + f.key);
+          st.filters[f.key] = el ? String(el.value).trim() : '';
+        }
+        if (cfg.statusOptions) {
+          var sel = document.getElementById('pgf-status');
+          if (sel) st.status = sel.value;
+        }
+        st.offset = 0;
+        _pedagogyLoadSection(section);
+      };
+
+      window.refreshPedagogySection = function() {
+        if (_pedagogyCurrentSection) _pedagogyLoadSection(_pedagogyCurrentSection);
+      };
+
+      window.pedagogyPrev = function() {
+        if (!_pedagogyCurrentSection) return;
+        var st = _pedagogyState(_pedagogyCurrentSection);
+        st.offset = Math.max(0, (st.offset || 0) - (st.limit || 100));
+        _pedagogyLoadSection(_pedagogyCurrentSection);
+      };
+
+      window.pedagogyNext = function() {
+        if (!_pedagogyCurrentSection) return;
+        var st = _pedagogyState(_pedagogyCurrentSection);
+        var total = (typeof st.total === 'number') ? st.total : null;
+        if (total == null || (st.offset + st.limit) < total) {
+          st.offset = (st.offset || 0) + (st.limit || 100);
+          _pedagogyLoadSection(_pedagogyCurrentSection);
+        }
+      };
+
+      // =================================================================
+      // ADMINISTRATION PÉDAGOGIQUE — Formulaires WRITE (F4)
+      // Uniquement les 7 actions WRITE d'auth-client.js. Aucun fetch direct,
+      // aucune suppression/édition/archivage, aucune autorité frontend
+      // (le Worker reste l'autorité ; 403 géré explicitement).
+      // =================================================================
+      var _PEDAGOGY_WRITE_CONFIG = {
+        years: {
+          buttonLabel: 'Nouvelle année', wrapper: 'pedagogieCreateAcademicYear',
+          resultKey: 'academicYear', refresh: 'years',
+          title: 'Créer une année académique',
+          confirm: 'Confirmer la création de cette année académique ?',
+          fields: [
+            { key: 'label', label: 'Libellé', type: 'text', req: true, max: 50 },
+            { key: 'startsOn', label: 'Début (YYYY-MM-DD)', type: 'date', req: false },
+            { key: 'endsOn', label: 'Fin (YYYY-MM-DD)', type: 'date', req: false }
+          ]
+        },
+        teachers: {
+          buttonLabel: 'Nouvel enseignant', wrapper: 'pedagogieCreateTeacher',
+          resultKey: 'teacher', refresh: 'teachers',
+          title: 'Créer un profil enseignant',
+          confirm: 'Confirmer la création de ce profil enseignant ?',
+          fields: [
+            { key: 'userId', label: 'userId (users.id)', type: 'text', req: true },
+            { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 }
+          ]
+        },
+        students: {
+          buttonLabel: 'Nouvel étudiant', wrapper: 'pedagogieCreateStudent',
+          resultKey: 'student', refresh: 'students',
+          title: 'Créer un profil étudiant',
+          confirm: 'Confirmer la création de ce profil étudiant ?',
+          fields: [
+            { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 },
+            { key: 'userId', label: 'userId (optionnel)', type: 'text', req: false },
+            { key: 'matricule', label: 'Matricule (optionnel)', type: 'text', req: false, max: 64 }
+          ]
+        },
+        groups: {
+          buttonLabel: 'Nouveau groupe', wrapper: 'pedagogieCreateGroup',
+          resultKey: 'group', refresh: 'groups',
+          title: 'Créer un groupe',
+          confirm: 'Confirmer la création de ce groupe ?',
+          fields: [
+            { key: 'academicYearId', label: 'Année académique', type: 'select', req: true, valType: 'int', dyn: 'years' },
+            { key: 'parcours', label: 'Parcours', type: 'select', req: true, valType: 'string', options: ['pep', 'pem', 'pes'] },
+            { key: 'yearNumber', label: "Année d'étude", type: 'select', req: true, valType: 'int', options: ['1', '2'] },
+            { key: 'semesterNumber', label: 'Semestre', type: 'select', req: true, valType: 'int', options: ['1', '2'] },
+            { key: 'name', label: 'Nom', type: 'text', req: true, max: 120 },
+            { key: 'code', label: 'Code', type: 'text', req: true, max: 50 },
+            { key: 'capacity', label: 'Capacité (optionnelle)', type: 'number', req: false, valType: 'int', min: 1 }
+          ]
+        },
+        members: {
+          buttonLabel: 'Ajouter un étudiant', wrapper: 'pedagogieAddStudentToGroup',
+          resultKey: 'membership', refresh: 'members',
+          title: 'Ajouter un étudiant à un groupe',
+          confirm: "Confirmer l'ajout de cet étudiant au groupe ?",
+          fields: [
+            { key: 'studentId', label: 'Étudiant', type: 'select', req: true, valType: 'int', dyn: 'students' },
+            { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groups' }
+          ]
+        },
+        assignments: {
+          buttonLabel: 'Nouvelle affectation', wrapper: 'pedagogieAssignTeacherModule',
+          resultKey: 'assignment', refresh: 'assignments',
+          title: 'Affecter un module à un enseignant',
+          confirm: "Confirmer l'affectation de ce module à cet enseignant ?",
+          fields: [
+            { key: 'teacherUserId', label: 'Enseignant (users.id)', type: 'select', req: true, valType: 'string', dyn: 'teachers' },
+            { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'academicYearId', label: 'Année académique', type: 'select', req: true, valType: 'int', dyn: 'years' }
+          ]
+        },
+        offerings: {
+          buttonLabel: 'Nouveau module proposé', wrapper: 'pedagogieCreateModuleOffering',
+          resultKey: 'offering', refresh: 'offerings',
+          title: 'Proposer un module à un groupe',
+          confirm: 'Confirmer la création de cette offering ?',
+          fields: [
+            { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groups' },
+            { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'teacherUserId', label: 'Enseignant (optionnel, users.id)', type: 'select', req: false, valType: 'string', dyn: 'teachers', allowEmpty: true }
+          ]
+        }
+      };
+
+      // Loaders d'options pour les listes déroulantes des formulaires : uniquement
+      // les wrappers READ F1 (aucun fetch). teachers → value users.id ; les autres → id.
+      var _PEDAGOGY_OPT_LOADERS = {
+        years: { wrapper: 'pedagogieListAcademicYears', listKey: 'academicYears', value: 'id', label: function (r) { return r.label; } },
+        teachers: { wrapper: 'pedagogieListTeachers', listKey: 'teachers', value: 'userId', label: function (r) { return (r.displayName || r.userId) + ' (' + r.userId + ')'; } },
+        students: { wrapper: 'pedagogieListStudents', listKey: 'students', value: 'id', label: function (r) { return (r.displayName || r.id) + (r.matricule ? ' · ' + r.matricule : ''); } },
+        groups: { wrapper: 'pedagogieListGroups', listKey: 'groups', value: 'id', label: function (r) { return (r.name || r.code) + (r.code ? ' — ' + r.code : ''); } }
+      };
+
+      var _pedagogyFormOptions = {};
+      var _pedagogySubmitting = false;
+
+      function _pedagogyCollectDyn(wcfg) {
+        var seen = {}, out = [];
+        for (var i = 0; i < wcfg.fields.length; i++) {
+          var f = wcfg.fields[i];
+          if (f.dyn && !seen[f.dyn]) { seen[f.dyn] = 1; out.push(f.dyn); }
+        }
+        return out;
+      }
+
+      // Charge les options via READ (limit 500 max, status active), puis callback.
+      function _pedagogyLoadOptions(keys, cb) {
+        var pending = keys.length;
+        if (!pending) { cb(); return; }
+        keys.forEach(function (k) {
+          var L = _PEDAGOGY_OPT_LOADERS[k];
+          var fn = window.AuthClient && window.AuthClient[L.wrapper];
+          var done = function () { if (--pending === 0) cb(); };
+          if (typeof fn !== 'function') { _pedagogyFormOptions[k] = []; done(); return; }
+          Promise.resolve(fn.call(window.AuthClient, { limit: 500, offset: 0, status: 'active' })).then(function (res) {
+            _pedagogyFormOptions[k] = (res && res.status === 200 && res.data && Array.isArray(res.data[L.listKey])) ? res.data[L.listKey] : [];
+          }).catch(function () { _pedagogyFormOptions[k] = []; }).then(done);
+        });
+      }
+
+      function _pedagogyFormField(f) {
+        var star = f.req ? ' *' : '';
+        var ctl;
+        if (f.type === 'select') {
+          var opts = '';
+          if (f.dyn) {
+            var L = _PEDAGOGY_OPT_LOADERS[f.dyn];
+            var arr = _pedagogyFormOptions[f.dyn] || [];
+            if (!f.req || f.allowEmpty) opts += '<option value="">— ' + (f.allowEmpty ? 'Aucun' : 'Choisir') + ' —</option>';
+            else opts += '<option value="">— Choisir —</option>';
+            for (var i = 0; i < arr.length; i++) {
+              var r = arr[i];
+              var v = r[L.value];
+              opts += '<option value="' + _escapeHtml(String(v)) + '">' + _escapeHtml(String(L.label(r))) + '</option>';
+            }
+          } else {
+            var oo = f.options || [];
+            if (!f.req) opts += '<option value="">— Tous —</option>';
+            for (var j = 0; j < oo.length; j++) opts += '<option value="' + _escapeHtml(String(oo[j])) + '">' + _escapeHtml(String(oo[j])) + '</option>';
+          }
+          ctl = '<select id="pgw-' + f.key + '" class="mt-1 rounded border px-2 py-1 text-sm w-full" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">' + opts + '</select>';
+        } else {
+          var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text');
+          var extra = f.type === 'number' ? ' min="' + (f.min || 1) + '" step="1"' : '';
+          var ml = f.max ? ' maxlength="' + f.max + '"' : '';
+          ctl = '<input id="pgw-' + f.key + '" type="' + t + '"' + extra + ml + ' class="mt-1 rounded border px-2 py-1 text-sm w-full" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
+        }
+        return '<label class="flex flex-col text-xs" style="color: var(--bs-text-muted);">' + _escapeHtml(f.label + star) + ctl + '</label>';
+      }
+
+      function _renderPedagogyForm(section, wcfg, wrap) {
+        var h = '<form onsubmit="return false;" class="rounded-lg border p-4 space-y-3" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg);">';
+        h += '<h4 class="text-sm font-semibold" style="color: var(--bs-heading-color);">' + _escapeHtml(wcfg.title) + '</h4>';
+        h += '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+        for (var i = 0; i < wcfg.fields.length; i++) h += _pedagogyFormField(wcfg.fields[i]);
+        h += '</div>';
+        h += '<p id="pgw-status" class="text-sm" style="color: var(--bs-text-muted);"></p>';
+        h += '<div class="flex gap-2">';
+        h += '<button type="button" id="pgwSubmit" onclick="submitPedagogyForm()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">' + _escapeHtml(wcfg.buttonLabel) + '</button>';
+        h += '<button type="button" onclick="togglePedagogyForm()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Annuler</button>';
+        h += '</div></form>';
+        wrap.innerHTML = h;
+      }
+
+      window.togglePedagogyForm = function() {
+        var section = _pedagogyCurrentSection;
+        var wcfg = _PEDAGOGY_WRITE_CONFIG[section];
+        var wrap = document.getElementById('pedagogyFormWrap');
+        if (!wcfg || !wrap) return;
+        if (wrap.getAttribute('data-open') === '1') { wrap.innerHTML = ''; wrap.removeAttribute('data-open'); return; }
+        wrap.setAttribute('data-open', '1');
+        var needed = _pedagogyCollectDyn(wcfg);
+        if (needed.length) {
+          wrap.innerHTML = '<p class="text-sm" style="color: var(--bs-text-muted);">Chargement des options…</p>';
+          _pedagogyLoadOptions(needed, function () { _renderPedagogyForm(section, wcfg, wrap); });
+        } else {
+          _renderPedagogyForm(section, wcfg, wrap);
+        }
+      };
+
+      // Validation UX (ne remplace pas celle du Worker). Champs vides optionnels
+      // sont OMIS (non envoyés) ; champs requis vides → erreur, aucun appel.
+      function _pedagogyValidateWrite(wcfg) {
+        var params = {}, errors = [];
+        for (var i = 0; i < wcfg.fields.length; i++) {
+          var f = wcfg.fields[i];
+          var el = document.getElementById('pgw-' + f.key);
+          var val = el ? String(el.value).trim() : '';
+          if (f.valType === 'int') {
+            if (val === '') { if (f.req) errors.push(f.label + ' : valeur requise'); continue; }
+            if (!/^\d+$/.test(val)) { errors.push(f.label + ' : entier requis'); continue; }
+            var n = parseInt(val, 10);
+            if (f.min !== undefined && n < f.min) { errors.push(f.label + ' : entier ≥ ' + f.min + ' requis'); continue; }
+            params[f.key] = n;
+          } else if (f.type === 'date') {
+            if (val === '') { if (f.req) errors.push(f.label + ' : valeur requise'); continue; }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) { errors.push(f.label + ' : format YYYY-MM-DD requis'); continue; }
+            params[f.key] = val;
+          } else {
+            if (val === '') { if (f.req) errors.push(f.label + ' : valeur requise'); continue; }
+            if (f.max && val.length > f.max) { errors.push(f.label + ' : maximum ' + f.max + ' caractères'); continue; }
+            params[f.key] = val;
+          }
+        }
+        if (!errors.length && params.startsOn && params.endsOn && params.startsOn > params.endsOn) {
+          errors.push('Début ne peut pas être postérieure à Fin');
+        }
+        return { ok: errors.length === 0, params: params, errors: errors };
+      }
+
+      function _pedagogyResetForm(wcfg) {
+        for (var i = 0; i < wcfg.fields.length; i++) {
+          var el = document.getElementById('pgw-' + wcfg.fields[i].key);
+          if (el) el.value = '';
+        }
+      }
+
+      window.submitPedagogyForm = function() {
+        var section = _pedagogyCurrentSection;
+        var wcfg = _PEDAGOGY_WRITE_CONFIG[section];
+        if (!wcfg || _pedagogySubmitting) return;
+        var statusEl = document.getElementById('pgw-status');
+        var v = _pedagogyValidateWrite(wcfg);
+        if (!v.ok) {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + v.errors.map(function (e) { return _escapeHtml(e); }).join('<br>') + '</span>';
+          return;
+        }
+        if (!window.confirm(wcfg.confirm)) return;
+        var wrapper = window.AuthClient && window.AuthClient[wcfg.wrapper];
+        if (typeof wrapper !== 'function') {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Wrapper indisponible : ' + _escapeHtml(wcfg.wrapper) + '</span>';
+          return;
+        }
+        _pedagogySubmitting = true;
+        var btn = document.getElementById('pgwSubmit');
+        if (btn) { btn.disabled = true; btn.setAttribute('data-label', btn.textContent); btn.textContent = 'Envoi…'; }
+        if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-text-muted);">Envoi en cours…</span>';
+        Promise.resolve(wrapper.call(window.AuthClient, v.params)).then(function (res) {
+          _pedagogyHandleWriteResult(wcfg, res, statusEl);
+        }).catch(function () {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Erreur réseau lors de l\'enregistrement.</span>';
+        }).then(function () {
+          _pedagogySubmitting = false;
+          if (btn) { btn.disabled = false; btn.textContent = btn.getAttribute('data-label') || wcfg.buttonLabel; }
+        });
+      };
+
+      function _pedagogyHandleWriteResult(wcfg, res, statusEl) {
+        if (!res || typeof res.status !== 'number') {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Réponse invalide du serveur.</span>';
+          return;
+        }
+        var data = res.data || {};
+        if (res.status === 201) {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-success, #16a34a);">✓ Opération enregistrée.</span>';
+          _pedagogyResetForm(wcfg);
+          _pedagogyLoadSection(wcfg.refresh);
+          return;
+        }
+        var msg;
+        if (res.status === 403) msg = 'Accès refusé par le serveur (403).';
+        else if (res.status === 400) msg = 'Paramètres invalides (400) : ' + (data.erreur || 'requête incorrecte');
+        else if (res.status === 404) msg = 'Ressource introuvable (404) : ' + (data.erreur || '');
+        else if (res.status === 409) msg = 'Conflit métier (409) : ' + (data.erreur || 'opération refusée');
+        else if (res.status === 503) msg = 'Service indisponible (503).';
+        else msg = 'Erreur inattendue (' + res.status + ') : ' + (data.erreur || '');
+        if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + _escapeHtml(msg) + '</span>';
+      }
 
       function loadAdminUserList() {
         var listEl = document.getElementById('adminUserList');

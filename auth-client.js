@@ -189,6 +189,76 @@
     }
 
     // =================================================================
+    // GESTION PÉDAGOGIQUE — Wrappers API (F1)
+    // Wrappers fins : transmettent { action: '...', ...params } à workerFetch.
+    // Aucune logique d'autorisation, aucune transformation d'erreur HTTP :
+    // le frontend (F3/F4) traite { status, data } et data.erreur.
+    // Aucune seconde couche HTTP ; workerFetch reste privé.
+    // =================================================================
+
+    // ---- Lecture (READ) ----
+    function pedagogieListAcademicYears(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-academic-years' }, params || {}));
+    }
+
+    function pedagogieListTeachers(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-teachers' }, params || {}));
+    }
+
+    function pedagogieListStudents(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-students' }, params || {}));
+    }
+
+    function pedagogieListGroups(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-groups' }, params || {}));
+    }
+
+    function pedagogieListGroupMembers(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-group-members' }, params || {}));
+    }
+
+    function pedagogieListTeacherAssignments(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-teacher-assignments' }, params || {}));
+    }
+
+    function pedagogieListModuleOfferings(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-module-offerings' }, params || {}));
+    }
+
+    function pedagogieListAuditLog(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-audit-log' }, params || {}));
+    }
+
+    // ---- Écriture (WRITE) ----
+    function pedagogieCreateAcademicYear(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-create-academic-year' }, params || {}));
+    }
+
+    function pedagogieCreateTeacher(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-create-teacher' }, params || {}));
+    }
+
+    function pedagogieCreateStudent(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-create-student' }, params || {}));
+    }
+
+    function pedagogieCreateGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-create-group' }, params || {}));
+    }
+
+    function pedagogieAddStudentToGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-add-student-to-group' }, params || {}));
+    }
+
+    function pedagogieAssignTeacherModule(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-assign-teacher-module' }, params || {}));
+    }
+
+    function pedagogieCreateModuleOffering(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-create-module-offering' }, params || {}));
+    }
+
+    // =================================================================
     // HELPERS
     // =================================================================
     function isAuthenticated() {
@@ -244,6 +314,21 @@
         adminListUsers: adminListUsers,
         adminResetPassword: adminResetPassword,
         adminResetBatch: adminResetBatch,
+        pedagogieListAcademicYears: pedagogieListAcademicYears,
+        pedagogieListTeachers: pedagogieListTeachers,
+        pedagogieListStudents: pedagogieListStudents,
+        pedagogieListGroups: pedagogieListGroups,
+        pedagogieListGroupMembers: pedagogieListGroupMembers,
+        pedagogieListTeacherAssignments: pedagogieListTeacherAssignments,
+        pedagogieListModuleOfferings: pedagogieListModuleOfferings,
+        pedagogieListAuditLog: pedagogieListAuditLog,
+        pedagogieCreateAcademicYear: pedagogieCreateAcademicYear,
+        pedagogieCreateTeacher: pedagogieCreateTeacher,
+        pedagogieCreateStudent: pedagogieCreateStudent,
+        pedagogieCreateGroup: pedagogieCreateGroup,
+        pedagogieAddStudentToGroup: pedagogieAddStudentToGroup,
+        pedagogieAssignTeacherModule: pedagogieAssignTeacherModule,
+        pedagogieCreateModuleOffering: pedagogieCreateModuleOffering,
         getToken: getToken,
         clearToken: clearToken,
         isAuthenticated: isAuthenticated,

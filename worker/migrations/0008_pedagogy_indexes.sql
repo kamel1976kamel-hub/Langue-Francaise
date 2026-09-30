@@ -1,0 +1,11 @@
+CREATE INDEX IF NOT EXISTS idx_groups_year        ON groups(academic_year_id);
+CREATE INDEX IF NOT EXISTS idx_groups_scope        ON groups(parcours, year_number, semester_number);
+CREATE INDEX IF NOT EXISTS idx_membership_student  ON student_group_memberships(student_id, valid_to);
+CREATE INDEX IF NOT EXISTS idx_membership_group    ON student_group_memberships(group_id);
+CREATE INDEX IF NOT EXISTS idx_tma_teacher         ON teacher_module_assignments(teacher_user_id);
+CREATE INDEX IF NOT EXISTS idx_tma_chapter         ON teacher_module_assignments(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_tma_year            ON teacher_module_assignments(academic_year_id);
+CREATE INDEX IF NOT EXISTS idx_offerings_group     ON group_module_offerings(group_id);
+CREATE INDEX IF NOT EXISTS idx_offerings_chapter   ON group_module_offerings(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_offerings_teacher   ON group_module_offerings(teacher_user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_actor         ON audit_log(actor_user_id, at);
