@@ -49,7 +49,8 @@ import {
     isRequestV2,
     buildEmptyResponseV2,
     buildResponseV2,
-    CONTRACT_VERSION
+    CONTRACT_VERSION,
+    V2_MAX_DIAGNOSTIC_CHARS
 } from './contract-v2.js';
 
 const ALLOWED_ORIGIN = 'https://kamel1976kamel-hub.github.io';
@@ -64,6 +65,16 @@ const MAX_TOKENS_MIN = 100;
 const MAX_TOKENS_MAX = 1000;
 const MAX_TOKENS_DEFAULT = 300;
 const TEMPERATURE_DEFAULT = 0.5;
+
+// LOT C2 — Borne du diagnostic par mode.
+// En CHAT, analysis.diagnostic porte TOUTE la réponse conversationnelle (les étapes
+// TUTEUR/COURS sont sautées depuis C1) : la borne du contrat (300) coupait la réponse.
+// En ACTIVITÉ, le diagnostic reste un court résumé d'analyse : borne inchangée (300).
+const MAX_DIAGNOSTIC_CHARS_CHAT = 1500;
+
+function borneDiagnostic(mode) {
+    return mode === 'chat' ? MAX_DIAGNOSTIC_CHARS_CHAT : V2_MAX_DIAGNOSTIC_CHARS;
+}
 
 // ACTION 28 : Protection anti-rafale locale par instance Worker
 const MAX_CONCURRENT_REQUESTS = 10;
@@ -880,7 +891,7 @@ function promptSystemeChatV2() {
         'aucune liste d\'erreurs, aucune correction orthographique de la question. ' +
         'Réponds UNIQUEMENT avec un JSON compact valide, sans texte hors JSON. ' +
         'Format : {"diagnostic":"..."} — diagnostic contient ta réponse complète. ' +
-        'diagnostic ≤ 300 caractères.';
+        'diagnostic ≤ 1500 caractères.';
 }
 
 // Prompt système pour l'étape 1 — ANALYSE V2
@@ -915,9 +926,11 @@ function promptSystemeCoursV2() {
 }
 
 // Valide et normalise le résultat de l'étape Analyse
-function validateAnalyseV2(raw, localRuleIds) {
+// LOT C2 — `borne` : longueur maximale du diagnostic (300 par défaut, 1500 en CHAT).
+function validateAnalyseV2(raw, localRuleIds, borne) {
+    var maxDiag = (typeof borne === 'number' && borne > 0) ? borne : V2_MAX_DIAGNOSTIC_CHARS;
     var result = extraireJSON(raw);
-    var diagnostic = typeof result.diagnostic === 'string' ? result.diagnostic.slice(0, 300) : '';
+    var diagnostic = typeof result.diagnostic === 'string' ? result.diagnostic.slice(0, maxDiag) : '';
     var priorite = typeof result.priorite === 'string' ? result.priorite.slice(0, 200) : '';
     var erreurs = [];
     if (Array.isArray(result.erreurs)) {
@@ -998,7 +1011,7 @@ async function pipelineA22BV2(request, cle) {
         }
     ], 500, 0.2);
     console.log('WORKER_V2: Fin étape 1 (ANALYSE)', { dureeMs: Date.now() - debut1 });
-    var analyse = validateAnalyseV2(r1.contenu, localRuleIds);
+    var analyse = validateAnalyseV2(r1.contenu, localRuleIds, borneDiagnostic(request.mode));
 
     var tuteur = { explanation: '', advice: '', example: '' };
     var cours = { point_cours: '', rule: '', example: '', rule_id: null, validated: false };
@@ -1045,6 +1058,7 @@ async function pipelineA22BV2(request, cle) {
         diagnostic: analyse.diagnostic,
         errors: analyse.erreurs,
         priority: analyse.priorite,
+        maxDiagnosticChars: borneDiagnostic(request.mode),
         tutorExplanation: tuteur.explanation,
         tutorAdvice: tuteur.advice,
         tutorExample: tuteur.example,
@@ -1099,9 +1113,10 @@ async function pipelineA22V2(request, cle) {
     return buildResponseV2({
         source: 'remote_a22_fallback',
         status: 'ok',
-        diagnostic: analysePart.slice(0, 300),
+        diagnostic: analysePart,
         errors: [],
         priority: '',
+        maxDiagnosticChars: borneDiagnostic(request.mode),
         tutorExplanation: tutorPart.slice(0, 400),
         tutorAdvice: '',
         tutorExample: '',

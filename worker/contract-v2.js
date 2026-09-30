@@ -270,8 +270,17 @@ function buildResponseV2(options) {
         courseValidated,
         courseRuleId,
         model,
-        localRulesUsed
+        localRulesUsed,
+        maxDiagnosticChars
     } = options;
+
+    // LOT C2 — Borne de troncature du diagnostic : par défaut celle du contrat (300).
+    // Permet au mode CHAT, dont analysis.diagnostic porte toute la réponse
+    // conversationnelle, d'utiliser une borne plus large — sans modifier la valeur
+    // de V2_MAX_DIAGNOSTIC_CHARS ni aucune autre limite.
+    var limiteDiagnostic = (typeof maxDiagnosticChars === 'number' && maxDiagnosticChars > 0)
+        ? maxDiagnosticChars
+        : V2_MAX_DIAGNOSTIC_CHARS;
 
     return {
         contractVersion: CONTRACT_VERSION,
@@ -279,7 +288,7 @@ function buildResponseV2(options) {
         status: status || 'ok',
         reason: reason || undefined,
         analysis: {
-            diagnostic: truncateString(diagnostic || '', V2_MAX_DIAGNOSTIC_CHARS),
+            diagnostic: truncateString(diagnostic || '', limiteDiagnostic),
             errors: Array.isArray(errors) ? errors.slice(0, V2_MAX_ERRORS).map(function(e) {
                 return {
                     excerpt: truncateString(e.excerpt || '', V2_MAX_ERROR_EXCERPT_CHARS),

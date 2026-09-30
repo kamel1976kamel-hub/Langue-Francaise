@@ -78,9 +78,10 @@ function buildLocalRuleIdSet(request) {
     return set;
 }
 
-function validateAnalyseV2(raw, localRuleIds) {
+function validateAnalyseV2(raw, localRuleIds, borne) {
+    var maxDiag = (typeof borne === 'number' && borne > 0) ? borne : 300;
     var result = extraireJSON(raw);
-    var diagnostic = typeof result.diagnostic === 'string' ? result.diagnostic.slice(0, 300) : '';
+    var diagnostic = typeof result.diagnostic === 'string' ? result.diagnostic.slice(0, maxDiag) : '';
     var priorite = typeof result.priorite === 'string' ? result.priorite.slice(0, 200) : '';
     var erreurs = [];
     if (Array.isArray(result.erreurs)) {
@@ -232,12 +233,23 @@ var localRuleIds = buildLocalRuleIdSet({ local_detections: localDetections });
     assertEq(result.erreurs[0].model_confidence, null, 'A6 — confidence -0.1 → null');
 }
 
-// A7. Dépassement de longueur — diagnostic tronqué
+// A7. Dépassement de longueur — diagnostic tronqué selon le mode
 {
+    // A7a — ACTIVITÉ (défaut) : borne du contrat = 300
     var longDiag = 'x'.repeat(500);
     var raw = JSON.stringify({ diagnostic: longDiag, erreurs: [], priorite: '' });
-    var result = validateAnalyseV2(raw, localRuleIds);
-    assertEq(result.diagnostic.length, 300, 'A7 — diagnostic tronqué à 300');
+    var resultDefaut = validateAnalyseV2(raw, localRuleIds);
+    assertEq(resultDefaut.diagnostic.length, 300, 'A7a — ACTIVITÉ (défaut) : diagnostic tronqué à 300');
+
+    // A7b — CHAT : 500 caractères NON tronqués par la borne de 300
+    var resultChat = validateAnalyseV2(raw, localRuleIds, 1500);
+    assertEq(resultChat.diagnostic.length, 500, 'A7b — CHAT : 500 car. non tronqués (borne 1500)');
+
+    // A7c — CHAT : au-delà de 1500, troncature à 1500
+    var longDiag2 = 'x'.repeat(2000);
+    var raw2 = JSON.stringify({ diagnostic: longDiag2, erreurs: [], priorite: '' });
+    var resultChat2 = validateAnalyseV2(raw2, localRuleIds, 1500);
+    assertEq(resultChat2.diagnostic.length, 1500, 'A7c — CHAT : diagnostic tronqué à 1500');
 }
 
 // A8. Max 5 erreurs
