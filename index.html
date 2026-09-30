@@ -6065,16 +6065,90 @@
         audit: "Journal d'audit"
       };
 
-      // Les 20 chapter_id canoniques (identiques au backend). N'utiliser aucun
-      // identifiant de l'ancien schéma de parcours, ni de découpe/reconstruction
-      // approximative du moduleId : uniquement les identifiants listés ci-dessous.
-      var _PEDAGOGY_CHAPTER_IDS = [
-        'narratif-1', 'narratif-2', 'narratif-3', 'narratif-4',
-        'descriptif-1', 'descriptif-2', 'descriptif-3', 'descriptif-4',
-        'explicatif-1', 'explicatif-2', 'explicatif-3', 'explicatif-4',
-        'argumentatif-1', 'argumentatif-2', 'argumentatif-3', 'argumentatif-4',
-        'resume-1', 'resume-2', 'resume-3', 'resume-4'
+      // Référentiel PEP de la Gestion pédagogique : 43 modules fonctionnels.
+      // IDs canoniques stables 'pep-y{1|2}s{1|2}-NN' (année + semestre + ordre), distincts
+      // des codes visuels 'p1s1-*' de l'arborescence C6 (navigation pure) et des 20 IDs
+      // discours (narratif-1..resume-4) du contenu étudiant. Les intitulés sont conservés
+      // EXACTEMENT (aucune normalisation) : 'pratique' vs 'pratiques', 'langue' vs
+      // 'langue française', 'Lecture des textes/œuvres', 'expression(s) théâtrale(s)'.
+      var _PEDAGOGY_MODULE_CATALOG = [
+        // Première année — Semestre 1 (13)
+        { id: 'pep-y1s1-01', title: 'Usage et maîtrise de la langue 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-02', title: 'Techniques et pratique de l’oral 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-03', title: 'Techniques et pratique de l’écrit 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-04', title: 'Graphie et dictée 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-05', title: 'Initiation à la lecture des œuvres littéraires 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-06', title: 'Initiation à la langue française par le théâtre 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-07', title: 'Phonétique fonctionnelle 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-08', title: 'Méthodologie du travail universitaire 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-09', title: 'Informatique 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-10', title: 'Langue arabe 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-11', title: 'Anglais 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-12', title: 'Histoire de l’Algérie 1', year: 1, semester: 1 },
+        { id: 'pep-y1s1-13', title: 'Nationalisme et Citoyenneté 1', year: 1, semester: 1 },
+        // Première année — Semestre 2 (13)
+        { id: 'pep-y1s2-01', title: 'Usage et maîtrise de la langue 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-02', title: 'Techniques et pratique de l’oral 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-03', title: 'Techniques et pratique de l’écrit 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-04', title: 'Graphie et dictée 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-05', title: 'Initiation à la lecture des œuvres littéraires 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-06', title: 'Initiation à la langue française par le théâtre 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-07', title: 'Phonétique fonctionnelle 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-08', title: 'Méthodologie du travail universitaire 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-09', title: 'Informatique 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-10', title: 'Langue arabe 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-11', title: 'Anglais 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-12', title: 'Histoire de l’Algérie 2', year: 1, semester: 2 },
+        { id: 'pep-y1s2-13', title: 'Nationalisme et Citoyenneté 2', year: 1, semester: 2 },
+        // Deuxième année — Semestre 1 (9)
+        { id: 'pep-y2s1-01', title: 'Usage et maîtrise de la langue 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-02', title: 'Techniques et pratiques de l’oral 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-03', title: 'Techniques et pratiques de l’écrit 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-04', title: 'Langue française et expression théâtrale 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-05', title: 'Lecture des textes littéraires 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-06', title: 'Linguistique générale 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-07', title: 'Psychologie de l’enfant et de l’adolescent 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-08', title: 'Intelligence artificielle dans l’apprentissage 1', year: 2, semester: 1 },
+        { id: 'pep-y2s1-09', title: 'Anglais 1', year: 2, semester: 1 },
+        // Deuxième année — Semestre 2 (8)
+        { id: 'pep-y2s2-01', title: 'Usage et maîtrise de la langue française 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-02', title: 'Techniques et pratiques de l’oral 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-03', title: 'Techniques et pratiques de l’écrit 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-04', title: 'Langue française et expressions théâtrales 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-05', title: 'Lecture des œuvres littéraires 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-06', title: 'Linguistique générale 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-07', title: 'Psychologie de l’enfant et de l’adolescent 2', year: 2, semester: 2 },
+        { id: 'pep-y2s2-08', title: 'Anglais 2', year: 2, semester: 2 }
       ];
+
+      // Les 43 chapter_id du référentiel PEP (utilisés pour validation/deroulant plat).
+      var _PEDAGOGY_CHAPTER_IDS = _PEDAGOGY_MODULE_CATALOG.map(function (m) { return m.id; });
+
+      // Générateur des options hiérarchiques : <optgroup> « année → semestre » dans
+      // l'ordre du catalogue, sans melange entre premieres et deuxiemes annees.
+      // onlyYear/onlySemester (optionnels) restreignent au contexte d'un groupe PEP.
+      function _pedagogyModuleOptionsHtml(selected, onlyYear, onlySemester) {
+        var yearLabels = { 1: 'Première année', 2: 'Deuxième année' };
+        var html = '';
+        var groups = [
+          { year: 1, semester: 1 }, { year: 1, semester: 2 },
+          { year: 2, semester: 1 }, { year: 2, semester: 2 }
+        ];
+        for (var g = 0; g < groups.length; g++) {
+          if (onlyYear != null && onlySemester != null &&
+              (groups[g].year !== onlyYear || groups[g].semester !== onlySemester)) continue;
+          var items = _PEDAGOGY_MODULE_CATALOG.filter(function (m) {
+            return m.year === groups[g].year && m.semester === groups[g].semester;
+          });
+          if (!items.length) continue;
+          html += '<optgroup label="' + _escapeHtml(yearLabels[groups[g].year] + ' — Semestre ' + groups[g].semester) + '">';
+          for (var i = 0; i < items.length; i++) {
+            html += '<option value="' + _escapeHtml(items[i].id) + '"' + (selected === items[i].id ? ' selected' : '') + '>' + _escapeHtml(items[i].title) + '</option>';
+          }
+          html += '</optgroup>';
+        }
+        return html;
+      }
 
       // Contrat READ par section. Les clés de filtres respectent EXACTEMENT le corps
       // attendu par chaque handler Worker (snake_case pour students/groups, camelCase
@@ -6118,7 +6192,7 @@
           statusOptions: ['active', 'archived', 'orphan', 'all'],
           filters: [
             { key: 'teacherUserId', label: 'ID user enseignant', type: 'text', valType: 'string' },
-            { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', moduleCatalog: true },
             { key: 'academicYearId', label: 'ID année', type: 'number', valType: 'int' }
           ],
           columns: [{ label: 'ID', key: 'id' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Module', key: 'chapterId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Créé le', key: 'createdAt' }]
@@ -6128,7 +6202,7 @@
           statusOptions: ['active', 'archived', 'orphan', 'all'],
           filters: [
             { key: 'groupId', label: 'ID groupe', type: 'number', valType: 'int' },
-            { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', moduleCatalog: true },
             { key: 'teacherUserId', label: 'ID user enseignant', type: 'text', valType: 'string' },
             { key: 'academicYearId', label: 'ID année', type: 'number', valType: 'int' }
           ],
@@ -6187,9 +6261,13 @@
         if (f.type === 'select') {
           input = '<select id="pgf-' + f.key + '" class="mt-1 rounded border px-2 py-1 text-sm" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
           input += '<option value="">— Tous —</option>';
-          for (var i = 0; i < f.options.length; i++) {
-            var o = String(f.options[i]);
-            input += '<option value="' + _escapeHtml(o) + '"' + (val === o ? ' selected' : '') + '>' + _escapeHtml(o) + '</option>';
+          if (f.moduleCatalog) {
+            input += _pedagogyModuleOptionsHtml(val == null ? '' : String(val));
+          } else {
+            for (var i = 0; i < f.options.length; i++) {
+              var o = String(f.options[i]);
+              input += '<option value="' + _escapeHtml(o) + '"' + (val === o ? ' selected' : '') + '>' + _escapeHtml(o) + '</option>';
+            }
           }
           input += '</select>';
         } else {
@@ -6500,7 +6578,7 @@
           confirm: "Confirmer l'affectation de ce module à cet enseignant ?",
           fields: [
             { key: 'teacherUserId', label: 'Enseignant (users.id)', type: 'select', req: true, valType: 'string', dyn: 'teachers' },
-            { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', moduleCatalog: true },
             { key: 'academicYearId', label: 'Année académique', type: 'select', req: true, valType: 'int', dyn: 'years' }
           ]
         },
@@ -6511,7 +6589,7 @@
           confirm: 'Confirmer la création de cette offering ?',
           fields: [
             { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groups' },
-            { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', options: _PEDAGOGY_CHAPTER_IDS },
+            { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', moduleCatalog: true },
             { key: 'teacherUserId', label: 'Enseignant (optionnel, users.id)', type: 'select', req: false, valType: 'string', dyn: 'teachers', allowEmpty: true }
           ]
         }
@@ -6568,6 +6646,10 @@
               var v = r[L.value];
               opts += '<option value="' + _escapeHtml(String(v)) + '">' + _escapeHtml(String(L.label(r))) + '</option>';
             }
+          } else if (f.moduleCatalog) {
+            // Référentiel PEP : options groupées année → semestre (43 modules).
+            opts += '<option value="">— ' + (f.req ? 'Choisir' : 'Tous') + ' —</option>';
+            opts += _pedagogyModuleOptionsHtml('');
           } else {
             var oo = f.options || [];
             if (!f.req) opts += '<option value="">— Tous —</option>';
@@ -6595,6 +6677,38 @@
         h += '<button type="button" onclick="togglePedagogyForm()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Annuler</button>';
         h += '</div></form>';
         wrap.innerHTML = h;
+        if (section === 'offerings') _pedagogyWireOfferingModuleFilter();
+      }
+
+      // Section offerings : quand le groupe sélectionné fournit un contexte année +
+      // semestre FIABLE (parcours 'pep', yearNumber/semesterNumber présents dans la
+      // réponse READ list-groups), le sélecteur de modules est filtré sur ce contexte.
+      // Sinon AUCUNE déduction : les 43 modules groupés restent proposés.
+      function _pedagogyWireOfferingModuleFilter() {
+        var gs = document.getElementById('pgw-groupId');
+        var cs = document.getElementById('pgw-chapterId');
+        if (!gs || !cs || typeof gs.addEventListener !== 'function') return;
+        gs.addEventListener('change', function () {
+          var rows = _pedagogyFormOptions.groups || [];
+          var gid = String(gs.value);
+          var g = null;
+          for (var i = 0; i < rows.length; i++) {
+            if (String(rows[i].id) === gid) { g = rows[i]; break; }
+          }
+          var y = null, s = null;
+          if (g && String(g.parcours || '').toLowerCase() === 'pep' &&
+              (g.yearNumber === 1 || g.yearNumber === 2) &&
+              (g.semesterNumber === 1 || g.semesterNumber === 2)) {
+            y = g.yearNumber; s = g.semesterNumber;
+          }
+          var prev = String(cs.value || '');
+          var stillValid = !y || _PEDAGOGY_MODULE_CATALOG.some(function (m) {
+            return m.id === prev && m.year === y && m.semester === s;
+          });
+          if (prev && !stillValid) prev = '';
+          cs.innerHTML = '<option value="">— Choisir —</option>' + _pedagogyModuleOptionsHtml(prev, y, s);
+          cs.value = prev;
+        });
       }
 
       window.togglePedagogyForm = function() {

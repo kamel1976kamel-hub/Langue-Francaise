@@ -620,15 +620,22 @@ function normalizeDisplayName(value) {
     return value.trim().replace(/\s+/g, ' ');
 }
 
-// Allowlist canonique des 20 chapter_id pédagogiques (IDs techniques du frontend).
-// IMPORTANT : le préfixe (chapter_id.split('-')[0]) est un TYPE DE DISCOURS, jamais un
-// parcours. Ne jamais en déduire pep/pem/pes. La validation serveur utilise cette liste.
+// Allowlist canonique des 43 chapter_id du référentiel PEP de la Gestion pédagogique.
+// IDs fonctionnels stables 'pep-y{1|2}s{1|2}-NN' (année + semestre + ordre). Ce référentiel
+// ne s'applique qu'aux actions pedagogie-* : les 20 IDs discours (narratif-1..resume-4)
+// du contenu étudiant ne sont plus acceptés ici. Les codes visuels 'p1s1-*' de
+// l'arborescence C6 restent réservés à la navigation et ne sont jamais des chapter_id.
 const PEDAGOGY_CHAPTER_IDS = [
-    'narratif-1', 'narratif-2', 'narratif-3', 'narratif-4',
-    'descriptif-1', 'descriptif-2', 'descriptif-3', 'descriptif-4',
-    'explicatif-1', 'explicatif-2', 'explicatif-3', 'explicatif-4',
-    'argumentatif-1', 'argumentatif-2', 'argumentatif-3', 'argumentatif-4',
-    'resume-1', 'resume-2', 'resume-3', 'resume-4'
+    'pep-y1s1-01', 'pep-y1s1-02', 'pep-y1s1-03', 'pep-y1s1-04', 'pep-y1s1-05',
+    'pep-y1s1-06', 'pep-y1s1-07', 'pep-y1s1-08', 'pep-y1s1-09', 'pep-y1s1-10',
+    'pep-y1s1-11', 'pep-y1s1-12', 'pep-y1s1-13',
+    'pep-y1s2-01', 'pep-y1s2-02', 'pep-y1s2-03', 'pep-y1s2-04', 'pep-y1s2-05',
+    'pep-y1s2-06', 'pep-y1s2-07', 'pep-y1s2-08', 'pep-y1s2-09', 'pep-y1s2-10',
+    'pep-y1s2-11', 'pep-y1s2-12', 'pep-y1s2-13',
+    'pep-y2s1-01', 'pep-y2s1-02', 'pep-y2s1-03', 'pep-y2s1-04', 'pep-y2s1-05',
+    'pep-y2s1-06', 'pep-y2s1-07', 'pep-y2s1-08', 'pep-y2s1-09',
+    'pep-y2s2-01', 'pep-y2s2-02', 'pep-y2s2-03', 'pep-y2s2-04', 'pep-y2s2-05',
+    'pep-y2s2-06', 'pep-y2s2-07', 'pep-y2s2-08'
 ];
 
 // Rate limiting pour les opérations de reset (par session concepteur).
