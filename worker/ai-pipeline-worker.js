@@ -761,6 +761,16 @@ function promptSystemeA22() {
         'Réponds en français, en moins de 500 tokens, au format JSON : {"analyse":"...","pedagogie":"...","reference":"..."}.';
 }
 
+// LOT C1 — Prompt système A22 dédié au CHAT.
+function promptSystemeChatA22() {
+    return 'Tu es un assistant expert en français et en pédagogie pour un élève. ' +
+        'Réponds à la QUESTION de l\'élève de manière claire, utile et encourageante, ' +
+        'en t\'appuyant sur le contexte pédagogique fourni. ' +
+        'N\'évalue pas la question et ne la traite pas comme une production à corriger : ' +
+        'aucune liste d\'erreurs, aucune correction grammaticale, aucune référence de cours. ' +
+        'Réponds en français, en moins de 500 tokens, au format JSON : {"diagnostic":"..."}.';
+}
+
 async function appelerA22(cle, reponseEleve, contexte, reglesLocales, systemPrompt) {
     return await appelerGroq(cle, [
         { role: 'system', content: promptSystemeA22() },
@@ -825,6 +835,8 @@ function buildV2ContextPrompt(request) {
 
 // Construit la description des détections locales pour les prompts V2
 function buildV2DetectionsPrompt(request) {
+    if (request.mode === 'chat') return '';
+
     if (!Array.isArray(request.local_detections) || request.local_detections.length === 0) {
         return '';
     }
@@ -857,6 +869,18 @@ function buildLocalRuleIdSet(request) {
 function sanitizeRuleId(ruleId, localRuleIds) {
     if (typeof ruleId !== 'string' || !ruleId) return null;
     return localRuleIds[ruleId] ? ruleId : null;
+}
+
+// LOT C1 — Prompt système CHAT V2 : rôle conversationnel.
+function promptSystemeChatV2() {
+    return 'Tu es un assistant expert en français et en pédagogie pour un élève. ' +
+        'Réponds à la QUESTION de l\'élève de manière claire, utile et encourageante, ' +
+        'en t\'appuyant sur le contexte pédagogique fourni. ' +
+        'N\'évalue pas la question et ne la traite pas comme une production à corriger : ' +
+        'aucune liste d\'erreurs, aucune correction orthographique de la question. ' +
+        'Réponds UNIQUEMENT avec un JSON compact valide, sans texte hors JSON. ' +
+        'Format : {"diagnostic":"..."} — diagnostic contient ta réponse complète. ' +
+        'diagnostic ≤ 300 caractères.';
 }
 
 // Prompt système pour l'étape 1 — ANALYSE V2
@@ -950,6 +974,7 @@ function validateCoursV2(raw, localRuleIds) {
 
 // Pipeline A22B V2 — 3 étapes
 async function pipelineA22BV2(request, cle) {
+    var estChat = (request.mode === 'chat');
     var textOriginal = request.student.text_original;
     var contextPrompt = buildV2ContextPrompt(request);
     var detectionsPrompt = buildV2DetectionsPrompt(request);
@@ -962,49 +987,56 @@ async function pipelineA22BV2(request, cle) {
     console.log('WORKER_V2: Début étape 1 (ANALYSE)');
     var debut1 = Date.now();
     var r1 = await appelerGroq(cle, [
-        { role: 'system', content: promptSystemeAnalyseV2() },
+        { role: 'system', content: estChat ? promptSystemeChatV2() : promptSystemeAnalyseV2() },
         {
             role: 'user',
-            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
-                contextPrompt +
-                (detectionsPrompt ? detectionsPrompt + '\n' : '')
+            content: (estChat
+                ? 'Question de l\'étudiant : "' + textOriginal + '"\n' + contextPrompt
+                : 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                    contextPrompt +
+                    (detectionsPrompt ? detectionsPrompt + '\n' : ''))
         }
     ], 500, 0.2);
     console.log('WORKER_V2: Fin étape 1 (ANALYSE)', { dureeMs: Date.now() - debut1 });
     var analyse = validateAnalyseV2(r1.contenu, localRuleIds);
 
-    // ÉTAPE 2 — TUTEUR
-    console.log('WORKER_V2: Début étape 2 (TUTEUR)');
-    var debut2 = Date.now();
-    var r2 = await appelerGroq(cle, [
-        { role: 'system', content: promptSystemeTuteurV2() },
-        {
-            role: 'user',
-            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
-                contextPrompt +
-                'Résultat de l\'analyse : ' + JSON.stringify(analyse) + '\n' +
-                (detectionsPrompt ? detectionsPrompt + '\n' : '')
-        }
-    ], 500, 0.7);
-    console.log('WORKER_V2: Fin étape 2 (TUTEUR)', { dureeMs: Date.now() - debut2 });
-    var tuteur = validateTuteurV2(r2.contenu);
+    var tuteur = { explanation: '', advice: '', example: '' };
+    var cours = { point_cours: '', rule: '', example: '', rule_id: null, validated: false };
 
-    // ÉTAPE 3 — COURS
-    console.log('WORKER_V2: Début étape 3 (COURS)');
-    var debut3 = Date.now();
-    var r3 = await appelerGroq(cle, [
-        { role: 'system', content: promptSystemeCoursV2() },
-        {
-            role: 'user',
-            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
-                contextPrompt +
-                'Résultat de l\'analyse : ' + JSON.stringify(analyse) + '\n' +
-                'Explication du tuteur : ' + JSON.stringify(tuteur) + '\n' +
-                (detectionsPrompt ? detectionsPrompt + '\n' : '')
-        }
-    ], 400, 0.3);
-    console.log('WORKER_V2: Fin étape 3 (COURS)', { dureeMs: Date.now() - debut3 });
-    var cours = validateCoursV2(r3.contenu, localRuleIds);
+    if (!estChat) {
+        // ÉTAPE 2 — TUTEUR
+        console.log('WORKER_V2: Début étape 2 (TUTEUR)');
+        var debut2 = Date.now();
+        var r2 = await appelerGroq(cle, [
+            { role: 'system', content: promptSystemeTuteurV2() },
+            {
+                role: 'user',
+                content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                    contextPrompt +
+                    'Résultat de l\'analyse : ' + JSON.stringify(analyse) + '\n' +
+                    (detectionsPrompt ? detectionsPrompt + '\n' : '')
+            }
+        ], 500, 0.7);
+        console.log('WORKER_V2: Fin étape 2 (TUTEUR)', { dureeMs: Date.now() - debut2 });
+        tuteur = validateTuteurV2(r2.contenu);
+
+        // ÉTAPE 3 — COURS
+        console.log('WORKER_V2: Début étape 3 (COURS)');
+        var debut3 = Date.now();
+        var r3 = await appelerGroq(cle, [
+            { role: 'system', content: promptSystemeCoursV2() },
+            {
+                role: 'user',
+                content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                    contextPrompt +
+                    'Résultat de l\'analyse : ' + JSON.stringify(analyse) + '\n' +
+                    'Explication du tuteur : ' + JSON.stringify(tuteur) + '\n' +
+                    (detectionsPrompt ? detectionsPrompt + '\n' : '')
+            }
+        ], 400, 0.3);
+        console.log('WORKER_V2: Fin étape 3 (COURS)', { dureeMs: Date.now() - debut3 });
+        cours = validateCoursV2(r3.contenu, localRuleIds);
+    }
 
     // Construire la ResponseV2
     return buildResponseV2({
@@ -1028,6 +1060,7 @@ async function pipelineA22BV2(request, cle) {
 
 // Pipeline A22 V2 — fallback (1 seul appel)
 async function pipelineA22V2(request, cle) {
+    var estChat = (request.mode === 'chat');
     var textOriginal = request.student.text_original;
     var contextPrompt = buildV2ContextPrompt(request);
     var detectionsPrompt = buildV2DetectionsPrompt(request);
@@ -1037,21 +1070,31 @@ async function pipelineA22V2(request, cle) {
         : [];
 
     var rA = await appelerGroq(cle, [
-        { role: 'system', content: promptSystemeA22() },
+        { role: 'system', content: estChat ? promptSystemeChatA22() : promptSystemeA22() },
         {
             role: 'user',
-            content: 'Texte original de l\'élève : "' + textOriginal + '"\n' +
-                contextPrompt +
-                (detectionsPrompt ? detectionsPrompt + '\n' : '')
+            content: (estChat
+                ? 'Question de l\'étudiant : "' + textOriginal + '"\n' + contextPrompt
+                : 'Texte original de l\'élève : "' + textOriginal + '"\n' +
+                    contextPrompt +
+                    (detectionsPrompt ? detectionsPrompt + '\n' : ''))
         }
     ], 700, 0.5);
 
     var a22 = extraireJSON(rA.contenu);
 
     // Mapper A22 → ResponseV2
-    var analysePart = typeof a22.analyse === 'string' ? a22.analyse : '';
-    var tutorPart = typeof a22.pedagogie === 'string' ? a22.pedagogie : '';
-    var coursePart = typeof a22.reference === 'string' ? a22.reference : '';
+    var analysePart = estChat
+        ? (typeof a22.diagnostic === 'string' ? a22.diagnostic : '')
+        : (typeof a22.analyse === 'string' ? a22.analyse : '');
+
+    var tutorPart = estChat
+        ? ''
+        : (typeof a22.pedagogie === 'string' ? a22.pedagogie : '');
+
+    var coursePart = estChat
+        ? ''
+        : (typeof a22.reference === 'string' ? a22.reference : '');
 
     return buildResponseV2({
         source: 'remote_a22_fallback',
@@ -1077,6 +1120,26 @@ function fallbackLocalV2(request) {
     var localRulesUsed = Array.isArray(request.local_detections)
         ? request.local_detections.map(function(d) { return d.rule_id; }).filter(Boolean)
         : [];
+
+    if (request.mode === 'chat') {
+        return buildResponseV2({
+            source: 'local_rules',
+            status: 'ok',
+            diagnostic: 'La réponse conversationnelle n\'a pas pu être générée (service IA momentanément indisponible). Vous pouvez réessayer dans quelques instants.',
+            errors: [],
+            priority: '',
+            tutorExplanation: '',
+            tutorAdvice: '',
+            tutorExample: '',
+            coursePoint: '',
+            courseRule: '',
+            courseExample: '',
+            courseValidated: false,
+            courseRuleId: null,
+            model: null,
+            localRulesUsed: localRulesUsed
+        });
+    }
 
     var erreurs = [];
     if (Array.isArray(request.local_detections)) {
