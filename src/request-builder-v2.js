@@ -498,7 +498,11 @@ function normalizeResponseV2(responseV2) {
     
     // Course
     if (responseV2.course) {
-        if (responseV2.course.point) parts.push('Point de cours : ' + responseV2.course.point);
+        // LOT C3 — Le contrat V2 produit `course.point_cours` ; on lit ce champ en
+        // priorité, avec repli sur `course.point` pour rester compatible avec une
+        // éventuelle ancienne réponse Worker.
+        var pointCours = responseV2.course.point_cours || responseV2.course.point;
+        if (pointCours) parts.push('Point de cours : ' + pointCours);
         if (responseV2.course.rule) parts.push('Règle : ' + responseV2.course.rule);
         if (responseV2.course.example) parts.push('Exemple : ' + responseV2.course.example);
     }
