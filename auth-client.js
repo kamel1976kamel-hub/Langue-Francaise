@@ -356,6 +356,10 @@
         return workerFetch(Object.assign({ action: 'pedagogie-set-users-active' }, params || {}));
     }
 
+    function pedagogieCreateUsers(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-create-users' }, params || {}));
+    }
+
     // =================================================================
     // HELPERS
     // =================================================================
@@ -445,6 +449,7 @@
         pedagogieSetUserActive: pedagogieSetUserActive,
         pedagogieUpdateUser: pedagogieUpdateUser,
         pedagogieSetUsersActive: pedagogieSetUsersActive,
+        pedagogieCreateUsers: pedagogieCreateUsers,
         pedagogieReactivateGroup: pedagogieReactivateGroup,
         pedagogieReactivateTeacherAssignment: pedagogieReactivateTeacherAssignment,
         pedagogieReactivateModuleOffering: pedagogieReactivateModuleOffering,

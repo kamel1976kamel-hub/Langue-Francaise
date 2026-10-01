@@ -1424,13 +1424,15 @@ async function handlePedagogieListUsers(env, body) {
     const whereStr = 'WHERE ' + conditions.join(' AND ');
 
     const countSql = `SELECT COUNT(*) AS cnt FROM users u ${whereStr}`;
-    const sql = `SELECT u.id, u.username, u.display_name, u.role, u.actif FROM users u ${whereStr} ORDER BY u.username ASC LIMIT ? OFFSET ?`;
+    const sql = `SELECT u.id, u.username, u.display_name, u.role, u.actif, u.must_change FROM users u ${whereStr} ORDER BY u.username ASC LIMIT ? OFFSET ?`;
 
     const countResult = await db.prepare(countSql).bind(...params).first();
     const total = countResult ? countResult.cnt : 0;
 
     const rows = await db.prepare(sql).bind(...params, pag.limit, pag.offset).all();
-    const users = (rows.results || []).map(r => ({ id: r.id, username: r.username, displayName: r.display_name, role: r.role, actif: r.actif }));
+    // Jamais password_hash : must_change est le SEUL champ lié au mot de passe exposé
+    // (état « changement requis », jamais un secret) — P9.1 colonne Mot de passe.
+    const users = (rows.results || []).map(r => ({ id: r.id, username: r.username, displayName: r.display_name, role: r.role, actif: r.actif, mustChange: r.must_change }));
     return reponseJSON({ users, total, limit: pag.limit, offset: pag.offset }, 200);
 }
 
@@ -1989,6 +1991,169 @@ async function handlePedagogieCreateUser(env, user, body) {
             mustChange: row.must_change
         },
         temporaryPassword: tempPassword
+    }, 201);
+}
+
+// P9.1 — Création COLLECTIVE de comptes (console « Gestion des comptes »).
+// Atomicité choix : VALIDATION COMPLÈTE AVANT MUTATION + UNE SEULE transaction
+// db.batch(). Aucun INSERT partiellement appliqué : si une ligne est invalide,
+// si un username est dupliqué dans l'opération ou déjà présent en base, si la
+// capacité de rate limiting est insuffisante -> refus TOTAL (400/409/429), aucune
+// création. Même contrat que handlePedagogieCreateUser (réutilisé ligne à ligne) :
+// id opaque serveur, username trim+lowercase, concepteur=0 / actif=1 / must_change=1
+// imposés, mot de passe temporaire généré puis hashé et retourné UNE SEULE FOIS,
+// audit create_user par utilisateur réellement créé et SANS SECRET (jamais le hash
+// ni le mot de passe), aucun profil teachers/students créé ici. Jamais de rôle
+// administrateur/concepteur. Borne PEDAGOGY_BULK_LIMIT (25) : 25 × 2 instructions
+// = 50, sous la limite D1 de 100 instructions par batch. Concurrence portée par
+// la contrainte UNIQUE(users.username) : un doublon apparu entre la pré-lecture et
+// l'écriture fait échouer le batch, qui est annulé intégralement -> 409.
+async function handlePedagogieCreateUsers(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    const raw = body.users;
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return reponseJSON({ erreur: 'users doit être un tableau non vide' }, 400);
+    }
+    if (raw.length > PEDAGOGY_BULK_LIMIT) {
+        return reponseJSON({ erreur: 'users limité à ' + PEDAGOGY_BULK_LIMIT + ' par opération' }, 400);
+    }
+
+    // ── Étape 1 : validation INTÉGRALE de toutes les lignes avant toute écriture.
+    // Les erreurs sont agrégées (une entrée par ligne fautive) pour que l'interface
+    // affiche un statut par ligne sans laisser croire à une création partielle.
+    const errors = [];
+    const lines = [];
+    const firstLineByUsername = {};
+    for (let i = 0; i < raw.length; i++) {
+        const item = (raw[i] && typeof raw[i] === 'object') ? raw[i] : {};
+        const role = item.role;
+        if (role !== 'teacher' && role !== 'student') {
+            errors.push({ line: i + 1, error: 'role invalide (valeurs autorisées: teacher, student)' });
+            continue;
+        }
+        const username = (typeof item.username === 'string') ? item.username.trim().toLowerCase() : '';
+        if (!username) {
+            errors.push({ line: i + 1, error: 'username requis (chaîne non vide)' });
+            continue;
+        }
+        const displayName = normalizeDisplayName(item.displayName);
+        if (displayName === null || displayName.length < 1 || displayName.length > 120) {
+            errors.push({ line: i + 1, error: 'displayName invalide (1 à 120 caractères)' });
+            continue;
+        }
+        if (firstLineByUsername[username] !== undefined) {
+            errors.push({
+                line: i + 1,
+                error: "Ce nom d'utilisateur est déjà présent dans l'opération (ligne " + firstLineByUsername[username] + ')'
+            });
+            continue;
+        }
+        firstLineByUsername[username] = i + 1;
+        lines.push({ username, displayName, role });
+    }
+    if (errors.length > 0) {
+        return reponseJSON({ erreur: 'Opération refusée : aucune création', errors, created: 0 }, 400);
+    }
+
+    // ── Étape 2 : doublons avec la base (pré-lecture en placeholders liés).
+    const placeholders = lines.map(() => '?').join(', ');
+    const existingRows = await db.prepare(
+        `SELECT username FROM users WHERE username IN (${placeholders})`
+    ).bind(...lines.map((l) => l.username)).all();
+    const conflicts = ((existingRows && Array.isArray(existingRows.results)) ? existingRows.results : [])
+        .map((r) => r.username);
+    if (conflicts.length > 0) {
+        return reponseJSON({
+            erreur: "Certains noms d'utilisateur sont déjà utilisés",
+            conflicts,
+            created: 0
+        }, 409);
+    }
+
+    // ── Étape 3 : capacité restante du rate limiting (fail-before-write, même
+    // mécanisme que le reset : 1 création = 1 opération comptabilisée).
+    const usedCount = await getResetCount(db, user.id);
+    const remainingCapacity = RESET_RATE_LIMIT - usedCount;
+    if (lines.length > remainingCapacity) {
+        return reponseJSON({
+            erreur: 'Capacité insuffisante : ' + lines.length + ' création(s) demandée(s), '
+                + Math.max(0, remainingCapacity) + ' disponible(s). Réessayez plus tard.'
+        }, 429);
+    }
+
+    // ── Étape 4 : construction des instructions (aucune exécution ici).
+    const statements = [];
+    const prepared = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const newId = generateRandomHex(16);
+        const tempPassword = generateTempPassword();
+        const passwordHash = await hashPassword(tempPassword, pepper);
+        statements.push(
+            db.prepare(
+                `INSERT INTO users (id, username, password_hash, display_name, role, concepteur, actif, must_change)
+                 VALUES (?, ?, ?, ?, ?, 0, 1, 1)`
+            ).bind(newId, line.username, passwordHash, line.displayName, line.role),
+            db.prepare(
+                `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+                 SELECT ?, 'create_user', 'user', ?, NULL, ?
+                 WHERE changes() = 1`
+            ).bind(String(user.id), newId, JSON.stringify({ username: line.username, role: line.role, displayName: line.displayName }))
+        );
+        prepared.push({ id: newId, username: line.username, displayName: line.displayName, role: line.role, tempPassword });
+    }
+
+    let results;
+    try {
+        results = await db.batch(statements);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            // Batch annulé intégralement : aucun compte créé.
+            return reponseJSON({ erreur: "Ce nom d'utilisateur est déjà utilisé", created: 0 }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-create-users (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    // changes() de chaque INSERT (positions paires) : 1 = réellement créé.
+    const createdUsers = [];
+    const temporaryPasswords = [];
+    for (let i = 0; i < prepared.length; i++) {
+        const meta = (results && results[i * 2] && results[i * 2].meta) ? results[i * 2].meta : {};
+        if ((meta.changes || 0) !== 1) continue;
+        const p = prepared[i];
+        createdUsers.push({ id: p.id, username: p.username, displayName: p.displayName, role: p.role, actif: 1, mustChange: 1 });
+        temporaryPasswords.push({ username: p.username, displayName: p.displayName, temporaryPassword: p.tempPassword });
+    }
+    if (createdUsers.length === 0) {
+        return reponseJSON({ erreur: 'Aucun compte créé (opération annulée)', created: 0 }, 409);
+    }
+    if (createdUsers.length < prepared.length) {
+        // Défense en profondeur : le batch D1 est une transaction, ce cas ne doit
+        // jamais se présenter. S'il se présentait, le compte rendu resterait explicite :
+        // il porte le nombre RÉELLEMENT créé, jamais le nombre demandé.
+        console.log('WORKER_WARN pedagogie-create-users: création partielle détectée', {
+            requested: prepared.length,
+            created: createdUsers.length
+        });
+    }
+
+    // Comptabiliser une opération par compte réellement créé.
+    for (let i = 0; i < createdUsers.length; i++) {
+        await recordResetOperation(db, user.id);
+    }
+
+    return reponseJSON({
+        requested: raw.length,
+        created: createdUsers.length,
+        users: createdUsers,
+        temporaryPasswords
     }, 201);
 }
 
@@ -3788,9 +3953,10 @@ async function handlePedagogieUpdateUser(env, user, body) {
 // d'autorisation déjà appliquée par le dispatcher : session → allowlist →
 // user.actif. Idempotence : un compte déjà dans l'état cible n'est ni muté
 // (WHERE actif = état lu) ni audité. Les comptes inexistants sont comptabilisés
-// dans notFound, sans écriture. Déduplication serveur + borne 50 ids (limite
-// technique des batches D1 : 100 instructions, 2 par compte). Réponse détaillée
-// { requested, modified, alreadyTarget, notFound, physicallyDeleted: 0 }.
+// notFound, sans écriture. Déduplication serveur + borne PEDAGOGY_BULK_LIMIT (25
+// comptes) : même plafond que les autres opérations bulk du produit, et 25 × 2 =
+// 50 instructions, largement sous la limite technique des batches D1 (100). Réponse
+// détaillée { requested, modified, alreadyTarget, notFound, physicallyDeleted: 0 }.
 async function handlePedagogieSetUsersActive(env, user, body) {
     const db = env.DB;
     if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
@@ -3809,8 +3975,8 @@ async function handlePedagogieSetUsersActive(env, user, body) {
         const id = raw.trim();
         if (!seen[id]) { seen[id] = true; userIds.push(id); }
     }
-    if (userIds.length > 50) {
-        return reponseJSON({ erreur: 'au plus 50 comptes par opération collective' }, 400);
+    if (userIds.length > PEDAGOGY_BULK_LIMIT) {
+        return reponseJSON({ erreur: 'au plus ' + PEDAGOGY_BULK_LIMIT + ' comptes par opération collective' }, 400);
     }
     let actif;
     if (body.actif === 1 || body.actif === true) actif = 1;
@@ -4655,6 +4821,11 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieSetUsersActive(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-create-users') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateUsers(env, user, corpsBrut);
         }
 
         // ─── PIPELINE IA — Session requise ───

@@ -2005,6 +2005,9 @@
           <button type="button" onclick="adminToggleAddForm()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
             + Ajouter un utilisateur
           </button>
+          <button type="button" onclick="adminToggleBulkAddForm()" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+            + Ajouter plusieurs utilisateurs
+          </button>
         </div>
         <div id="adminAddForm" class="mb-4 hidden rounded-lg border p-4" style="border-color: var(--bs-border-color);">
           <div class="grid gap-2 sm:grid-cols-2">
@@ -2026,6 +2029,30 @@
           <div class="mt-3 flex gap-2">
             <button type="button" onclick="adminCreateUser()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Créer</button>
             <button type="button" onclick="adminToggleAddForm()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Annuler</button>
+          </div>
+        </div>
+        <div id="adminBulkAddForm" class="mb-4 hidden rounded-lg border p-4" style="border-color: var(--bs-border-color);">
+          <h3 class="mb-1 text-sm font-bold" style="color: var(--bs-heading-color);">Ajouter plusieurs utilisateurs</h3>
+          <p class="mb-3 text-xs" style="color: var(--bs-text-muted);">Les comptes sont créés en une seule opération atomique : si une ligne est invalide ou en doublon, aucune ligne n'est créée. Maximum 25 utilisateurs par opération.</p>
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr style="color: var(--bs-text-muted);">
+                <th class="pb-1 pr-2 font-medium">Nom complet</th>
+                <th class="pb-1 pr-2 font-medium">Username</th>
+                <th class="pb-1 pr-2 font-medium">Rôle</th>
+                <th class="pb-1 font-medium"><span class="sr-only">Retirer la ligne</span></th>
+              </tr>
+            </thead>
+            <tbody id="adminBulkAddRows"></tbody>
+          </table>
+          <div class="mt-2">
+            <button type="button" onclick="adminBulkAddRow()" class="rounded border px-3 py-1 text-xs font-medium" style="border-color: var(--bs-border-color); color: var(--bs-body-color);">+ Ajouter une ligne</button>
+          </div>
+          <div id="adminBulkAddError" class="mt-2 text-xs" style="color: var(--bs-danger);"></div>
+          <div id="adminBulkAddResult" class="mt-2 hidden rounded-lg border p-2 text-xs" style="border-color: var(--bs-border-color);"></div>
+          <div class="mt-3 flex gap-2">
+            <button type="button" onclick="adminBulkCreateUsers()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Créer les utilisateurs</button>
+            <button type="button" onclick="adminToggleBulkAddForm()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Annuler</button>
           </div>
         </div>
         <div class="mb-3 flex flex-wrap items-center gap-2">
@@ -2050,7 +2077,7 @@
           <button type="button" onclick="adminBulkSet(0)" class="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700">Désactiver</button>
           <button type="button" onclick="adminBulkDelete()" class="rounded bg-rose-600 px-3 py-1 text-xs font-medium text-white hover:bg-rose-700">Supprimer</button>
         </div>
-        <div id="adminUserList" class="space-y-2 mb-4">
+        <div id="adminUserList" class="mb-4 overflow-x-auto">
           <p class="text-sm text-gray-500">Chargement...</p>
         </div>
         <div class="flex gap-2 border-t pt-4" style="border-color: var(--bs-border-color);">
@@ -2071,9 +2098,10 @@
         <h3 class="mb-3 text-base font-bold text-amber-700">Mot de passe temporaire généré</h3>
         <p class="mb-3 text-sm text-gray-600 dark:text-gray-300">Copiez-le maintenant et transmettez-le à l'utilisateur. Il ne sera plus affiché après fermeture.</p>
         <div id="adminResultContent" class="mb-4 space-y-2"></div>
+        <p class="mb-4 text-xs" style="color: var(--bs-text-muted);">Ce mot de passe est temporaire. L'utilisateur devra le modifier lors de sa prochaine connexion.</p>
         <div class="flex gap-2">
           <button type="button" id="adminCopyBtn" onclick="adminCopyPasswords()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-            Copier
+            Copier le mot de passe temporaire
           </button>
           <button type="button" onclick="adminCloseResult()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
             Fermer (définitif)
@@ -7854,7 +7882,9 @@
         var includeInactive = (status !== 'active');
         var roles = (role === 'all') ? ['teacher', 'student'] : [role];
         var calls = roles.map(function (rl) {
-          return window.AuthClient.pedagogieListUsers({ role: rl, includeInactive: includeInactive, limit: 500 });
+          // excludeLinked=false : la console liste TOUS les comptes, y compris ceux
+          // déjà liés à un profil enseignant/élève (défaut list-users = pickers).
+          return window.AuthClient.pedagogieListUsers({ role: rl, includeInactive: includeInactive, excludeLinked: false, limit: 500 });
         });
         Promise.all(calls).then(function (results) {
           var users = [];
@@ -7883,7 +7913,7 @@
         _adminHandleMap = {};
         _adminHandleSeq = 0;
         var currentUser = profileSelector.currentUser;
-        var html = '';
+        var rows = '';
         for (var i = 0; i < _adminUsersCache.length; i++) {
           var u = _adminUsersCache[i];
           var hay = (String(u.displayName || '') + ' ' + String(u.username || '')).toLowerCase();
@@ -7893,26 +7923,42 @@
           var isSelf = currentUser && String(u.id) === String(currentUser.id);
           var roleLabel = u.role === 'teacher' ? 'Enseignant' : 'Élève';
           var statusLabel = u.actif ? 'Actif' : 'Inactif';
-          html += '<div class="flex items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-gray-800" style="border-color: var(--bs-border-color);">';
-          html += '<input type="checkbox" class="admin-user-check" value="' + handle + '"' + (isSelf ? ' disabled' : '') + ' onchange="adminUpdateBulkBar()">';
-          html += '<div class="flex-1 min-w-0">';
-          html += '<div class="text-sm font-medium truncate" style="color: var(--bs-heading-color);">' + _escapeHtml(u.displayName || u.username) + '</div>';
-          html += '<div class="text-xs text-gray-500">' + _escapeHtml(u.username) + ' · ' + roleLabel + ' · ' + statusLabel + (isSelf ? ' · Votre compte' : '') + '</div>';
-          html += '</div>';
-          html += '<div class="flex flex-shrink-0 gap-1">';
-          html += '<button type="button" onclick="adminUserEdit(' + handle + ')" class="rounded bg-slate-100 px-2 py-1 text-xs font-medium hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600" style="color: var(--bs-body-color);">Modifier</button>';
+          // Colonne « Mot de passe » : JAMAIS un secret, uniquement l'État réel du
+          // champ d'authentification must_change (source unique, aucune colonne inventée).
+          var pwdLabel = (Number(u.mustChange) === 1 || u.mustChange === true) ? 'Changement requis' : 'Défini';
+          rows += '<tr class="admin-user-row" style="border-top: 1px solid var(--bs-border-color);">';
+          rows += '<td class="py-2 pr-2"><input type="checkbox" class="admin-user-check" value="' + handle + '"' + (isSelf ? ' disabled' : '') + ' onchange="adminUpdateBulkBar()"></td>';
+          rows += '<td class="py-2 pr-2 font-mono text-xs">' + _escapeHtml(u.username) + '</td>';
+          rows += '<td class="py-2 pr-2">' + _escapeHtml(u.displayName || '') + '</td>';
+          rows += '<td class="py-2 pr-2 text-xs">' + roleLabel + '</td>';
+          rows += '<td class="py-2 pr-2 text-xs">' + statusLabel + (isSelf ? ' · Votre compte' : '') + '</td>';
+          rows += '<td class="py-2 pr-2 text-xs">' + pwdLabel + '</td>';
+          rows += '<td class="py-2"><div class="flex flex-wrap gap-1">';
+          rows += '<button type="button" onclick="adminUserEdit(' + handle + ')" class="rounded bg-slate-100 px-2 py-1 text-xs font-medium hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600" style="color: var(--bs-body-color);">Modifier</button>';
           if (!isSelf && u.actif) {
-            html += '<button type="button" onclick="adminUserReset(' + handle + ')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
-            html += '<button type="button" onclick="adminUserDeactivate(' + handle + ')" class="rounded bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-200">Désactiver</button>';
-            html += '<button type="button" onclick="adminUserDelete(' + handle + ')" class="rounded bg-rose-100 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-200">Supprimer</button>';
+            rows += '<button type="button" onclick="adminUserReset(' + handle + ')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
+            rows += '<button type="button" onclick="adminUserDeactivate(' + handle + ')" class="rounded bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-200">Désactiver</button>';
+            rows += '<button type="button" onclick="adminUserDelete(' + handle + ')" class="rounded bg-rose-100 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-200">Supprimer</button>';
           }
           if (!u.actif) {
-            html += '<button type="button" onclick="adminUserActivate(' + handle + ')" class="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-200">Réactiver</button>';
+            rows += '<button type="button" onclick="adminUserActivate(' + handle + ')" class="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-200">Réactiver</button>';
           }
-          html += '</div></div>';
+          rows += '</div></td></tr>';
         }
-        if (!html) html = '<p class="text-sm" style="color: var(--bs-text-muted);">Aucun compte.</p>';
-        listEl.innerHTML = html;
+        if (!rows) {
+          listEl.innerHTML = '<p class="text-sm" style="color: var(--bs-text-muted);">Aucun compte.</p>';
+        } else {
+          var head = '<thead><tr style="color: var(--bs-text-muted); text-align: left;">'
+            + '<th class="pb-1 pr-2 font-medium">Sélection</th>'
+            + '<th class="pb-1 pr-2 font-medium">Utilisateur</th>'
+            + '<th class="pb-1 pr-2 font-medium">Nom</th>'
+            + '<th class="pb-1 pr-2 font-medium">Rôle</th>'
+            + '<th class="pb-1 pr-2 font-medium">Statut</th>'
+            + '<th class="pb-1 pr-2 font-medium">Mot de passe</th>'
+            + '<th class="pb-1 font-medium">Actions</th>'
+            + '</tr></thead>';
+          listEl.innerHTML = '<table class="w-full text-sm">' + head + '<tbody>' + rows + '</tbody></table>';
+        }
         var selAll = document.getElementById('adminSelectAll');
         if (selAll) selAll.checked = false;
         adminUpdateBulkBar();
@@ -7987,6 +8033,196 @@
         }).catch(function () { if (err) err.textContent = 'Erreur réseau.'; });
       };
 
+      // ---- Ajout collectif (P9.1) : UNE seule opération atomique pedagogie-create-users.
+      // Les lignes sont construites via createElement + .value : aucune donnée saisie
+      // ne passe par innerHTML, donc aucune surface d'injection dans le formulaire.
+      window.adminToggleBulkAddForm = function () {
+        var form = document.getElementById('adminBulkAddForm');
+        if (!form) return;
+        var showing = form.classList.toggle('hidden') === false;
+        var err = document.getElementById('adminBulkAddError');
+        if (err) err.textContent = '';
+        var out = document.getElementById('adminBulkAddResult');
+        if (out) { out.classList.add('hidden'); out.innerHTML = ''; }
+        if (showing) {
+          var tbody = document.getElementById('adminBulkAddRows');
+          if (tbody && tbody.children.length === 0) window.adminBulkAddRow();
+        }
+      };
+
+      window.adminBulkRemoveRow = function (rowEl) {
+        if (rowEl && rowEl.parentNode) rowEl.parentNode.removeChild(rowEl);
+      };
+
+      window.adminBulkAddRow = function () {
+        var tbody = document.getElementById('adminBulkAddRows');
+        if (!tbody) return;
+        var err = document.getElementById('adminBulkAddError');
+        if (tbody.children.length >= ADMIN_BULK_LIMIT) {
+          if (err) err.textContent = 'Maximum ' + ADMIN_BULK_LIMIT + ' lignes par opération.';
+          return;
+        }
+        if (err) err.textContent = '';
+        var tr = document.createElement('tr');
+
+        var tdName = document.createElement('td');
+        tdName.className = 'py-1 pr-2';
+        var inputName = document.createElement('input');
+        inputName.type = 'text';
+        inputName.maxLength = 120;
+        inputName.className = 'w-full rounded border px-2 py-1 text-xs';
+        inputName.style.backgroundColor = 'var(--bs-card-bg)';
+        inputName.style.borderColor = 'var(--bs-border-color)';
+        inputName.style.color = 'var(--bs-body-color)';
+        inputName.setAttribute('aria-label', 'Nom complet');
+        tdName.appendChild(inputName);
+
+        var tdUser = document.createElement('td');
+        tdUser.className = 'py-1 pr-2';
+        var inputUser = document.createElement('input');
+        inputUser.type = 'text';
+        inputUser.maxLength = 60;
+        inputUser.className = 'w-full rounded border px-2 py-1 text-xs';
+        inputUser.style.backgroundColor = 'var(--bs-card-bg)';
+        inputUser.style.borderColor = 'var(--bs-border-color)';
+        inputUser.style.color = 'var(--bs-body-color)';
+        inputUser.setAttribute('aria-label', "Nom d'utilisateur");
+        tdUser.appendChild(inputUser);
+
+        var tdRole = document.createElement('td');
+        tdRole.className = 'py-1 pr-2';
+        var selectRole = document.createElement('select');
+        selectRole.className = 'w-full rounded border px-2 py-1 text-xs';
+        selectRole.style.backgroundColor = 'var(--bs-card-bg)';
+        selectRole.style.borderColor = 'var(--bs-border-color)';
+        selectRole.style.color = 'var(--bs-body-color)';
+        selectRole.setAttribute('aria-label', 'Rôle');
+        var optTeacher = document.createElement('option');
+        optTeacher.value = 'teacher';
+        optTeacher.textContent = 'Enseignant';
+        var optStudent = document.createElement('option');
+        optStudent.value = 'student';
+        optStudent.textContent = 'Élève';
+        selectRole.appendChild(optStudent);
+        selectRole.appendChild(optTeacher);
+        tdRole.appendChild(selectRole);
+
+        var tdDel = document.createElement('td');
+        tdDel.className = 'py-1';
+        var btnDel = document.createElement('button');
+        btnDel.type = 'button';
+        btnDel.textContent = 'Retirer';
+        btnDel.className = 'rounded px-2 py-1 text-xs';
+        btnDel.style.border = '1px solid var(--bs-border-color)';
+        btnDel.style.color = 'var(--bs-danger)';
+        btnDel.onclick = function () { window.adminBulkRemoveRow(tr); };
+        tdDel.appendChild(btnDel);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdUser);
+        tr.appendChild(tdRole);
+        tr.appendChild(tdDel);
+        tbody.appendChild(tr);
+      };
+
+      window.adminBulkCreateUsers = function () {
+        var err = document.getElementById('adminBulkAddError');
+        if (err) err.textContent = '';
+        var tbody = document.getElementById('adminBulkAddRows');
+        var trs = tbody ? Array.prototype.slice.call(tbody.children) : [];
+        var lines = [];
+        var localErrors = [];
+        var seen = {};
+        for (var i = 0; i < trs.length; i++) {
+          var displayName = String((trs[i].children[0].firstChild || {}).value || '').trim();
+          var username = String((trs[i].children[1].firstChild || {}).value || '').trim();
+          var role = (trs[i].children[2].firstChild || {}).value || '';
+          var lineNo = i + 1;
+          if (!displayName) { localErrors.push('Ligne ' + lineNo + ' : nom complet requis.'); continue; }
+          if (!username) { localErrors.push('Ligne ' + lineNo + " : nom d'utilisateur requis."); continue; }
+          if (role !== 'teacher' && role !== 'student') { localErrors.push('Ligne ' + lineNo + ' : rôle invalide.'); continue; }
+          var key = username.toLowerCase();
+          if (seen[key]) { localErrors.push('Ligne ' + lineNo + " : ce nom d'utilisateur est déjà dans l'opération (ligne " + seen[key] + ').'); continue; }
+          seen[key] = lineNo;
+          lines.push({ line: lineNo, displayName: displayName, username: username, role: role });
+        }
+        if (localErrors.length > 0) {
+          if (err) err.textContent = 'Aucun compte créé. ' + localErrors.join(' ');
+          return;
+        }
+        if (lines.length === 0) {
+          if (err) err.textContent = 'Ajoutez au moins une ligne complète.';
+          return;
+        }
+        if (lines.length > ADMIN_BULK_LIMIT) {
+          if (err) err.textContent = 'Maximum ' + ADMIN_BULK_LIMIT + ' utilisateurs par opération.';
+          return;
+        }
+        var payload = lines.map(function (l) {
+          return { displayName: l.displayName, username: l.username, role: l.role };
+        });
+        window.AuthClient.pedagogieCreateUsers({ users: payload }).then(function (result) {
+          _adminRenderBulkAddResult(lines, result);
+          if (result.status === 201) loadAdminUserList();
+        }).catch(function () { if (err) err.textContent = 'Erreur réseau.'; });
+      };
+
+      // Résultat PAR LIGNE : l'administrateur voit exactement ce qui a été créé, et
+      // ce qui ne l'a pas été. Le serveur étant atomique, soit toutes les lignes sont
+      // créées, soit aucune — le résumé le dit explicitement.
+      function _adminRenderBulkAddResult(lines, result) {
+        var out = document.getElementById('adminBulkAddResult');
+        var err = document.getElementById('adminBulkAddError');
+        var d = (result && result.data) || {};
+        var byLine = {};
+        var createdCount = 0;
+        if (result.status === 201) {
+          var createdIndex = {};
+          (d.users || []).forEach(function (u) { createdIndex[String(u.username)] = true; });
+          for (var i = 0; i < lines.length; i++) {
+            var l = lines[i];
+            if (createdIndex[l.username.toLowerCase()]) { byLine[l.line] = { ok: true, text: 'Créé' }; createdCount++; }
+            else { byLine[l.line] = { ok: false, text: "Username déjà utilisé" }; }
+          }
+        } else if (result.status === 400 && Array.isArray(d.errors)) {
+          for (var e = 0; e < d.errors.length; e++) {
+            byLine[d.errors[e].line] = { ok: false, text: d.errors[e].error };
+          }
+          for (var i2 = 0; i2 < lines.length; i2++) {
+            if (!byLine[lines[i2].line]) byLine[lines[i2].line] = { ok: false, text: 'Non créé (opération annulée)' };
+          }
+        } else if (result.status === 409) {
+          var conflicts = (d.conflicts || []).map(String);
+          for (var i3 = 0; i3 < lines.length; i3++) {
+            var l3 = lines[i3];
+            byLine[l3.line] = { ok: false, text: (conflicts.indexOf(l3.username.toLowerCase()) !== -1) ? 'Username déjà utilisé' : 'Non créé (opération annulée)' };
+          }
+        } else if (err) {
+          err.textContent = 'Erreur : ' + (d.erreur || 'opération échouée');
+          return;
+        }
+        if (!out) return;
+        var failed = lines.length - createdCount;
+        var html = '<div class="font-medium mb-1">' + createdCount + ' créé(s) · ' + failed + ' non créé(s)</div>';
+        for (var r = 0; r < lines.length; r++) {
+          var row = lines[r];
+          var st = byLine[row.line] || { ok: false, text: 'Non créé' };
+          html += '<div class="admin-bulk-line py-1" style="border-top: 1px solid var(--bs-border-color);">'
+            + '<span style="color: ' + (st.ok ? 'var(--bs-success, #16a34a)' : 'var(--bs-danger)') + ';">' + (st.ok ? '✓' : '✗') + '</span> '
+            + '<span class="font-medium">' + _escapeHtml(row.displayName) + '</span> '
+            + '<span class="font-mono">' + _escapeHtml(row.username) + '</span> '
+            + '<span style="color: var(--bs-text-muted);">— ' + _escapeHtml(st.text) + '</span>'
+            + '</div>';
+        }
+        out.innerHTML = html;
+        out.classList.remove('hidden');
+        if (result.status === 201 && Array.isArray(d.temporaryPasswords) && d.temporaryPasswords.length > 0) {
+          // Les mots de passe temporaires ne vivent que dans ce dialogue ; ils sont
+          // effacés de la mémoire et du DOM à la fermeture (adminCloseResult).
+          showAdminResult(d.temporaryPasswords);
+        }
+      }
+
       // ---- Actions individuelles (handle entier uniquement ; id réel dans la map).
       function _adminUserEditMessage(result, okPrefix) {
         if (result.status === 200) { loadAdminUserList(); return ''; }
@@ -8057,12 +8293,26 @@
       };
 
       // ---- Actions collectives : UN seul appel transactionnel pedagogie-set-users-active.
+      var ADMIN_BULK_LIMIT = 25; // plafond serveur (PEDAGOGY_BULK_LIMIT) — même borne côté UI
+
+      function _adminBulkSummary(d, isDelete) {
+        var lines = [];
+        lines.push(d.requested + ' comptes sélectionnés');
+        lines.push(d.modified + (isDelete ? ' comptes supprimés' : ' comptes modifiés'));
+        lines.push(d.alreadyTarget + (isDelete ? ' comptes étaient déjà inactifs' : ' déjà dans l\'état cible'));
+        if (d.notFound) lines.push(d.notFound + ' introuvables');
+        lines.push(d.physicallyDeleted + ' supprimés physiquement');
+        if (isDelete) lines.push('');
+        if (isDelete) lines.push('Aucun historique pédagogique ne sera supprimé.');
+        return lines.join('\n');
+      }
+
       function _adminBulkApply(ids, actif, isDelete) {
         window.AuthClient.pedagogieSetUsersActive({ userIds: ids, actif: actif }).then(function (result) {
           if (result.status === 200 && result.data) {
             var d = result.data;
             loadAdminUserList();
-            alert(d.requested + ' comptes sélectionnés\n' + d.modified + ' comptes modifiés\n' + d.alreadyTarget + ' déjà dans l\'état cible\n' + d.notFound + ' introuvables\n' + d.physicallyDeleted + ' supprimés physiquement' + (isDelete ? '\n\nAucun historique pédagogique ne sera supprimé.' : ''));
+            alert(_adminBulkSummary(d, isDelete));
           } else if (result.status === 403) {
             alert('Opération refusée : la sélection contient un compte protégé. Aucun compte n\'a été modifié.');
           } else {
@@ -8071,9 +8321,18 @@
         }).catch(function () { alert('Erreur réseau.'); });
       }
 
+      function _adminBulkGuard(ids) {
+        if (ids.length === 0) return false;
+        if (ids.length > ADMIN_BULK_LIMIT) {
+          alert('Maximum ' + ADMIN_BULK_LIMIT + ' comptes par opération collective (' + ids.length + ' sélectionnés). Réduisez la sélection.');
+          return false;
+        }
+        return true;
+      }
+
       window.adminBulkSet = function (actif) {
         var ids = _adminSelectedIds();
-        if (ids.length === 0) return;
+        if (!_adminBulkGuard(ids)) return;
         var msg = (actif === 0)
           ? 'Désactiver ' + ids.length + ' comptes ?\n\nLes comptes sélectionnés seront désactivés.\nAucun historique pédagogique ne sera supprimé.'
           : 'Activer ' + ids.length + ' comptes sélectionnés ?';
@@ -8083,8 +8342,8 @@
 
       window.adminBulkDelete = function () {
         var ids = _adminSelectedIds();
-        if (ids.length === 0) return;
-        if (!confirm('Supprimer ' + ids.length + ' comptes ?\n\nLes comptes seront désactivés.\nAucun historique pédagogique ne sera supprimé.')) return;
+        if (!_adminBulkGuard(ids)) return;
+        if (!confirm('Supprimer ' + ids.length + ' utilisateurs ?\n\nLes comptes seront désactivés.\nAucune donnée pédagogique ne sera supprimée.\nL\'historique sera conservé.')) return;
         _adminBulkApply(ids, 0, true);
       };
 
