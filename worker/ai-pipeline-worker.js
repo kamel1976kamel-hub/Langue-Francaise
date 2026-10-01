@@ -1783,6 +1783,108 @@ async function handlePedagogieCreateAcademicYear(env, user, body) {
     return reponseJSON({ academicYear }, 201);
 }
 
+// Crée un compte utilisateur (users uniquement) pour l'administration pédagogique.
+// Décisions P2 : id opaque généré côté serveur (D-2), username normalisé trim+lowercase
+// (D-3), mot de passe temporaire généré puis hashé et retourné UNE SEULE FOIS (D-1),
+// must_change=1 (D-5), actif=1 (D-6), audit sans secret (D-7), rate limiting identique
+// au reset (D-9). N'insère JAMAIS de profil teachers/students (laissé à create-teacher /
+// create-student). Concurrence portée par la contrainte UNIQUE(users.username) (D-4).
+async function handlePedagogieCreateUser(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    const pepper = env.AUTH_PEPPER;
+    if (!pepper) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    // role : uniquement teacher ou student (jamais concepteur ici).
+    const role = body.role;
+    if (role !== 'teacher' && role !== 'student') {
+        return reponseJSON({ erreur: 'role invalide (valeurs autorisées: teacher, student)' }, 400);
+    }
+
+    // username : trim().toLowerCase(), non vide. Aucune autre validation (pas de regex
+    // inventée). La UNIQUE existante sert de garde ; le lowercase garantit la cohérence
+    // avec la recherche de login (handleLogin normalise déjà en minuscules).
+    const username = (typeof body.username === 'string') ? body.username.trim().toLowerCase() : '';
+    if (!username) {
+        return reponseJSON({ erreur: 'username requis (chaîne non vide)' }, 400);
+    }
+
+    // displayName : chaîne obligatoire, normalisée, longueur 1..120.
+    const displayName = normalizeDisplayName(body.displayName);
+    if (displayName === null || displayName.length < 1 || displayName.length > 120) {
+        return reponseJSON({ erreur: 'displayName invalide (1 à 120 caractères)' }, 400);
+    }
+
+    // Rate limiting : même mécanisme que le reset (par session admin, fenêtre glissante).
+    if (await checkResetRateLimit(db, user.id)) {
+        return reponseJSON({ erreur: 'Trop de créations récentes, réessayez plus tard' }, 429);
+    }
+
+    // id opaque (équivalent lower(hex(randomblob(16)))) + mot de passe temporaire hashé.
+    const newId = generateRandomHex(16);
+    const tempPassword = generateTempPassword();
+    const passwordHash = await hashPassword(tempPassword, pepper);
+
+    // INSERT limité à users. concepteur=0 / actif=1 / must_change=1 imposés côté serveur.
+    // La contrainte UNIQUE(users.username) est la garde de concurrence : doublon → 409.
+    const insertStmt = db.prepare(
+        `INSERT INTO users (id, username, password_hash, display_name, role, concepteur, actif, must_change)
+         VALUES (?, ?, ?, ?, ?, 0, 1, 1)`
+    ).bind(newId, username, passwordHash, displayName, role);
+
+    // Audit sans secret : new_values = {username, role, displayName} uniquement.
+    // actor = user.id (session), entity_id = users.id. Gardé par changes() = 1.
+    const auditValues = JSON.stringify({ username, role, displayName });
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'create_user', 'user', ?, NULL, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), newId, auditValues);
+
+    // Relecture par id ; ne projette JAMAIS password_hash.
+    const selectStmt = db.prepare(
+        `SELECT id, username, display_name, role, actif, must_change FROM users WHERE id = ?`
+    ).bind(newId);
+
+    let results;
+    try {
+        results = await db.batch([insertStmt, auditStmt, selectStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: "Ce nom d'utilisateur est déjà utilisé" }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-create-user (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (changes === 0) {
+        return reponseJSON({ erreur: "Ce nom d'utilisateur est déjà utilisé" }, 409);
+    }
+
+    const fetched = (results && results[2] && Array.isArray(results[2].results)) ? results[2].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+
+    // Comptabiliser l'opération réussie pour le rate limiting.
+    await recordResetOperation(db, user.id);
+
+    // Retourner le mot de passe temporaire UNE SEULE FOIS. Jamais le hash.
+    return reponseJSON({
+        user: {
+            id: row.id,
+            username: row.username,
+            displayName: row.display_name,
+            role: row.role,
+            actif: row.actif,
+            mustChange: row.must_change
+        },
+        temporaryPassword: tempPassword
+    }, 201);
+}
+
 // Crée un profil enseignant lié à un users.id existant avec role='teacher'.
 // Intégrité/concurrence : INSERT conditionnel (WHERE EXISTS user teacher) +
 // audit gardé par `WHERE changes() = 1`, le tout dans une transaction db.batch().
@@ -2543,6 +2645,11 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieCreateModuleOffering(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-create-user') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieCreateUser(env, user, corpsBrut);
         }
 
         // ─── PIPELINE IA — Session requise ───

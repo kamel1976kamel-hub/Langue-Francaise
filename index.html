@@ -2048,6 +2048,8 @@
           <!-- Navigation interne (8 sections, sans données) -->
           <nav id="pedagogyNav" class="flex-shrink-0 sm:w-56 border-b sm:border-b-0 sm:border-r p-2 grid grid-cols-2 sm:grid-cols-1 gap-1 overflow-y-auto" style="border-color: var(--bs-border-color);">
             <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="years" onclick="showPedagogySection('years')">Années académiques</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="accountTeacher" onclick="showPedagogySection('accountTeacher')">Comptes enseignants</button>
+            <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="accountStudent" onclick="showPedagogySection('accountStudent')">Comptes étudiants</button>
             <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="teachers" onclick="showPedagogySection('teachers')">Enseignants</button>
             <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="students" onclick="showPedagogySection('students')">Étudiants</button>
             <button type="button" class="pedagogy-nav-btn w-full text-left text-sm px-3 py-2 rounded-lg transition-colors" style="color: var(--bs-body-color);" data-section="groups" onclick="showPedagogySection('groups')">Groupes</button>
@@ -6056,6 +6058,8 @@
       // =================================================================
       var _PEDAGOGY_SECTIONS = {
         years: 'Années académiques',
+        accountTeacher: 'Comptes enseignants',
+        accountStudent: 'Comptes étudiants',
         teachers: 'Enseignants',
         students: 'Étudiants',
         groups: 'Groupes',
@@ -6158,6 +6162,21 @@
           listKey: 'academicYears', wrapper: 'pedagogieListAcademicYears',
           statusOptions: ['active', 'archived', 'all'], filters: [],
           columns: [{ label: 'ID', key: 'id' }, { label: 'Libellé', key: 'label' }, { label: 'Début', key: 'startsOn' }, { label: 'Fin', key: 'endsOn' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }]
+        },
+        // Comptes users (table users) distincts des profils teachers/students.
+        // Role fixe par section + excludeLinked:false pour voir tous les comptes
+        // créés par P2 (autorite = Worker ; constantParams n'est qu'un raccord UI).
+        accountTeacher: {
+          listKey: 'users', wrapper: 'pedagogieListUsers',
+          statusOptions: null, filters: [],
+          constantParams: { role: 'teacher', excludeLinked: false },
+          columns: [{ label: 'ID', key: 'id' }, { label: "Nom d'utilisateur", key: 'username' }, { label: 'Nom affiche', key: 'displayName' }]
+        },
+        accountStudent: {
+          listKey: 'users', wrapper: 'pedagogieListUsers',
+          statusOptions: null, filters: [],
+          constantParams: { role: 'student', excludeLinked: false },
+          columns: [{ label: 'ID', key: 'id' }, { label: "Nom d'utilisateur", key: 'username' }, { label: 'Nom affiche', key: 'displayName' }]
         },
         teachers: {
           listKey: 'teachers', wrapper: 'pedagogieListTeachers',
@@ -6384,6 +6403,13 @@
             params[f.key] = raw;
           }
         }
+        // Parametres constants par section (ex: role / excludeLinked pour comptes
+        // users) : non saisissables, appliques apres les filtres.
+        if (cfg.constantParams) {
+          for (var ck in cfg.constantParams) {
+            if (Object.prototype.hasOwnProperty.call(cfg.constantParams, ck)) params[ck] = cfg.constantParams[ck];
+          }
+        }
         return params;
       }
 
@@ -6584,6 +6610,32 @@
             { key: 'label', label: 'Libellé', type: 'text', req: true, max: 50 },
             { key: 'startsOn', label: 'Début (YYYY-MM-DD)', type: 'date', req: false },
             { key: 'endsOn', label: 'Fin (YYYY-MM-DD)', type: 'date', req: false }
+          ]
+        },
+        // Création de comptes users (P2). Le rôle est un paramètre constant côté
+        // serveur (imposé par le handler) ; jamais un champ saisissable. Le mot de
+        // passe temporaire n'est PAS un champ : généré côté serveur et affiché une
+        // seule fois via la modale réutilisable (revealTempPassword).
+        accountTeacher: {
+          buttonLabel: 'Créer un compte enseignant', wrapper: 'pedagogieCreateUser',
+          resultKey: 'user', refresh: 'accountTeacher',
+          title: 'Créer un compte enseignant',
+          confirm: 'Confirmer la création de ce compte enseignant ?',
+          constantParams: { role: 'teacher' }, revealTempPassword: true,
+          fields: [
+            { key: 'username', label: "Nom d'utilisateur", type: 'text', req: true, max: 64 },
+            { key: 'displayName', label: 'Nom affiche', type: 'text', req: true, max: 120 }
+          ]
+        },
+        accountStudent: {
+          buttonLabel: 'Créer un compte étudiant', wrapper: 'pedagogieCreateUser',
+          resultKey: 'user', refresh: 'accountStudent',
+          title: 'Créer un compte étudiant',
+          confirm: 'Confirmer la création de ce compte étudiant ?',
+          constantParams: { role: 'student' }, revealTempPassword: true,
+          fields: [
+            { key: 'username', label: "Nom d'utilisateur", type: 'text', req: true, max: 64 },
+            { key: 'displayName', label: 'Nom affiche', type: 'text', req: true, max: 120 }
           ]
         },
         teachers: {
@@ -6843,6 +6895,12 @@
           if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + v.errors.map(function (e) { return _escapeHtml(e); }).join('<br>') + '</span>';
           return;
         }
+        // Appliquer les parametres constants (ex: role) imposes cote serveur.
+        if (wcfg.constantParams) {
+          for (var ck in wcfg.constantParams) {
+            if (Object.prototype.hasOwnProperty.call(wcfg.constantParams, ck)) v.params[ck] = wcfg.constantParams[ck];
+          }
+        }
         if (!window.confirm(wcfg.confirm)) return;
         var wrapper = window.AuthClient && window.AuthClient[wcfg.wrapper];
         if (typeof wrapper !== 'function') {
@@ -6870,6 +6928,18 @@
         }
         var data = res.data || {};
         if (res.status === 201) {
+          // Creation de compte : le mot de passe temporaire n'est retourne qu'une
+          // fois. On le presente via la modale reutilisable (zone copiable, non
+          // persistee) plutot que le simple message de succes.
+          if (wcfg.revealTempPassword && data.temporaryPassword) {
+            var u = data.user || {};
+            if (typeof showAdminResult === 'function') {
+              showAdminResult([{ username: u.username || '', displayName: u.displayName || '', temporaryPassword: data.temporaryPassword }]);
+            }
+            _pedagogyResetForm(wcfg);
+            _pedagogyLoadSection(wcfg.refresh);
+            return;
+          }
           if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-success, #16a34a);">✓ Opération enregistrée.</span>';
           _pedagogyResetForm(wcfg);
           _pedagogyLoadSection(wcfg.refresh);
