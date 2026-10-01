@@ -3717,6 +3717,186 @@ async function handlePedagogieSetUserActive(env, user, body) {
     return reponseJSON({ user: mapUser(row) }, 200);
 }
 
+// P9.2 — Modification contrôlée d'un compte users : SEUL champ business-editable,
+// display_name (même règle de normalisation/longueur que create-user : trim,
+// espaces réduits, 1..120). id/username/role/actif/must_change/password_hash ne
+// sont JAMAIS touchés ici ; aucun DELETE. Le username reste IMMUTABLE : le login
+// (handleLogin) le normalise en minuscules et UNIQUE(users.username) porte
+// l'identité de connexion — aucun contrat P0→P8 n'autorise un renommage sûr, il
+// est donc documenté comme non modifiable plutôt que rendu éditable. La cible
+// n'a pas besoin d'être active (modifier le nom d'un compte inactif/supprimé
+// logiquement est sans effet sur l'accès). Idempotence : nom déjà identique →
+// 200 sans mutation ni audit. TOCTOU : UPDATE ... WHERE id=? AND display_name IS ?
+// (état lu en pré-lecture ; `IS` compare correctement NULL et valeurs). Audit
+// update_user par changes()=1, oldValues/newValues = { displayName } uniquement
+// (jamais de secret).
+async function handlePedagogieUpdateUser(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (typeof body.userId !== 'string' || !body.userId.trim()) {
+        return reponseJSON({ erreur: 'userId doit être une chaîne non vide' }, 400);
+    }
+    const userId = body.userId.trim();
+    const displayName = normalizeDisplayName(body.displayName);
+    if (displayName === null || displayName.length < 1 || displayName.length > 120) {
+        return reponseJSON({ erreur: 'displayName invalide (1 à 120 caractères)' }, 400);
+    }
+
+    const existing = await db.prepare('SELECT id, username, display_name, role, actif FROM users WHERE id = ?').bind(userId).first();
+    if (!existing) return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    const mapUser = (r) => ({ id: r.id, username: r.username, displayName: r.display_name, role: r.role, actif: r.actif });
+    if ((existing.display_name || '') === displayName) return reponseJSON({ user: mapUser(existing) }, 200);
+
+    const oldValues = JSON.stringify({ displayName: existing.display_name });
+    const newValues = JSON.stringify({ displayName });
+    const updateStmt = db.prepare(
+        `UPDATE users SET display_name = ?, updated_at = datetime('now') WHERE id = ? AND display_name IS ?`
+    ).bind(displayName, userId, existing.display_name);
+    const selectStmt = db.prepare('SELECT id, username, display_name, role, actif FROM users WHERE id = ?').bind(userId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'update_user', 'user', ?, ?, ? WHERE changes() = 1`
+    ).bind(String(user.id), userId, oldValues, newValues);
+
+    let results;
+    try { results = await db.batch([updateStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-update-user (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    if (changesCount === 0) {
+        if ((row.display_name || '') === displayName) return reponseJSON({ user: mapUser(row) }, 200);
+        return reponseJSON({ erreur: 'Modification impossible (compte modifié concurremment)' }, 409);
+    }
+    return reponseJSON({ user: mapUser(row) }, 200);
+}
+
+// P9.6 — Actions collectives d'activation/désactivation (la « suppression » du
+// produit EST la désactivation logique : actif = 0, aucun DELETE, historique
+// pédagogique intégralement conservé). Mutation transactionnelle UNIQUE via
+// db.batch() : les paires [UPDATE gardé, audit changes()=1] de tous les comptes
+// s'exécutent dans la même transaction D1 — pas d'état partiellement appliqué,
+// pas de N POST séparés. Protections prioritaires, refus du BATCH ENTIER (403,
+// jamais de sélection partielle silencieuse) : impossible d'inclure son propre
+// compte ; impossible de désactiver un compte de PEDAGOGIE_ADMIN_IDS. Chaîne
+// d'autorisation déjà appliquée par le dispatcher : session → allowlist →
+// user.actif. Idempotence : un compte déjà dans l'état cible n'est ni muté
+// (WHERE actif = état lu) ni audité. Les comptes inexistants sont comptabilisés
+// dans notFound, sans écriture. Déduplication serveur + borne 50 ids (limite
+// technique des batches D1 : 100 instructions, 2 par compte). Réponse détaillée
+// { requested, modified, alreadyTarget, notFound, physicallyDeleted: 0 }.
+async function handlePedagogieSetUsersActive(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Array.isArray(body.userIds) || body.userIds.length === 0) {
+        return reponseJSON({ erreur: 'userIds doit être un tableau non vide' }, 400);
+    }
+    const seen = {};
+    const userIds = [];
+    for (let i = 0; i < body.userIds.length; i++) {
+        const raw = body.userIds[i];
+        if (typeof raw !== 'string' || !raw.trim()) {
+            return reponseJSON({ erreur: 'chaque userId doit être une chaîne non vide' }, 400);
+        }
+        const id = raw.trim();
+        if (!seen[id]) { seen[id] = true; userIds.push(id); }
+    }
+    if (userIds.length > 50) {
+        return reponseJSON({ erreur: 'au plus 50 comptes par opération collective' }, 400);
+    }
+    let actif;
+    if (body.actif === 1 || body.actif === true) actif = 1;
+    else if (body.actif === 0 || body.actif === false) actif = 0;
+    else return reponseJSON({ erreur: 'actif doit valoir 0 ou 1' }, 400);
+
+    const selfId = String(user.id);
+    for (let i = 0; i < userIds.length; i++) {
+        if (userIds[i] === selfId) {
+            return reponseJSON({ erreur: 'Impossible de modifier votre propre compte' }, 403);
+        }
+        if (actif === 0 && PEDAGOGIE_ADMIN_IDS.includes(userIds[i])) {
+            return reponseJSON({ erreur: 'Impossible de désactiver un compte administrateur' }, 403);
+        }
+    }
+
+    // Pré-lecture de toutes les cibles (placeholders liés, jamais d'interpolation).
+    const placeholders = userIds.map(() => '?').join(', ');
+    const rows = await db.prepare(
+        `SELECT id, username, display_name, role, actif FROM users WHERE id IN (${placeholders})`
+    ).bind(...userIds).all();
+    const found = (rows && Array.isArray(rows.results)) ? rows.results : [];
+    const foundById = {};
+    for (let i = 0; i < found.length; i++) foundById[found[i].id] = found[i];
+
+    let alreadyTarget = 0;
+    let notFound = 0;
+    const statements = [];
+    const targets = [];
+    for (let i = 0; i < userIds.length; i++) {
+        const id = userIds[i];
+        const row = foundById[id];
+        if (!row) { notFound++; continue; }
+        const currentActif = row.actif ? 1 : 0;
+        if (currentActif === actif) { alreadyTarget++; continue; }
+        const actionName = (actif === 1) ? 'set_user_active' : 'set_user_inactive';
+        targets.push(id);
+        statements.push(
+            db.prepare(`UPDATE users SET actif = ?, updated_at = datetime('now') WHERE id = ? AND actif = ?`).bind(actif, id, currentActif),
+            db.prepare(
+                `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+                 SELECT ?, ?, 'user', ?, ?, ? WHERE changes() = 1`
+            ).bind(String(user.id), actionName, id, JSON.stringify({ actif: currentActif }), JSON.stringify({ actif }))
+        );
+    }
+
+    const summaryBase = {
+        requested: userIds.length,
+        alreadyTarget,
+        notFound,
+        physicallyDeleted: 0
+    };
+
+    if (targets.length === 0) {
+        return reponseJSON(Object.assign({ modified: 0, users: [] }, summaryBase), 200);
+    }
+
+    let results;
+    try { results = await db.batch(statements); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-set-users-active (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    // changes() de chaque UPDATE (positions paires) : 1 = mutation effective,
+    // 0 = course concurrente déjà appliquée → compte reclassé en alreadyTarget.
+    let modified = 0;
+    let raced = 0;
+    const mutatedUsers = [];
+    for (let i = 0; i < targets.length; i++) {
+        const meta = (results && results[i * 2] && results[i * 2].meta) ? results[i * 2].meta : {};
+        if ((meta.changes || 0) === 1) { modified++; mutatedUsers.push(targets[i]); } else { raced++; }
+    }
+    return reponseJSON(Object.assign({
+        modified,
+        alreadyTarget: alreadyTarget + raced,
+        users: mutatedUsers.map((id) => mapBulk(summaryBase, id, foundById))
+    }, { requested: summaryBase.requested, notFound: summaryBase.notFound, physicallyDeleted: 0 }), 200);
+}
+
+function mapBulk(_summary, id, foundById) {
+    const r = foundById[id];
+    return { id: r.id, username: r.username, displayName: r.display_name, role: r.role };
+}
+
 // P8-C.2 — Réactivation d'un groupe : inactive -> active UNIQUEMENT. L'archivage
 // reste DÉFINITIF (contrat P5/P6) : archived -> active renvoie 409 ; active =
 // idempotent 200. La réactivation ne peut jamais placer le groupe au-dessus de sa
@@ -4464,6 +4644,17 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieTransferStudent(env, user, corpsBrut);
+        }
+        // ─── P9 — console de gestion des comptes (GO GLOBAL P9) ───
+        if (actionAuth === 'pedagogie-update-user') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieUpdateUser(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-set-users-active') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieSetUsersActive(env, user, corpsBrut);
         }
 
         // ─── PIPELINE IA — Session requise ───

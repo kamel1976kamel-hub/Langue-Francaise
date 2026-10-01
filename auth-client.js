@@ -347,6 +347,15 @@
         return workerFetch(Object.assign({ action: 'pedagogie-transfer-student' }, params || {}));
     }
 
+    // ---- Console de gestion des comptes P9 — wrappers fins, autorité = Worker ----
+    function pedagogieUpdateUser(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-update-user' }, params || {}));
+    }
+
+    function pedagogieSetUsersActive(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-set-users-active' }, params || {}));
+    }
+
     // =================================================================
     // HELPERS
     // =================================================================
@@ -434,6 +443,8 @@
         pedagogieUpdateModuleOffering: pedagogieUpdateModuleOffering,
         pedagogieArchiveModuleOffering: pedagogieArchiveModuleOffering,
         pedagogieSetUserActive: pedagogieSetUserActive,
+        pedagogieUpdateUser: pedagogieUpdateUser,
+        pedagogieSetUsersActive: pedagogieSetUsersActive,
         pedagogieReactivateGroup: pedagogieReactivateGroup,
         pedagogieReactivateTeacherAssignment: pedagogieReactivateTeacherAssignment,
         pedagogieReactivateModuleOffering: pedagogieReactivateModuleOffering,

@@ -2001,6 +2001,55 @@
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <button type="button" onclick="adminToggleAddForm()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            + Ajouter un utilisateur
+          </button>
+        </div>
+        <div id="adminAddForm" class="mb-4 hidden rounded-lg border p-4" style="border-color: var(--bs-border-color);">
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="text-xs" style="color: var(--bs-text-muted);">Nom complet
+              <input id="adminNewDisplayName" type="text" maxlength="120" class="mt-1 w-full rounded-lg border px-3 py-2 text-sm" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+            </label>
+            <label class="text-xs" style="color: var(--bs-text-muted);">Username
+              <input id="adminNewUsername" type="text" maxlength="60" class="mt-1 w-full rounded-lg border px-3 py-2 text-sm" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+            </label>
+            <label class="text-xs" style="color: var(--bs-text-muted);">Rôle
+              <select id="adminNewRole" class="mt-1 w-full rounded-lg border px-3 py-2 text-sm" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+                <option value="teacher">Enseignant</option>
+                <option value="student">Élève</option>
+              </select>
+            </label>
+            <p class="self-end text-xs" style="color: var(--bs-text-muted);">Le mot de passe initial est généré et affiché une seule fois ; l'utilisateur devra le changer à la première connexion.</p>
+          </div>
+          <div id="adminAddFormError" class="mt-2 text-xs" style="color: var(--bs-danger);"></div>
+          <div class="mt-3 flex gap-2">
+            <button type="button" onclick="adminCreateUser()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Créer</button>
+            <button type="button" onclick="adminToggleAddForm()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Annuler</button>
+          </div>
+        </div>
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <input id="adminSearchInput" type="text" placeholder="Rechercher (nom, username)..." oninput="adminRenderUserList()" class="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+          <select id="adminStatusFilter" onchange="loadAdminUserList()" class="rounded-lg border px-2 py-2 text-sm" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+            <option value="all" selected>Tous</option>
+            <option value="active">Actifs</option>
+            <option value="inactive">Inactifs</option>
+          </select>
+          <select id="adminRoleFilter" onchange="loadAdminUserList()" class="rounded-lg border px-2 py-2 text-sm" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+            <option value="all" selected>Tous les rôles</option>
+            <option value="teacher">Enseignants</option>
+            <option value="student">Élèves</option>
+          </select>
+        </div>
+        <label class="mb-2 flex items-center gap-2 text-sm" style="color: var(--bs-body-color);">
+          <input type="checkbox" id="adminSelectAll" onchange="adminToggleAll(this.checked)"> Tout sélectionner
+        </label>
+        <div id="adminBulkBar" class="mb-3 hidden items-center gap-2 rounded-lg border p-2" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg);">
+          <span id="adminBulkCount" class="text-sm font-medium"></span>
+          <button type="button" onclick="adminBulkSet(1)" class="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700">Activer</button>
+          <button type="button" onclick="adminBulkSet(0)" class="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700">Désactiver</button>
+          <button type="button" onclick="adminBulkDelete()" class="rounded bg-rose-600 px-3 py-1 text-xs font-medium text-white hover:bg-rose-700">Supprimer</button>
+        </div>
         <div id="adminUserList" class="space-y-2 mb-4">
           <p class="text-sm text-gray-500">Chargement...</p>
         </div>
@@ -7784,48 +7833,259 @@
         set('<span style="color: var(--bs-danger);">' + _escapeHtml(msg) + '</span>');
       }
 
+      // ---- P9 — console de gestion des comptes. Source : pedagogie-list-users
+      // (requirePedagogieAdmin côté Worker). Le DOM n'injecte JAMAIS un id brut
+      // dans un onclick : chaque ligne visible reçoit un handle entier
+      // (adminUserN) et l'userId réel reste dans _adminHandleMap. Les données
+      // serveur passent par _escapeHtml. Le reset conserve le mécanisme existant
+      // (admin-reset-password / admin-reset-batch, concepteur).
+      var _adminUsersCache = [];
+      var _adminHandleSeq = 0;
+      var _adminHandleMap = {};
+
       function loadAdminUserList() {
         var listEl = document.getElementById('adminUserList');
         if (!listEl) return;
         listEl.innerHTML = '<p class="text-sm text-gray-500">Chargement...</p>';
-        window.AuthClient.adminListUsers().then(function(result) {
-          if (result.status !== 200 || !result.data.users) {
-            listEl.innerHTML = '<p class="text-sm text-rose-600">Erreur de chargement.</p>';
-            return;
-          }
-          var users = result.data.users;
-          var currentUser = profileSelector.currentUser;
-          var html = '';
-          for (var i = 0; i < users.length; i++) {
-            var u = users[i];
-            var isSelf = currentUser && u.id === currentUser.id;
-            var roleLabel = u.role === 'teacher' ? 'Enseignant' : 'Élève';
-            if (u.concepteur) roleLabel += ' (concepteur)';
-            var statusLabel = u.actif ? 'Actif' : 'Inactif';
-            var mustChangeLabel = u.must_change ? '⚠️ À changer' : '✅ OK';
-            html += '<label class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" style="border-color: var(--bs-border-color);">';
-            html += '<input type="checkbox" class="admin-user-check" value="' + _escapeHtml(u.id) + '"' + (isSelf ? ' disabled' : '') + ' onchange="updateAdminResetBtn()">';
-            html += '<div class="flex-1 min-w-0">';
-            html += '<div class="text-sm font-medium truncate" style="color: var(--bs-heading-color);">' + _escapeHtml(u.display_name || u.username) + '</div>';
-            html += '<div class="text-xs text-gray-500">' + _escapeHtml(u.username) + ' · ' + roleLabel + ' · ' + statusLabel + ' · ' + mustChangeLabel + '</div>';
-            html += '</div>';
-            if (!isSelf) {
-              html += '<button type="button" onclick="adminResetSingle(\'' + _escapeHtml(u.id) + '\')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
-            } else {
-              html += '<span class="text-xs text-gray-400">Votre compte</span>';
+        var statusEl = document.getElementById('adminStatusFilter');
+        var roleEl = document.getElementById('adminRoleFilter');
+        var status = statusEl ? statusEl.value : 'all';
+        var role = roleEl ? roleEl.value : 'all';
+        var includeInactive = (status !== 'active');
+        var roles = (role === 'all') ? ['teacher', 'student'] : [role];
+        var calls = roles.map(function (rl) {
+          return window.AuthClient.pedagogieListUsers({ role: rl, includeInactive: includeInactive, limit: 500 });
+        });
+        Promise.all(calls).then(function (results) {
+          var users = [];
+          for (var i = 0; i < results.length; i++) {
+            var res = results[i];
+            if (res.status !== 200 || !res.data || !res.data.users) {
+              listEl.innerHTML = '<p class="text-sm text-rose-600">Erreur de chargement.</p>';
+              return;
             }
-            html += '</label>';
+            users = users.concat(res.data.users);
           }
-          listEl.innerHTML = html;
-        }).catch(function() {
+          if (status === 'active') users = users.filter(function (u) { return !!u.actif; });
+          if (status === 'inactive') users = users.filter(function (u) { return !u.actif; });
+          _adminUsersCache = users;
+          adminRenderUserList();
+        }).catch(function () {
           listEl.innerHTML = '<p class="text-sm text-rose-600">Erreur réseau.</p>';
         });
       }
 
-      window.updateAdminResetBtn = function() {
+      window.adminRenderUserList = function () {
+        var listEl = document.getElementById('adminUserList');
+        if (!listEl) return;
+        var searchEl = document.getElementById('adminSearchInput');
+        var q = searchEl ? String(searchEl.value || '').trim().toLowerCase() : '';
+        _adminHandleMap = {};
+        _adminHandleSeq = 0;
+        var currentUser = profileSelector.currentUser;
+        var html = '';
+        for (var i = 0; i < _adminUsersCache.length; i++) {
+          var u = _adminUsersCache[i];
+          var hay = (String(u.displayName || '') + ' ' + String(u.username || '')).toLowerCase();
+          if (q && hay.indexOf(q) === -1) continue;
+          var handle = ++_adminHandleSeq;
+          _adminHandleMap[handle] = { userId: String(u.id), actif: u.actif ? 1 : 0, username: u.username, displayName: u.displayName };
+          var isSelf = currentUser && String(u.id) === String(currentUser.id);
+          var roleLabel = u.role === 'teacher' ? 'Enseignant' : 'Élève';
+          var statusLabel = u.actif ? 'Actif' : 'Inactif';
+          html += '<div class="flex items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-gray-800" style="border-color: var(--bs-border-color);">';
+          html += '<input type="checkbox" class="admin-user-check" value="' + handle + '"' + (isSelf ? ' disabled' : '') + ' onchange="adminUpdateBulkBar()">';
+          html += '<div class="flex-1 min-w-0">';
+          html += '<div class="text-sm font-medium truncate" style="color: var(--bs-heading-color);">' + _escapeHtml(u.displayName || u.username) + '</div>';
+          html += '<div class="text-xs text-gray-500">' + _escapeHtml(u.username) + ' · ' + roleLabel + ' · ' + statusLabel + (isSelf ? ' · Votre compte' : '') + '</div>';
+          html += '</div>';
+          html += '<div class="flex flex-shrink-0 gap-1">';
+          html += '<button type="button" onclick="adminUserEdit(' + handle + ')" class="rounded bg-slate-100 px-2 py-1 text-xs font-medium hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600" style="color: var(--bs-body-color);">Modifier</button>';
+          if (!isSelf && u.actif) {
+            html += '<button type="button" onclick="adminUserReset(' + handle + ')" class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200">Réinitialiser</button>';
+            html += '<button type="button" onclick="adminUserDeactivate(' + handle + ')" class="rounded bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-200">Désactiver</button>';
+            html += '<button type="button" onclick="adminUserDelete(' + handle + ')" class="rounded bg-rose-100 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-200">Supprimer</button>';
+          }
+          if (!u.actif) {
+            html += '<button type="button" onclick="adminUserActivate(' + handle + ')" class="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-200">Réactiver</button>';
+          }
+          html += '</div></div>';
+        }
+        if (!html) html = '<p class="text-sm" style="color: var(--bs-text-muted);">Aucun compte.</p>';
+        listEl.innerHTML = html;
+        var selAll = document.getElementById('adminSelectAll');
+        if (selAll) selAll.checked = false;
+        adminUpdateBulkBar();
+      };
+
+      function _adminSelectedIds() {
         var checks = document.querySelectorAll('.admin-user-check:checked');
+        var ids = [];
+        for (var i = 0; i < checks.length; i++) {
+          var rec = _adminHandleMap[parseInt(checks[i].value, 10)];
+          if (rec && ids.indexOf(rec.userId) === -1) ids.push(rec.userId);
+        }
+        return ids;
+      }
+
+      window.adminUpdateBulkBar = function () {
+        var checks = document.querySelectorAll('.admin-user-check:checked');
+        var bar = document.getElementById('adminBulkBar');
+        var count = document.getElementById('adminBulkCount');
         var btn = document.getElementById('adminResetSelectedBtn');
         if (btn) btn.disabled = checks.length === 0;
+        if (bar && count) {
+          count.textContent = checks.length + ' comptes sélectionnés';
+          bar.classList.toggle('hidden', checks.length === 0);
+          bar.classList.toggle('flex', checks.length > 0);
+        }
+      };
+
+      window.adminToggleAll = function (checked) {
+        var checks = document.querySelectorAll('.admin-user-check');
+        for (var i = 0; i < checks.length; i++) {
+          if (!checks[i].disabled) checks[i].checked = checked;
+        }
+        adminUpdateBulkBar();
+      };
+
+      // ---- Formulaire d'ajout (réutilise pedagogie-create-user : mot de passe
+      // généré côté serveur, must_change=1, temporaire affiché UNE SEULE FOIS).
+      window.adminToggleAddForm = function () {
+        var form = document.getElementById('adminAddForm');
+        if (!form) return;
+        var showing = form.classList.toggle('hidden') === false;
+        var err = document.getElementById('adminAddFormError');
+        if (err) err.textContent = '';
+        if (showing) { var dn = document.getElementById('adminNewDisplayName'); if (dn) dn.focus(); }
+      };
+
+      window.adminCreateUser = function () {
+        var err = document.getElementById('adminAddFormError');
+        var dnEl = document.getElementById('adminNewDisplayName');
+        var unEl = document.getElementById('adminNewUsername');
+        var rlEl = document.getElementById('adminNewRole');
+        var displayName = dnEl ? String(dnEl.value || '').trim() : '';
+        var username = unEl ? String(unEl.value || '').trim() : '';
+        var role = rlEl ? rlEl.value : 'teacher';
+        if (err) err.textContent = '';
+        if (!displayName) { if (err) err.textContent = 'Nom complet requis.'; return; }
+        if (!username) { if (err) err.textContent = "Nom d'utilisateur requis."; return; }
+        if (role !== 'teacher' && role !== 'student') { if (err) err.textContent = 'Rôle invalide.'; return; }
+        window.AuthClient.pedagogieCreateUser({ displayName: displayName, username: username, role: role }).then(function (result) {
+          if (result.status === 201 && result.data && result.data.user) {
+            if (dnEl) dnEl.value = ''; if (unEl) unEl.value = '';
+            var form = document.getElementById('adminAddForm');
+            if (form) form.classList.add('hidden');
+            loadAdminUserList();
+            showAdminResult([{ username: result.data.user.username, displayName: result.data.user.displayName, temporaryPassword: result.data.temporaryPassword }]);
+          } else if (result.status === 409) {
+            if (err) err.textContent = "Ce nom d'utilisateur est déjà utilisé (409).";
+          } else {
+            if (err) err.textContent = 'Erreur : ' + ((result.data && result.data.erreur) || 'opération échouée');
+          }
+        }).catch(function () { if (err) err.textContent = 'Erreur réseau.'; });
+      };
+
+      // ---- Actions individuelles (handle entier uniquement ; id réel dans la map).
+      function _adminUserEditMessage(result, okPrefix) {
+        if (result.status === 200) { loadAdminUserList(); return ''; }
+        if (result.status === 403) return 'Opération refusée : compte protégé (403).';
+        if (result.status === 404) return 'Compte introuvable (404).';
+        if (result.status === 409) return 'Modification impossible, état concurrent (409).';
+        return 'Erreur : ' + ((result.data && result.data.erreur) || okPrefix);
+      }
+
+      window.adminUserEdit = function (handle) {
+        var rec = _adminHandleMap[handle];
+        if (!rec) return;
+        var name = window.prompt('Nouveau nom affiché :', rec.displayName || '');
+        if (name === null) return;
+        window.AuthClient.pedagogieUpdateUser({ userId: rec.userId, displayName: name }).then(function (result) {
+          var msg = _adminUserEditMessage(result, 'opération échouée');
+          if (msg) alert(msg);
+        }).catch(function () { alert('Erreur réseau.'); });
+      };
+
+      window.adminUserReset = function (handle) {
+        var rec = _adminHandleMap[handle];
+        if (!rec) return;
+        if (!confirm('Réinitialiser le mot de passe de cet utilisateur ?')) return;
+        window.AuthClient.adminResetPassword(rec.userId).then(function (result) {
+          if (result.status === 200 && result.data.temporaryPassword) {
+            showAdminResult([{ username: result.data.username, displayName: result.data.displayName, temporaryPassword: result.data.temporaryPassword }]);
+          } else {
+            alert('Erreur : ' + ((result.data && result.data.erreur) || 'opération échouée'));
+          }
+        }).catch(function () { alert('Erreur réseau.'); });
+      };
+
+      window.adminUserDeactivate = function (handle) {
+        var rec = _adminHandleMap[handle];
+        if (!rec) return;
+        if (!confirm('Désactiver ce compte ?\n\nLe compte ne pourra plus se connecter.\nSon historique pédagogique sera conservé.')) return;
+        window.AuthClient.pedagogieSetUserActive({ userId: rec.userId, actif: 0 }).then(function (result) {
+          var msg = _adminUserEditMessage(result, 'désactivation échouée');
+          if (msg) alert(msg);
+        }).catch(function () { alert('Erreur réseau.'); });
+      };
+
+      window.adminUserActivate = function (handle) {
+        var rec = _adminHandleMap[handle];
+        if (!rec) return;
+        if (!confirm('Réactiver ce compte ?')) return;
+        window.AuthClient.pedagogieSetUserActive({ userId: rec.userId, actif: 1 }).then(function (result) {
+          var msg = _adminUserEditMessage(result, 'réactivation échouée');
+          if (msg) alert(msg);
+        }).catch(function () { alert('Erreur réseau.'); });
+      };
+
+      window.adminUserDelete = function (handle) {
+        var rec = _adminHandleMap[handle];
+        if (!rec) return;
+        if (!confirm('Supprimer ce compte ?\n\nLe compte ne pourra plus se connecter.\nSon historique pédagogique sera conservé.')) return;
+        window.AuthClient.pedagogieSetUserActive({ userId: rec.userId, actif: 0 }).then(function (result) {
+          if (result.status === 200) {
+            loadAdminUserList();
+            alert('Compte supprimé.\nL\'historique a été conservé.');
+          } else if (result.status === 403) {
+            alert('Suppression refusée : compte protégé (403).');
+          } else {
+            alert('Erreur : ' + ((result.data && result.data.erreur) || 'opération échouée'));
+          }
+        }).catch(function () { alert('Erreur réseau.'); });
+      };
+
+      // ---- Actions collectives : UN seul appel transactionnel pedagogie-set-users-active.
+      function _adminBulkApply(ids, actif, isDelete) {
+        window.AuthClient.pedagogieSetUsersActive({ userIds: ids, actif: actif }).then(function (result) {
+          if (result.status === 200 && result.data) {
+            var d = result.data;
+            loadAdminUserList();
+            alert(d.requested + ' comptes sélectionnés\n' + d.modified + ' comptes modifiés\n' + d.alreadyTarget + ' déjà dans l\'état cible\n' + d.notFound + ' introuvables\n' + d.physicallyDeleted + ' supprimés physiquement' + (isDelete ? '\n\nAucun historique pédagogique ne sera supprimé.' : ''));
+          } else if (result.status === 403) {
+            alert('Opération refusée : la sélection contient un compte protégé. Aucun compte n\'a été modifié.');
+          } else {
+            alert('Erreur : ' + ((result.data && result.data.erreur) || 'opération échouée'));
+          }
+        }).catch(function () { alert('Erreur réseau.'); });
+      }
+
+      window.adminBulkSet = function (actif) {
+        var ids = _adminSelectedIds();
+        if (ids.length === 0) return;
+        var msg = (actif === 0)
+          ? 'Désactiver ' + ids.length + ' comptes ?\n\nLes comptes sélectionnés seront désactivés.\nAucun historique pédagogique ne sera supprimé.'
+          : 'Activer ' + ids.length + ' comptes sélectionnés ?';
+        if (!confirm(msg)) return;
+        _adminBulkApply(ids, actif, false);
+      };
+
+      window.adminBulkDelete = function () {
+        var ids = _adminSelectedIds();
+        if (ids.length === 0) return;
+        if (!confirm('Supprimer ' + ids.length + ' comptes ?\n\nLes comptes seront désactivés.\nAucun historique pédagogique ne sera supprimé.')) return;
+        _adminBulkApply(ids, 0, true);
       };
 
       window.adminResetSingle = function(targetId) {
@@ -7840,9 +8100,7 @@
       };
 
       window.adminResetSelected = function() {
-        var checks = document.querySelectorAll('.admin-user-check:checked');
-        var ids = [];
-        for (var i = 0; i < checks.length; i++) ids.push(checks[i].value);
+        var ids = _adminSelectedIds();
         if (ids.length === 0) return;
         if (!confirm('Réinitialiser les mots de passe des ' + ids.length + ' utilisateur(s) sélectionné(s) ?')) return;
         window.AuthClient.adminResetBatch(ids).then(function(result) {
