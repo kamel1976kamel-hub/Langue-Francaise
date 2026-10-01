@@ -6181,13 +6181,13 @@
         teachers: {
           listKey: 'teachers', wrapper: 'pedagogieListTeachers',
           statusOptions: ['active', 'inactive', 'all'], filters: [],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'userId', key: 'userId' }, { label: 'Nom', key: 'displayName' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'userId', key: 'userId' }, { label: 'Nom', key: 'displayName' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }, { label: 'Action', key: '_teacherAction', render: function (r) { return _pedagogyTeacherActionCell(r); } }]
         },
         students: {
           listKey: 'students', wrapper: 'pedagogieListStudents',
           statusOptions: ['active', 'inactive', 'all'],
           filters: [{ key: 'group_id', label: 'ID groupe', type: 'number', valType: 'int' }],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'userId', key: 'userId' }, { label: 'Matricule', key: 'matricule' }, { label: 'Nom', key: 'displayName' }, { label: 'Statut', key: 'status' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'userId', key: 'userId' }, { label: 'Matricule', key: 'matricule' }, { label: 'Nom', key: 'displayName' }, { label: 'Statut', key: 'status' }, { label: 'Action', key: '_studentAction', render: function (r) { return _pedagogyStudentActionCell(r); } }]
         },
         groups: {
           listKey: 'groups', wrapper: 'pedagogieListGroups',
@@ -6198,7 +6198,7 @@
             { key: 'year_number', label: 'Année (1/2)', type: 'select', valType: 'int', options: ['1', '2'] },
             { key: 'semester_number', label: 'Semestre (1/2)', type: 'select', valType: 'int', options: ['1', '2'] }
           ],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'Année', key: 'academicYearLabel' }, { label: 'Parcours', key: 'parcours' }, { label: 'Niv.', key: 'yearNumber' }, { label: 'Sem.', key: 'semesterNumber' }, { label: 'Nom', key: 'name' }, { label: 'Code', key: 'code' }, { label: 'Statut', key: 'status' }, { label: 'Capacité', key: 'capacity', render: function (r) { return _pedagogyCapacityCell(r); } }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Année', key: 'academicYearLabel' }, { label: 'Parcours', key: 'parcours' }, { label: 'Niv.', key: 'yearNumber' }, { label: 'Sem.', key: 'semesterNumber' }, { label: 'Nom', key: 'name' }, { label: 'Code', key: 'code' }, { label: 'Statut', key: 'status' }, { label: 'Capacité', key: 'capacity', render: function (r) { return _pedagogyCapacityCell(r); } }, { label: 'Action', key: '_groupAction', render: function (r) { return _pedagogyGroupActionCell(r); } }]
         },
         members: {
           listKey: 'members', wrapper: 'pedagogieListGroupMembers',
@@ -6214,7 +6214,7 @@
             { key: 'chapterId', label: 'Module', type: 'select', valType: 'string', moduleCatalog: true },
             { key: 'academicYearId', label: 'Année académique', type: 'select', valType: 'int', dyn: 'years' }
           ],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Module', key: 'chapterId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Créé le', key: 'createdAt' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Module', key: 'chapterId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Créé le', key: 'createdAt' }, { label: 'Action', key: '_assignmentAction', render: function (r) { return _pedagogyAssignmentActionCell(r); } }]
         },
         offerings: {
           listKey: 'offerings', wrapper: 'pedagogieListModuleOfferings',
@@ -6225,7 +6225,7 @@
             { key: 'teacherUserId', label: 'Enseignant', type: 'select', valType: 'string', dyn: 'teachers' },
             { key: 'academicYearId', label: 'Année académique', type: 'select', valType: 'int', dyn: 'years' }
           ],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'Groupe', key: 'groupId' }, { label: 'Module', key: 'chapterId' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Groupe', key: 'groupId' }, { label: 'Module', key: 'chapterId' }, { label: 'Enseignant', key: 'teacherUserId' }, { label: 'Année', key: 'academicYearId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Action', key: '_offeringAction', render: function (r) { return _pedagogyOfferingActionCell(r); } }]
         },
         audit: {
           listKey: 'auditEntries', wrapper: 'pedagogieListAuditLog',
@@ -6471,6 +6471,7 @@
         }
         var items = data[cfg.listKey];
         if (!Array.isArray(items)) items = [];
+        st.lastItems = items; // cache pour le pré-remplissage du mode édition (P6)
         st.total = (typeof data.total === 'number') ? data.total : items.length;
         if (typeof data.limit === 'number') st.limit = data.limit;
         if (typeof data.offset === 'number') st.offset = data.offset;
@@ -6542,6 +6543,204 @@
         }
         return _pedagogyCell(null);
       }
+
+      // P6 — cellules d'action cycle de vie. Boutons uniquement sur un groupe
+      // actif (cycle figé : active→inactive, active→archived ; édition réservée
+      // aux groupes actifs — autorité finale = Worker). Aucun bouton DELETE.
+      function _pedagogyGroupActionCell(r) {
+        if (r && r.status === 'active') {
+          var gid = Number(r.id);
+          if (Number.isInteger(gid) && gid >= 1) {
+            return '<div class="flex gap-1">' +
+              '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="editPedagogyRow(\'groups\',' + gid + ')">Modifier</button>' +
+              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="inactivatePedagogyGroup(' + gid + ')">Désactiver</button>' +
+              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyGroup(' + gid + ')">Archiver</button>' +
+              '</div>';
+          }
+        }
+        return _pedagogyCell(null);
+      }
+
+      // Transition de statut P6 (groupe) : confirmation -> wrapper -> résultat +
+      // refresh (même motif que endPedagogyMembership / archivePedagogyAcademicYear).
+      function _pedagogyGroupStatusAction(groupId, wrapperName, label) {
+        if (!Number.isInteger(groupId) || groupId < 1) return;
+        if (!window.confirm('Confirmer ' + label + ' de ce groupe ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient[wrapperName];
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { groupId: groupId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.group) {
+            _pedagogyShowActionNotice('✓ ' + label + ' : groupe ' + data.group.status + '.', false);
+            if (_pedagogyCurrentSection === 'groups') _pedagogyLoadSection('groups');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      }
+
+      window.inactivatePedagogyGroup = function(groupId) { _pedagogyGroupStatusAction(groupId, 'pedagogieInactivateGroup', 'désactiver'); };
+      window.archivePedagogyGroup = function(groupId) { _pedagogyGroupStatusAction(groupId, 'pedagogieArchiveGroup', 'archiver'); };
+
+      // P6.2 — cellules d'action profils. Cycle active ↔ inactive (pas d'archived
+      // sans migration D1, interdit). Réactivation via update (champ status).
+      // Aucun bouton DELETE ; user_id jamais éditable.
+      function _pedagogyTeacherActionCell(r) {
+        if (!r) return _pedagogyCell(null);
+        var tid = Number(r.id);
+        if (!Number.isInteger(tid) || tid < 1) return _pedagogyCell(null);
+        if (r.status === 'active') {
+          return '<div class="flex gap-1">' +
+            '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="editPedagogyRow(\'teachers\',' + tid + ')">Modifier</button>' +
+            '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="inactivatePedagogyTeacher(' + tid + ')">Désactiver</button>' +
+            '</div>';
+        }
+        if (r.status === 'inactive') {
+          return '<button type="button" class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700" onclick="reactivatePedagogyTeacher(' + tid + ')">Réactiver</button>';
+        }
+        return _pedagogyCell(null);
+      }
+      function _pedagogyStudentActionCell(r) {
+        if (!r) return _pedagogyCell(null);
+        var sid = Number(r.id);
+        if (!Number.isInteger(sid) || sid < 1) return _pedagogyCell(null);
+        if (r.status === 'active') {
+          return '<div class="flex gap-1">' +
+            '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="editPedagogyRow(\'students\',' + sid + ')">Modifier</button>' +
+            '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="inactivatePedagogyStudent(' + sid + ')">Désactiver</button>' +
+            '</div>';
+        }
+        if (r.status === 'inactive') {
+          return '<button type="button" class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700" onclick="reactivatePedagogyStudent(' + sid + ')">Réactiver</button>';
+        }
+        return _pedagogyCell(null);
+      }
+
+      // Transition de statut profil : confirmation -> wrapper -> résultat + refresh.
+      function _pedagogyProfileStatusAction(id, wrapperName, idKey, resultKey, section, label, targetStatus) {
+        if (!Number.isInteger(id) || id < 1) return;
+        if (!window.confirm('Confirmer ' + label + ' de ce profil ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient[wrapperName];
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        var payload = {};
+        payload[idKey] = id;
+        Promise.resolve(wrapper.call(window.AuthClient, payload)).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data[resultKey]) {
+            _pedagogyShowActionNotice('✓ ' + label + ' : profil ' + data[resultKey].status + '.', false);
+            if (_pedagogyCurrentSection === section) _pedagogyLoadSection(section);
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      }
+      // Réactivation (inactive→active) : passe par update_* avec status — seul
+      // chemin autorisé puisque le GO ne définit pas d'action reactivate canonique.
+      function _pedagogyProfileReactivate(id, updateWrapper, idKey, resultKey, section) {
+        if (!Number.isInteger(id) || id < 1) return;
+        if (!window.confirm('Confirmer la réactivation de ce profil ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient[updateWrapper];
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        var payload = {};
+        payload[idKey] = id;
+        payload.status = 'active';
+        Promise.resolve(wrapper.call(window.AuthClient, payload)).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data[resultKey]) {
+            _pedagogyShowActionNotice('✓ Profil réactivé (' + data[resultKey].status + ').', false);
+            if (_pedagogyCurrentSection === section) _pedagogyLoadSection(section);
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      }
+
+      window.inactivatePedagogyTeacher = function(id) { _pedagogyProfileStatusAction(id, 'pedagogieInactivateTeacher', 'teacherId', 'teacher', 'teachers', 'désactiver', 'inactive'); };
+      window.reactivatePedagogyTeacher = function(id) { _pedagogyProfileReactivate(id, 'pedagogieUpdateTeacher', 'teacherId', 'teacher', 'teachers'); };
+      window.inactivatePedagogyStudent = function(id) { _pedagogyProfileStatusAction(id, 'pedagogieInactivateStudent', 'studentId', 'student', 'students', 'désactiver', 'inactive'); };
+      window.reactivatePedagogyStudent = function(id) { _pedagogyProfileReactivate(id, 'pedagogieUpdateStudent', 'studentId', 'student', 'students'); };
+
+      // P6.3 — cellule action affectations : « Archiver » uniquement si active
+      // (cycle active→archived ; orphan/archived -> aucun bouton ; pas de DELETE,
+      // pas d'update — clés sémantiques. Refus serveur 409 si offering active
+      // dépendante — autorité = Worker).
+      function _pedagogyAssignmentActionCell(r) {
+        if (r && r.status === 'active') {
+          var aid = Number(r.id);
+          if (Number.isInteger(aid) && aid >= 1) {
+            return '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyTeacherAssignment(' + aid + ')">Archiver</button>';
+          }
+        }
+        return _pedagogyCell(null);
+      }
+
+      window.archivePedagogyTeacherAssignment = function(assignmentId) {
+        if (!Number.isInteger(assignmentId) || assignmentId < 1) return;
+        if (!window.confirm('Confirmer l\'archivage de cette affectation ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieArchiveTeacherAssignment;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { assignmentId: assignmentId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.assignment) {
+            _pedagogyShowActionNotice('✓ Affectation archivée.', false);
+            if (_pedagogyCurrentSection === 'assignments') _pedagogyLoadSection('assignments');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      };
+
+      // P6.4 — cellule action offerings : « Modifier » (enseignant) + « Archiver »
+      // uniquement si active (cycle active→archived ; jamais l'affectation ;
+      // jamais NULL ; pas de DELETE — autorité = Worker).
+      function _pedagogyOfferingActionCell(r) {
+        if (r && r.status === 'active') {
+          var oid = Number(r.id);
+          if (Number.isInteger(oid) && oid >= 1) {
+            return '<div class="flex gap-1">' +
+              '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="editPedagogyRow(\'offerings\',' + oid + ')">Modifier</button>' +
+              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyModuleOffering(' + oid + ')">Archiver</button>' +
+              '</div>';
+          }
+        }
+        return _pedagogyCell(null);
+      }
+
+      window.archivePedagogyModuleOffering = function(offeringId) {
+        if (!Number.isInteger(offeringId) || offeringId < 1) return;
+        if (!window.confirm('Confirmer l\'archivage de cette offering ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieArchiveModuleOffering;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { offeringId: offeringId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.offering) {
+            _pedagogyShowActionNotice('✓ Offering archivée.', false);
+            if (_pedagogyCurrentSection === 'offerings') _pedagogyLoadSection('offerings');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      };
 
       // Bandeau de résultat transitoire, placé hors de #pedagogyResults pour survivre
       // au re-rendu de la liste (textContent : aucun HTML injectable).
@@ -6743,7 +6942,18 @@
           fields: [
             { key: 'userId', label: 'userId (users.id)', type: 'select', req: true, valType: 'string', dyn: 'usersTeacher' },
             { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 }
-          ]
+          ],
+          // P6.2 — édition : displayName + status uniquement ; userId immuable.
+          edit: {
+            wrapper: 'pedagogieUpdateTeacher', idKey: 'teacherId', resultKey: 'teacher',
+            titleEdit: 'Modifier le profil enseignant',
+            confirm: 'Confirmer la modification de ce profil enseignant ?',
+            immutable: [{ key: 'userId', label: 'userId' }, { key: 'id', label: 'Profil (id)' }],
+            fields: [
+              { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 },
+              { key: 'status', label: 'Statut', type: 'select', req: true, valType: 'string', options: ['active', 'inactive'] }
+            ]
+          }
         },
         students: {
           buttonLabel: 'Nouvel étudiant', wrapper: 'pedagogieCreateStudent',
@@ -6754,7 +6964,20 @@
             { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 },
             { key: 'userId', label: 'userId (compte, optionnel)', type: 'select', req: false, valType: 'string', dyn: 'usersStudent', allowEmpty: true },
             { key: 'matricule', label: 'Matricule (optionnel)', type: 'text', req: false, max: 64 }
-          ]
+          ],
+          // P6.2 — édition : displayName + matricule (unicité serveur) + status ;
+          // userId immuable. Vide sur matricule = retirer (null, contrat Worker).
+          edit: {
+            wrapper: 'pedagogieUpdateStudent', idKey: 'studentId', resultKey: 'student',
+            titleEdit: 'Modifier le profil étudiant',
+            confirm: 'Confirmer la modification de ce profil étudiant ?',
+            immutable: [{ key: 'userId', label: 'userId' }, { key: 'id', label: 'Profil (id)' }],
+            fields: [
+              { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 },
+              { key: 'matricule', label: 'Matricule (vide = retirer)', type: 'text', req: false, max: 64, emptyAsNull: true },
+              { key: 'status', label: 'Statut', type: 'select', req: true, valType: 'string', options: ['active', 'inactive'] }
+            ]
+          }
         },
         groups: {
           buttonLabel: 'Nouveau groupe', wrapper: 'pedagogieCreateGroup',
@@ -6769,7 +6992,25 @@
             { key: 'name', label: 'Nom', type: 'text', req: true, max: 120 },
             { key: 'code', label: 'Code', type: 'text', req: true, max: 50 },
             { key: 'capacity', label: 'Capacité (optionnelle)', type: 'number', req: false, valType: 'int', min: 1 }
-          ]
+          ],
+          // P6.1 — édition : name + capacity uniquement (year/parcours/y/s/code
+          // immuables, affichés en lecture seule). Autorité finale = Worker.
+          edit: {
+            wrapper: 'pedagogieUpdateGroup', idKey: 'groupId', resultKey: 'group',
+            titleEdit: 'Modifier le groupe',
+            confirm: 'Confirmer la modification de ce groupe ?',
+            immutable: [
+              { key: 'academicYearLabel', label: 'Année académique' },
+              { key: 'parcours', label: 'Parcours' },
+              { key: 'yearNumber', label: "Année d'étude" },
+              { key: 'semesterNumber', label: 'Semestre' },
+              { key: 'code', label: 'Code' }
+            ],
+            fields: [
+              { key: 'name', label: 'Nom', type: 'text', req: true, max: 120 },
+              { key: 'capacity', label: 'Capacité (vide = illimitée)', type: 'number', req: false, valType: 'int', min: 1 }
+            ]
+          }
         },
         members: {
           buttonLabel: 'Ajouter des étudiants', wrapper: 'pedagogieAddStudentsToGroup',
@@ -6801,7 +7042,19 @@
             { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groupsPep' },
             { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', moduleCatalog: true },
             { key: 'teacherUserId', label: 'Enseignant', type: 'select', req: true, valType: 'string', dyn: 'teachers' }
-          ]
+          ],
+          // P6.4 — édition : enseignant UNIQUEMENT (règles P1 réapliquées côté
+          // Worker ; jamais NULL). needsDyn : optionsenseignants via READ F1.
+          edit: {
+            wrapper: 'pedagogieUpdateModuleOffering', idKey: 'offeringId', resultKey: 'offering',
+            titleEdit: "Changer l'enseignant de l'offering",
+            confirm: "Confirmer le changement d'enseignant pour cette offering ?",
+            needsDyn: ['teachers'],
+            immutable: [{ key: 'id', label: 'Offering (id)' }, { key: 'groupId', label: 'Groupe' }, { key: 'chapterId', label: 'Module' }],
+            fields: [
+              { key: 'teacherUserId', label: 'Enseignant', type: 'select', req: true, valType: 'string', dyn: 'teachers' }
+            ]
+          }
         }
       };
 
@@ -6947,6 +7200,13 @@
 
       window.togglePedagogyForm = function() {
         var section = _pedagogyCurrentSection;
+        // Fermeture du formulaire d'édition P6 ouvert (même bouton Annuler).
+        if (_pedagogyEditCtx && _pedagogyEditCtx.section === section) {
+          _pedagogyEditCtx = null;
+          var wrapC = document.getElementById('pedagogyFormWrap');
+          if (wrapC) { wrapC.innerHTML = ''; wrapC.removeAttribute('data-open'); }
+          return;
+        }
         var wcfg = _PEDAGOGY_WRITE_CONFIG[section];
         var wrap = document.getElementById('pedagogyFormWrap');
         if (!wcfg || !wrap) return;
@@ -7027,6 +7287,36 @@
         var wcfg = _PEDAGOGY_WRITE_CONFIG[section];
         if (!wcfg || _pedagogySubmitting) return;
         var statusEl = document.getElementById('pgw-status');
+        // ─── P6 — mode édition : chemin dédié (diff + succès 200) ───
+        if (_pedagogyEditCtx && _pedagogyEditCtx.section === section) {
+          var ectx = _pedagogyEditCtx;
+          var ecfg = ectx.cfgEdit;
+          var ve = _pedagogySubmitEdit();
+          if (!ve.ok) {
+            if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + ve.errors.map(function (e) { return _escapeHtml(e); }).join('<br>') + '</span>';
+            return;
+          }
+          if (!window.confirm(ecfg.confirm)) return;
+          var ewrapper = window.AuthClient && window.AuthClient[ecfg.wrapper];
+          if (typeof ewrapper !== 'function') {
+            if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Wrapper indisponible : ' + _escapeHtml(ecfg.wrapper) + '</span>';
+            return;
+          }
+          _pedagogySubmitting = true;
+          var ebtn = document.getElementById('pgwSubmit');
+          if (ebtn) { ebtn.disabled = true; ebtn.setAttribute('data-label', ebtn.textContent); ebtn.textContent = 'Envoi…'; }
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-text-muted);">Envoi en cours…</span>';
+          Promise.resolve(ewrapper.call(window.AuthClient, ve.params)).then(function (res) {
+            _pedagogyHandleEditResult(ecfg, res, statusEl);
+            _pedagogyEditCtx = null;
+          }).catch(function () {
+            if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Erreur réseau lors de l\'enregistrement.</span>';
+          }).then(function () {
+            _pedagogySubmitting = false;
+            if (ebtn) { ebtn.disabled = false; ebtn.textContent = ebtn.getAttribute('data-label') || 'Enregistrer'; }
+          });
+          return;
+        }
         var v = _pedagogyValidateWrite(wcfg);
         if (!v.ok) {
           if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + v.errors.map(function (e) { return _escapeHtml(e); }).join('<br>') + '</span>';
@@ -7081,6 +7371,167 @@
           if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-success, #16a34a);">✓ Opération enregistrée.</span>';
           _pedagogyResetForm(wcfg);
           _pedagogyLoadSection(wcfg.refresh);
+          return;
+        }
+        var msg;
+        if (res.status === 403) msg = 'Accès refusé par le serveur (403).';
+        else if (res.status === 400) msg = 'Paramètres invalides (400) : ' + (data.erreur || 'requête incorrecte');
+        else if (res.status === 404) msg = 'Ressource introuvable (404) : ' + (data.erreur || '');
+        else if (res.status === 409) msg = 'Conflit métier (409) : ' + (data.erreur || 'opération refusée');
+        else if (res.status === 503) msg = 'Service indisponible (503).';
+        else msg = 'Erreur inattendue (' + res.status + ') : ' + (data.erreur || '');
+        if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + _escapeHtml(msg) + '</span>';
+      }
+
+      // ─── P6 — MODE ÉDITION (cycle de vie) ──────────────────────────────────
+      // Mécanisme générique piloté par cfg.edit dans _PEDAGOGY_WRITE_CONFIG.
+      // Ligne trouvée via le cache st.lastItems (source READ F1) ; formulaire
+      // prérempli ; soumission en diff (seuls les champs réellement modifiés
+      // sont envoyés) ; succès = 200 (contrat P6). Aucune logique métier : la
+      // validation et l'autorité restent au Worker.
+      var _pedagogyEditCtx = null; // { section, idKey, id, cfgEdit, wcfg }
+
+      function _pedagogyEditNormVal(f, raw) {
+        // Valeur comparable normalisée depuis le contrôle du formulaire.
+        if (f.valType === 'int') {
+          if (raw === '') return null;
+          var n = parseInt(raw, 10);
+          return Number.isInteger(n) ? n : NaN;
+        }
+        // Champ texte optionnel : vide = null explicite (retirer la valeur) si
+        // emptyAsNull ; sinon vide = '' (champ requis, refusé plus haut).
+        if (raw === '' && f.emptyAsNull) return null;
+        return raw;
+      }
+
+      function _pedagogyEditOriginal(row, f) {
+        var v = row[f.key];
+        if (f.valType === 'int' || f.emptyAsNull) return (v === null || v === undefined) ? null : String(f.valType === 'int' ? Number(v) : v);
+        return (v === null || v === undefined) ? '' : String(v);
+      }
+
+      window.editPedagogyRow = function(section, id) {
+        var st = _pedagogyState(section);
+        var wcfg = _PEDAGOGY_WRITE_CONFIG[section];
+        var wrap = document.getElementById('pedagogyFormWrap');
+        if (!wcfg || !wcfg.edit || !wrap) return;
+        var ecfg = wcfg.edit;
+        var row = null;
+        var items = st.lastItems || [];
+        for (var i = 0; i < items.length; i++) {
+          if (String(items[i].id) === String(id)) { row = items[i]; break; }
+        }
+        if (!row) { _pedagogyShowActionNotice('Ligne introuvable dans la liste affichée — recharger la section.', true); return; }
+        _pedagogyEditCtx = { section: section, idKey: ecfg.idKey, id: id, cfgEdit: ecfg, wcfg: wcfg };
+        wrap.setAttribute('data-open', '1');
+        var renderEdit = function () { _renderPedagogyEditForm(section, wcfg, ecfg, row, wrap); };
+        // Champs dynamiques (select enseignants etc.) : chargés via READ F1 avant
+        // le rendu — mêmes loaders que la création (status active uniquement).
+        if (ecfg.needsDyn && ecfg.needsDyn.length) {
+          wrap.innerHTML = '<p class="text-sm" style="color: var(--bs-text-muted);">Chargement des options…</p>';
+          _pedagogyLoadOptions(ecfg.needsDyn, renderEdit);
+        } else {
+          renderEdit();
+        }
+      };
+
+      function _pedagogyEditFieldCtl(f, row) {
+        // Contrôle de saisie prérempli avec la valeur courante de la ligne.
+        var cur = row[f.key];
+        var valAttr = (cur === null || cur === undefined) ? '' : String(cur);
+        var id = 'pgw-' + f.key;
+        if (f.type === 'select' && f.dyn) {
+          // Select dynamique (mêmes options que la création, via OPT_LOADERS).
+          var L = _PEDAGOGY_OPT_LOADERS[f.dyn];
+          var arr = _pedagogyFormOptions[f.dyn] || [];
+          var dopts = (f.req ? '<option value="">— Choisir —</option>' : '<option value=""' + (valAttr === '' ? ' selected' : '') + '>— Aucun —</option>');
+          for (var di = 0; di < arr.length; di++) {
+            var dv = String(arr[di][L.value]);
+            dopts += '<option value="' + _escapeHtml(dv) + '"' + (dv === valAttr ? ' selected' : '') + '>' + _escapeHtml(String(L.label(arr[di]))) + '</option>';
+          }
+          return '<select id="' + id + '" class="mt-1 rounded border px-2 py-1 text-sm w-full" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">' + dopts + '</select>';
+        }
+        if (f.type === 'select') {
+          var opts = (f.options || []).map(function (o) {
+            return '<option value="' + _escapeHtml(String(o)) + '"' + (String(o) === valAttr ? ' selected' : '') + '>' + _escapeHtml(String(o)) + '</option>';
+          }).join('');
+          return '<select id="' + id + '" class="mt-1 rounded border px-2 py-1 text-sm w-full" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">' + (!f.req ? '<option value=""' + (valAttr === '' ? ' selected' : '') + '>— Aucun —</option>' : '') + opts + '</select>';
+        }
+        var t = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text');
+        var extra = f.type === 'number' ? ' min="' + (f.min || 1) + '" step="1"' : '';
+        var ml = f.max ? ' maxlength="' + f.max + '"' : '';
+        return '<input id="' + id + '" type="' + t + '"' + extra + ml + ' value="' + _escapeHtml(valAttr) + '" class="mt-1 rounded border px-2 py-1 text-sm w-full" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">';
+      }
+
+      function _renderPedagogyEditForm(section, wcfg, ecfg, row, wrap) {
+        var h = '<form onsubmit="return false;" class="rounded-lg border p-4 space-y-3" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg);">';
+        h += '<h4 class="text-sm font-semibold" style="color: var(--bs-heading-color);">' + _escapeHtml(ecfg.titleEdit || ('Modifier — ' + wcfg.title)) + '</h4>';
+        if (ecfg.immutable && ecfg.immutable.length) {
+          h += '<div class="text-xs" style="color: var(--bs-text-muted);">Non modifiables : ';
+          h += _escapeHtml(ecfg.immutable.map(function (im) { return im.label + ' = ' + ((row[im.key] === null || row[im.key] === undefined) ? '—' : String(row[im.key])); }).join(' · '));
+          h += '</div>';
+        }
+        h += '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+        for (var i = 0; i < ecfg.fields.length; i++) {
+          var f = ecfg.fields[i];
+          h += '<label class="flex flex-col text-xs" style="color: var(--bs-text-muted);">' + _escapeHtml(f.label + (f.req ? ' *' : '')) + _pedagogyEditFieldCtl(f, row) + '</label>';
+        }
+        h += '</div>';
+        h += '<p id="pgw-status" class="text-sm" style="color: var(--bs-text-muted);"></p>';
+        h += '<div class="flex gap-2">';
+        h += '<button type="button" id="pgwSubmit" onclick="submitPedagogyForm()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Enregistrer</button>';
+        h += '<button type="button" onclick="togglePedagogyForm()" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Annuler</button>';
+        h += '</div></form>';
+        wrap.innerHTML = h;
+      }
+
+      // Soumission en mode édition : validation UX (mêmes règles que création),
+      // puis diff vs valeurs courantes ; seuls les champs modifiés sont envoyés.
+      function _pedagogySubmitEdit() {
+        var ctx = _pedagogyEditCtx;
+        var ecfg = ctx.cfgEdit;
+        var st = _pedagogyState(ctx.section);
+        var row = null;
+        var items = st.lastItems || [];
+        for (var i = 0; i < items.length; i++) {
+          if (String(items[i].id) === String(ctx.id)) { row = items[i]; break; }
+        }
+        if (!row) { return { ok: false, errors: ['Ligne introuvable dans la liste — recharger la section.'] }; }
+        var params = {};
+        params[ctx.idKey] = ctx.id;
+        var errors = [];
+        var changed = 0;
+        for (var j = 0; j < ecfg.fields.length; j++) {
+          var f = ecfg.fields[j];
+          var el = document.getElementById('pgw-' + f.key);
+          var raw = el ? String(el.value).trim() : '';
+          var cur = _pedagogyEditNormVal(f, raw);
+          if (cur !== null && Number.isNaN(cur)) { errors.push(f.label + ' : entier requis'); continue; }
+          if (f.req && raw === '') { errors.push(f.label + ' : valeur requise'); continue; }
+          if (f.max && raw.length > f.max) { errors.push(f.label + ' : maximum ' + f.max + ' caractères'); continue; }
+          if (f.valType === 'int' && cur !== null && f.min !== undefined && cur < f.min) { errors.push(f.label + ' : entier ≥ ' + f.min + ' requis'); continue; }
+          var orig = _pedagogyEditOriginal(row, f);
+          if (cur !== orig) {
+            changed++;
+            // capacity : number|undefined (présence = modification voulue) ;
+            // vide = explicitement null = retirer la limite (contrat Worker P6.1).
+            params[f.key] = cur;
+          }
+        }
+        if (!errors.length && changed === 0) errors.push('Aucune modification à enregistrer.');
+        return { ok: errors.length === 0, params: params, errors: errors };
+      }
+
+      // Rendu résultat mode édition : succès = 200 + objet retourné (contrat P6).
+      function _pedagogyHandleEditResult(ecfg, res, statusEl) {
+        if (!res || typeof res.status !== 'number') {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Réponse invalide du serveur.</span>';
+          return;
+        }
+        var data = res.data || {};
+        if (res.status === 200 && data[ecfg.resultKey]) {
+          if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-success, #16a34a);">✓ Modification enregistrée.</span>';
+          _pedagogyLoadSection(ecfg.refresh || _pedagogyCurrentSection);
           return;
         }
         var msg;

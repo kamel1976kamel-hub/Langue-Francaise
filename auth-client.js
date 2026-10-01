@@ -278,6 +278,50 @@
         return workerFetch(Object.assign({ action: 'pedagogie-end-membership' }, params || {}));
     }
 
+    // ---- Cycle de vie P6.1 (groupes) — wrappers fins, autorité = Worker ----
+    function pedagogieUpdateGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-update-group' }, params || {}));
+    }
+
+    function pedagogieInactivateGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-inactivate-group' }, params || {}));
+    }
+
+    function pedagogieArchiveGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-archive-group' }, params || {}));
+    }
+
+    // ---- Cycle de vie P6.2 (profils) — wrappers fins, autorité = Worker ----
+    function pedagogieUpdateTeacher(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-update-teacher' }, params || {}));
+    }
+
+    function pedagogieInactivateTeacher(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-inactivate-teacher' }, params || {}));
+    }
+
+    function pedagogieUpdateStudent(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-update-student' }, params || {}));
+    }
+
+    function pedagogieInactivateStudent(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-inactivate-student' }, params || {}));
+    }
+
+    // ---- Cycle de vie P6.3 (affectations) — wrappers fins, autorité = Worker ----
+    function pedagogieArchiveTeacherAssignment(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-archive-teacher-assignment' }, params || {}));
+    }
+
+    // ---- Cycle de vie P6.4 (offerings) — wrappers fins, autorité = Worker ----
+    function pedagogieUpdateModuleOffering(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-update-module-offering' }, params || {}));
+    }
+
+    function pedagogieArchiveModuleOffering(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-archive-module-offering' }, params || {}));
+    }
+
     // =================================================================
     // HELPERS
     // =================================================================
@@ -354,6 +398,16 @@
         pedagogieCreateModuleOffering: pedagogieCreateModuleOffering,
         pedagogieCreateUser: pedagogieCreateUser,
         pedagogieEndMembership: pedagogieEndMembership,
+        pedagogieUpdateGroup: pedagogieUpdateGroup,
+        pedagogieInactivateGroup: pedagogieInactivateGroup,
+        pedagogieArchiveGroup: pedagogieArchiveGroup,
+        pedagogieUpdateTeacher: pedagogieUpdateTeacher,
+        pedagogieInactivateTeacher: pedagogieInactivateTeacher,
+        pedagogieUpdateStudent: pedagogieUpdateStudent,
+        pedagogieInactivateStudent: pedagogieInactivateStudent,
+        pedagogieArchiveTeacherAssignment: pedagogieArchiveTeacherAssignment,
+        pedagogieUpdateModuleOffering: pedagogieUpdateModuleOffering,
+        pedagogieArchiveModuleOffering: pedagogieArchiveModuleOffering,
         getToken: getToken,
         clearToken: clearToken,
         isAuthenticated: isAuthenticated,

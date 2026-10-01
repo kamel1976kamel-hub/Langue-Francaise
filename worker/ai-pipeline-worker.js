@@ -2175,6 +2175,272 @@ async function handlePedagogieCreateStudent(env, user, body) {
     return reponseJSON({ student }, 201);
 }
 
+// ─── P6.2 — CYCLE DE VIE DES PROFILS (GO GLOBAL P6) ────────────────────────
+// teachers/students : CHECK statut 'active|inactive' uniquement (aucune
+// migration D1 autorisée -> pas d'archived). Champs éditables : display_name
+// (+ matricule pour students, unicité maintenue par la contrainte UNIQUE).
+// user_id JAMAIS modifiable. Cycle active ↔ inactive : la réactivation passe
+// par update_* (champ status), la désactivation par inactivate_* (motif P5).
+// users.actif n'est jamais touché. Aucune cascade : inactiver un student ne
+// clôture pas ses memberships ; les gardes d'éligibilité P3 (st.status=
+// 'active') bloquent déjà les nouvelles opérations sur profils inactifs.
+const P6_TEACHER_SELECT_SQL = `SELECT id, user_id, display_name, status, created_at, updated_at FROM teachers WHERE id = ?`;
+const P6_STUDENT_SELECT_SQL = `SELECT id, user_id, matricule, display_name, status, created_at, updated_at FROM students WHERE id = ?`;
+
+function _p6MapTeacherRow(row) {
+    return { id: row.id, userId: row.user_id, displayName: row.display_name, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+function _p6MapStudentRow(row) {
+    return { id: row.id, userId: row.user_id, matricule: row.matricule, displayName: row.display_name, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+// displayName : mêmes règles que la création (miroir exact).
+function _p6ValidDisplayName(raw) {
+    const displayName = normalizeDisplayName(raw);
+    if (displayName === null || displayName.length < 1 || displayName.length > 120) return { error: 'displayName invalide (1 à 120 caractères)' };
+    return { value: displayName };
+}
+// matricule : même règle que la création ; null = retirer (UNIQUE admet NULL).
+function _p6ValidMatricule(raw) {
+    if (raw === null) return { value: null };
+    if (typeof raw !== 'string') return { error: 'matricule doit être une chaîne' };
+    const trimmed = raw.trim();
+    if (!trimmed) return { error: 'matricule ne peut pas être vide' };
+    if (trimmed.length > 64) return { error: 'matricule ne peut pas dépasser 64 caractères' };
+    return { value: trimmed };
+}
+// status dans update_* : uniquement 'active' (réactivation) ou 'inactive' —
+// mêmes valeurs que le CHECK ; jamais 'archived' (impossible sans migration).
+function _p6ValidStatus(raw) {
+    if (raw !== 'active' && raw !== 'inactive') return { error: 'status invalide (active ou inactive attendu)' };
+    return { value: raw };
+}
+
+async function handlePedagogieUpdateTeacher(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.teacherId) || body.teacherId < 1) {
+        return reponseJSON({ erreur: 'teacherId doit être un entier > 0' }, 400);
+    }
+    const teacherId = body.teacherId;
+
+    let displayName = null;
+    if (_p6Present(body.displayName)) {
+        const chk = _p6ValidDisplayName(body.displayName);
+        if (chk.error) return reponseJSON({ erreur: chk.error }, 400);
+        displayName = chk.value;
+    }
+    const statusPresent = _p6Present(body.status);
+    let status = null;
+    if (statusPresent) {
+        const chk = _p6ValidStatus(body.status);
+        if (chk.error) return reponseJSON({ erreur: chk.error }, 400);
+        status = chk.value;
+    }
+    if (!_p6Present(body.displayName) && !statusPresent) {
+        return reponseJSON({ erreur: 'Rien à mettre à jour (displayName ou status attendu)' }, 400);
+    }
+
+    const existing = await db.prepare(P6_TEACHER_SELECT_SQL).bind(teacherId).first();
+    if (!existing) return reponseJSON({ erreur: 'Profil enseignant introuvable' }, 404);
+
+    // Idempotence honnête : comparer valeurs demandées/valeurs courantes.
+    const changed = [];
+    const oldValues = {};
+    const newValues = {};
+    if (_p6Present(body.displayName) && displayName !== existing.display_name) {
+        changed.push('display_name');
+        oldValues.displayName = existing.display_name; newValues.displayName = displayName;
+    }
+    if (statusPresent && status !== existing.status) {
+        changed.push('status');
+        oldValues.status = existing.status; newValues.status = status;
+    }
+    if (changed.length === 0) return reponseJSON({ teacher: _p6MapTeacherRow(existing) }, 200);
+
+    const setParts = changed.map((c) => (c === 'display_name' ? 'display_name = ?' : 'status = ?'));
+    const setValues = changed.map((c) => (c === 'display_name' ? displayName : status));
+    // UPDATE conditionnel : id existant ; user_id jamais dans le SET.
+    const updateStmt = db.prepare(
+        `UPDATE teachers SET ${setParts.join(', ')}, updated_at = datetime('now') WHERE id = ?`
+    ).bind(...setValues, teacherId);
+
+    const selectStmt = db.prepare(P6_TEACHER_SELECT_SQL).bind(teacherId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'update_teacher', 'teacher', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(teacherId), JSON.stringify(oldValues), JSON.stringify(newValues));
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-update-teacher (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Profil enseignant introuvable' }, 404);
+    // Réponse uniforme 200 : état courant après la mutation effective (audit
+    // déjà gardé par changes()=1 — pas d'audit fantôme si course).
+    return reponseJSON({ teacher: _p6MapTeacherRow(row) }, 200);
+}
+
+async function handlePedagogieUpdateStudent(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.studentId) || body.studentId < 1) {
+        return reponseJSON({ erreur: 'studentId doit être un entier > 0' }, 400);
+    }
+    const studentId = body.studentId;
+
+    let displayName = null;
+    if (_p6Present(body.displayName)) {
+        const chk = _p6ValidDisplayName(body.displayName);
+        if (chk.error) return reponseJSON({ erreur: chk.error }, 400);
+        displayName = chk.value;
+    }
+    const matriculePresent = _p6Present(body.matricule);
+    let matricule = null;
+    if (matriculePresent) {
+        const chk = _p6ValidMatricule(body.matricule);
+        if (chk.error) return reponseJSON({ erreur: chk.error }, 400);
+        matricule = chk.value;
+    }
+    const statusPresent = _p6Present(body.status);
+    let status = null;
+    if (statusPresent) {
+        const chk = _p6ValidStatus(body.status);
+        if (chk.error) return reponseJSON({ erreur: chk.error }, 400);
+        status = chk.value;
+    }
+    if (!_p6Present(body.displayName) && !matriculePresent && !statusPresent) {
+        return reponseJSON({ erreur: 'Rien à mettre à jour (displayName, matricule ou status attendu)' }, 400);
+    }
+
+    const existing = await db.prepare(P6_STUDENT_SELECT_SQL).bind(studentId).first();
+    if (!existing) return reponseJSON({ erreur: 'Profil étudiant introuvable' }, 404);
+
+    const changed = [];
+    const oldValues = {};
+    const newValues = {};
+    if (_p6Present(body.displayName) && displayName !== existing.display_name) {
+        changed.push('display_name');
+        oldValues.displayName = existing.display_name; newValues.displayName = displayName;
+    }
+    if (matriculePresent && matricule !== (existing.matricule === null || existing.matricule === undefined ? null : existing.matricule)) {
+        changed.push('matricule');
+        oldValues.matricule = existing.matricule; newValues.matricule = matricule;
+    }
+    if (statusPresent && status !== existing.status) {
+        changed.push('status');
+        oldValues.status = existing.status; newValues.status = status;
+    }
+    if (changed.length === 0) return reponseJSON({ student: _p6MapStudentRow(existing) }, 200);
+
+    const colFor = { display_name: 'display_name = ?', matricule: 'matricule = ?', status: 'status = ?' };
+    const valFor = { display_name: displayName, matricule: matricule, status: status };
+    const setParts = changed.map((c) => colFor[c]);
+    const setValues = changed.map((c) => valFor[c]);
+    // UPDATE conditionnel : id existant ; user_id jamais dans le SET ; unicité
+    // matricule portée par la contrainte UNIQUE (doublon -> 409 via catch).
+    const updateStmt = db.prepare(
+        `UPDATE students SET ${setParts.join(', ')}, updated_at = datetime('now') WHERE id = ?`
+    ).bind(...setValues, studentId);
+
+    const selectStmt = db.prepare(P6_STUDENT_SELECT_SQL).bind(studentId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'update_student', 'student', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(studentId), JSON.stringify(oldValues), JSON.stringify(newValues));
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/students\.matricule/i.test(msg)) {
+            return reponseJSON({ erreur: 'Ce matricule est déjà utilisé' }, 409);
+        }
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: 'Valeur déjà utilisée' }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-update-student (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Profil étudiant introuvable' }, 404);
+    // Réponse uniforme 200 : état courant après la mutation effective.
+    return reponseJSON({ student: _p6MapStudentRow(row) }, 200);
+}
+
+// Désactivation : active→inactive (motif P5 : idempotent 200 si déjà inactif,
+// sans écriture ni audit). Réactivation inactive→active via update_* (status).
+async function handlePedagogieInactivateTeacher(env, user, body) {
+    return await _pedagogieProfileInactivate(env, user, body, 'teacher');
+}
+async function handlePedagogieInactivateStudent(env, user, body) {
+    return await _pedagogieProfileInactivate(env, user, body, 'student');
+}
+
+async function _pedagogieProfileInactivate(env, user, body, kind) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    const isTeacher = kind === 'teacher';
+    const idKey = isTeacher ? 'teacherId' : 'studentId';
+    if (!Number.isInteger(body[idKey]) || body[idKey] < 1) {
+        return reponseJSON({ erreur: idKey + ' doit être un entier > 0' }, 400);
+    }
+    const id = body[idKey];
+    const selectSql = isTeacher ? P6_TEACHER_SELECT_SQL : P6_STUDENT_SELECT_SQL;
+    const mapFn = isTeacher ? _p6MapTeacherRow : _p6MapStudentRow;
+    const notFound = isTeacher ? 'Profil enseignant introuvable' : 'Profil étudiant introuvable';
+
+    const existing = await db.prepare(selectSql).bind(id).first();
+    if (!existing) return reponseJSON({ erreur: notFound }, 404);
+    if (existing.status === 'inactive') {
+        // Déjà inactif : 200 idempotent, aucune écriture, aucun audit.
+        return reponseJSON(isTeacher ? { teacher: mapFn(existing) } : { student: mapFn(existing) }, 200);
+    }
+
+    const oldValues = JSON.stringify({ status: 'active' });
+    const newValues = JSON.stringify({ status: 'inactive' });
+    // UPDATE conditionnel : mutation effective seulement si encore actif
+    // (ferme la TOCTOU ; aucune cascade — memberships des students intactes).
+    const updateStmt = db.prepare(
+        `UPDATE ${isTeacher ? 'teachers' : 'students'} SET status = 'inactive', updated_at = datetime('now')
+         WHERE id = ? AND status = 'active'`
+    ).bind(id);
+    const selectStmt = db.prepare(selectSql).bind(id);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, '${isTeacher ? 'inactivate_teacher' : 'inactivate_student'}', '${kind}', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(id), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-inactivate-' + kind + ' (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: notFound }, 404);
+    return reponseJSON(isTeacher ? { teacher: mapFn(row) } : { student: mapFn(row) }, 200);
+}
+
 // Crée un groupe pédagogique dans une année académique ACTIVE.
 // Intégrité : INSERT conditionnel (WHERE EXISTS année active) ; l'unicité du code est
 // portée par la contrainte DDL UNIQUE(academic_year_id, parcours, year_number,
@@ -2269,6 +2535,217 @@ async function handlePedagogieCreateGroup(env, user, body) {
         createdAt: row.created_at, updatedAt: row.updated_at
     };
     return reponseJSON({ group }, 201);
+}
+
+// ─── P6.1 — CYCLE DE VIE DES GROUPES (GO GLOBAL P6) ─────────────────────────
+// Champs éditables : name et capacity UNIQUEMENT. year/parcours/y/s/code sont
+// immuables (aucune récréation implicite). Cycle : active→inactive et
+// active→archived. Jamais de DELETE, jamais de cascade (memberships et
+// offerings restent intactes ; les gardes serveur existantes testent déjà
+// g.status='active' pour toute nouvelle opération). Pas de rate limiting
+// ajouté : cohérent avec les mutations unitaires admin existantes (P2–P5).
+function _p6Present(v) { return v !== undefined; }
+
+const P6_GROUP_SELECT_SQL = `SELECT g.id, g.academic_year_id, ay.label AS academic_year_label, g.parcours, g.year_number, g.semester_number, g.name, g.code, g.status, g.capacity, g.created_at, g.updated_at
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id WHERE g.id = ?`;
+
+function _p6MapGroupRow(row) {
+    return {
+        id: row.id, academicYearId: row.academic_year_id, academicYearLabel: row.academic_year_label,
+        parcours: row.parcours, yearNumber: row.year_number, semesterNumber: row.semester_number,
+        name: row.name, code: row.code, status: row.status, capacity: row.capacity,
+        createdAt: row.created_at, updatedAt: row.updated_at
+    };
+}
+
+async function handlePedagogieUpdateGroup(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const groupId = body.groupId;
+
+    // Validation miroir de la création (mêmes règles, mêmes messages).
+    let name = null;
+    if (_p6Present(body.name)) {
+        name = normalizeDisplayName(body.name);
+        if (name === null || name.length < 1 || name.length > 120) {
+            return reponseJSON({ erreur: 'name invalide (1 à 120 caractères)' }, 400);
+        }
+    }
+    // capacity : entier > 0 OU null (null = retirer la limite, autorisé par le
+    // CHECK 'capacity IS NULL OR capacity > 0'). Présence = modification voulue.
+    const capacityPresent = _p6Present(body.capacity);
+    let capacity = null;
+    if (capacityPresent) {
+        if (body.capacity !== null && (!Number.isInteger(body.capacity) || body.capacity <= 0)) {
+            return reponseJSON({ erreur: 'capacity doit être un entier strictement positif' }, 400);
+        }
+        capacity = body.capacity;
+    }
+    if (!_p6Present(body.name) && !capacityPresent) {
+        return reponseJSON({ erreur: 'Rien à mettre à jour (name ou capacity attendu)' }, 400);
+    }
+
+    const existing = await db.prepare(P6_GROUP_SELECT_SQL).bind(groupId).first();
+    if (!existing) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (existing.status !== 'active') {
+        return reponseJSON({ erreur: 'Modification impossible : groupe non actif' }, 409);
+    }
+
+    // Idempotence honnête : changes() compte les lignes correspondues même si les
+    // valeurs sont identiques ; on compare donc les valeurs demandées aux valeurs
+    // courantes pour ne muter/auditer que le réellement changé.
+    const changed = [];
+    const oldValues = {};
+    const newValues = {};
+    if (_p6Present(body.name) && name !== existing.name) {
+        changed.push('name');
+        oldValues.name = existing.name; newValues.name = name;
+    }
+    if (capacityPresent && (capacity === null ? existing.capacity !== null : capacity !== existing.capacity)) {
+        changed.push('capacity');
+        oldValues.capacity = existing.capacity; newValues.capacity = capacity;
+    }
+    if (changed.length === 0) {
+        return reponseJSON({ group: _p6MapGroupRow(existing) }, 200);
+    }
+
+    // Contrôle capacité convivial avant écriture (le contrôle TOCTOU authoritative
+    // est intégré à l'UPDATE ci-dessous) : refuser si new_capacity < memberships
+    // actives. Jamais de modification automatique des memberships.
+    if (changed.includes('capacity') && capacity !== null) {
+        const cntRow = await db.prepare(
+            `SELECT COUNT(*) AS c FROM student_group_memberships WHERE group_id = ? AND status = 'active' AND valid_to IS NULL`
+        ).bind(groupId).first();
+        const activeCount = (cntRow && typeof cntRow.c === 'number') ? cntRow.c : 0;
+        if (capacity < activeCount) {
+            return reponseJSON({ erreur: 'Capacité inférieure au nombre de memberships actives' }, 409);
+        }
+    }
+
+    const setParts = changed.map((c) => (c === 'name' ? 'name = ?' : 'capacity = ?'));
+    const setValues = changed.map((c) => (c === 'name' ? name : capacity));
+    // UPDATE conditionnel atomique : groupe encore actif + garde capacité intégrée
+    // (comptage des memberships actives au moment de l'écriture → TOCTOU fermé).
+    const capGuard = changed.includes('capacity') && capacity !== null
+        ? ` AND (? IS NULL OR (SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = groups.id AND am.status = 'active' AND am.valid_to IS NULL) <= ?)`
+        : '';
+    const updateStmt = db.prepare(
+        `UPDATE groups SET ${setParts.join(', ')}, updated_at = datetime('now')
+         WHERE id = ? AND status = 'active'${capGuard}`
+    ).bind(...setValues, groupId, ...(capGuard ? [capacity, capacity] : []));
+
+    const selectStmt = db.prepare(P6_GROUP_SELECT_SQL).bind(groupId);
+
+    // Audit gardé par changes()=1 : pas d'audit fantôme si course.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'update_group', 'group', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(groupId), JSON.stringify(oldValues), JSON.stringify(newValues));
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/CHECK constraint failed.*capacity|capacity IS NULL/i.test(msg)) {
+            return reponseJSON({ erreur: 'capacity doit être un entier strictement positif' }, 400);
+        }
+        console.log('WORKER_ERROR pedagogie-update-group (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+
+    if (changesCount === 0) {
+        // L'UPDATE n'a rien muté : soit le groupe a changé d'état en course
+        // (pré-relecture active), soit la garde capacité a bloqué.
+        if (row.status !== 'active') {
+            return reponseJSON({ erreur: 'Modification impossible : groupe non actif' }, 409);
+        }
+        if (changed.includes('capacity')) {
+            return reponseJSON({ erreur: 'Capacité inférieure au nombre de memberships actives' }, 409);
+        }
+        return reponseJSON({ erreur: 'Mise à jour impossible (état du groupe)' }, 409);
+    }
+    return reponseJSON({ group: _p6MapGroupRow(row) }, 200);
+}
+
+// Désactivation : active→inactive uniquement (Groupe déjà inactive → 200
+// idempotent sans écriture ni audit ; archived → 409 état incompatible).
+async function handlePedagogieInactivateGroup(env, user, body) {
+    return await _pedagogieGroupStatusTransition(env, user, body, 'inactive',
+        'handlePedagogieInactivateGroup', 'inactivate_group');
+}
+
+// Archivage : active→archived uniquement (déjà archived → 200 idempotent ;
+// inactive → 409 état incompatible, pas de transition inactive→archived).
+async function handlePedagogieArchiveGroup(env, user, body) {
+    return await _pedagogieGroupStatusTransition(env, user, body, 'archived',
+        'handlePedagogieArchiveGroup', 'archive_group');
+}
+
+async function _pedagogieGroupStatusTransition(env, user, body, targetStatus, handlerName, auditAction) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const groupId = body.groupId;
+
+    const existing = await db.prepare(P6_GROUP_SELECT_SQL).bind(groupId).first();
+    if (!existing) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (existing.status === targetStatus) {
+        // Idempotent : déjà dans l'état demandé — aucune écriture, aucun audit.
+        return reponseJSON({ group: _p6MapGroupRow(existing) }, 200);
+    }
+    if (existing.status !== 'active') {
+        return reponseJSON({ erreur: 'Transition impossible : état incompatible' }, 409);
+    }
+
+    const oldValues = JSON.stringify({ status: 'active' });
+    const newValues = JSON.stringify({ status: targetStatus });
+
+    const updateStmt = db.prepare(
+        `UPDATE groups SET status = ?, updated_at = datetime('now')
+         WHERE id = ? AND status = 'active'`
+    ).bind(targetStatus, groupId);
+
+    const selectStmt = db.prepare(P6_GROUP_SELECT_SQL).bind(groupId);
+
+    // Motif P5 validé : audit inséré uniquement si une mutation effective a eu
+    // lieu (changes()=1). Aucune cascade : memberships et offerings intactes.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, '${auditAction}', 'group', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(groupId), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log(`WORKER_ERROR pedagogie-${handlerName} (D1):`, msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    // changes===0 après pré-lecture active = transition concurrente déjà faite ;
+    // on renvoie idempotemment l'état courant.
+    return reponseJSON({ group: _p6MapGroupRow(row) }, 200);
 }
 
 // ÉLIGIBILITÉ Commune (D-B) — SOURCE UNIQUE pour le single-add ET le bulk.
@@ -2687,12 +3164,12 @@ async function handlePedagogieAssignTeacherModule(env, user, body) {
     const academicYearId = body.academicYearId;
 
     const t = await db.prepare(
-        `SELECT u.id, u.role, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id LIMIT 1) AS has_profile
+        `SELECT u.id, u.role, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id AND tt.status = 'active' LIMIT 1) AS has_profile
          FROM users u WHERE u.id = ?`
     ).bind(teacherUserId).first();
     if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
     if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
-    if (!t.has_profile) return reponseJSON({ erreur: "Profil enseignant inexistant pour cet utilisateur" }, 404);
+    if (!t.has_profile) return reponseJSON({ erreur: "Profil enseignant inexistant ou inactif pour cet utilisateur" }, 404);
 
     const year = await db.prepare('SELECT id, status FROM academic_years WHERE id = ?').bind(academicYearId).first();
     if (!year) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
@@ -2705,7 +3182,7 @@ async function handlePedagogieAssignTeacherModule(env, user, body) {
          SELECT ?, ?, ?, 'active', datetime('now'), NULL
          WHERE EXISTS (
              SELECT 1 FROM users u JOIN teachers te ON te.user_id = u.id
-             WHERE u.id = ? AND u.role = 'teacher'
+             WHERE u.id = ? AND u.role = 'teacher' AND te.status = 'active'
          )
          AND EXISTS (SELECT 1 FROM academic_years WHERE id = ? AND status = 'active')
          AND NOT EXISTS (
@@ -2745,6 +3222,115 @@ async function handlePedagogieAssignTeacherModule(env, user, body) {
         academicYearId: row.academic_year_id, status: row.status, validFrom: row.valid_from, validTo: row.valid_to
     };
     return reponseJSON({ assignment }, 201);
+}
+
+// ─── P6.3 — CYCLE DE VIE DES AFFECTATIONS (GO GLOBAL P6) ────────────────
+// Cycle : active→archived uniquement. Pas de DELETE, pas de cascade implicite
+// vers 'orphan' : si au moins une offering ACTIVE dépend de l'affectation
+// (même teacher + chapter + année académique que le groupe de l'offering),
+// l'archivage est REFUSÉ (409). Pas d'update : teacher/chapter/year sont les
+// clés sémantiques de l'affectation — un changement se traite par création
+// d'une nouvelle affectation + archivage de l'ancienne (motif P5 rotation).
+// La dépendance offering→assignment est reprise DANS le WHERE de l'UPDATE
+// (TOCTOU fermé) : une offering activée en course bloque l'archivage.
+const P6_ASSIGNMENT_SELECT_SQL = `SELECT id, teacher_user_id, chapter_id, academic_year_id, status, valid_from, valid_to, created_at FROM teacher_module_assignments WHERE id = ?`;
+
+function _p6MapAssignmentRow(row) {
+    return {
+        id: row.id, teacherUserId: row.teacher_user_id, chapterId: row.chapter_id,
+        academicYearId: row.academic_year_id, status: row.status,
+        validFrom: row.valid_from, validTo: row.valid_to, createdAt: row.created_at
+    };
+}
+
+// Dependence : offering active dont le groupe porte l'année de l'affectation et
+// qui reprend le même (teacher, chapter) — motif de l'autorisation P1/offering.
+const P6_ACTIVE_OFFERING_DEPENDENCY_SQL = `SELECT COUNT(*) AS c FROM group_module_offerings o
+         JOIN groups g ON g.id = o.group_id
+         JOIN teacher_module_assignments a
+           ON a.teacher_user_id = o.teacher_user_id AND a.chapter_id = o.chapter_id
+          AND a.academic_year_id = g.academic_year_id
+         WHERE a.id = ? AND o.status = 'active'`;
+
+async function handlePedagogieArchiveTeacherAssignment(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.assignmentId) || body.assignmentId < 1) {
+        return reponseJSON({ erreur: 'assignmentId doit être un entier > 0' }, 400);
+    }
+    const assignmentId = body.assignmentId;
+
+    const existing = await db.prepare(P6_ASSIGNMENT_SELECT_SQL).bind(assignmentId).first();
+    if (!existing) return reponseJSON({ erreur: 'Affectation introuvable' }, 404);
+    if (existing.status === 'archived') {
+        // Déjà archivée : 200 idempotent, aucune écriture, aucun audit.
+        return reponseJSON({ assignment: _p6MapAssignmentRow(existing) }, 200);
+    }
+    if (existing.status !== 'active') {
+        // 'orphan' (état disponible dans le schéma) : hors cycle P6 -> 409.
+        return reponseJSON({ erreur: 'Transition impossible : état incompatible' }, 409);
+    }
+
+    // Contrôle convivial AVANT écriture (message explicite) ; la garde
+    // authoritative est intégrée à l'UPDATE ci-dessous.
+    const dep = await db.prepare(P6_ACTIVE_OFFERING_DEPENDENCY_SQL).bind(assignmentId).first();
+    if (dep && dep.c > 0) {
+        return reponseJSON({ erreur: 'Archivage refusé : au moins une offering active dépend de cette affectation' }, 409);
+    }
+
+    const oldValues = JSON.stringify({ status: 'active' });
+    const newValues = JSON.stringify({ status: 'archived' });
+
+    // UPDATE conditionnel atomique : encore active + AUCUNE offering active
+    // dependency au moment de l'écriture (pas de cascade : les offerings ne
+    // sont ni archivées ni modifiées ; état 'orphan' jamais produit ici).
+    const updateStmt = db.prepare(
+        `UPDATE teacher_module_assignments SET status = 'archived'
+         WHERE id = ? AND status = 'active'
+           AND NOT EXISTS (
+             SELECT 1 FROM group_module_offerings o
+             JOIN groups g ON g.id = o.group_id
+             WHERE o.teacher_user_id = teacher_module_assignments.teacher_user_id
+               AND o.chapter_id = teacher_module_assignments.chapter_id
+               AND g.academic_year_id = teacher_module_assignments.academic_year_id
+               AND o.status = 'active'
+           )`
+    ).bind(assignmentId);
+
+    const selectStmt = db.prepare(P6_ASSIGNMENT_SELECT_SQL).bind(assignmentId);
+
+    // Motif P5 : audit uniquement si mutation effective (changes()=1).
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'archive_teacher_assignment', 'teacher_module_assignment', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(assignmentId), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-archive-teacher-assignment (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Affectation introuvable' }, 404);
+    if (changesCount === 0) {
+        // Course : soit archivée entre-temps (idempotent), soit une offering
+        // active dépendante est apparue -> 409 métier.
+        if (row.status === 'archived') return reponseJSON({ assignment: _p6MapAssignmentRow(row) }, 200);
+        if (row.status === 'active') {
+            return reponseJSON({ erreur: 'Archivage refusé : au moins une offering active dépend de cette affectation' }, 409);
+        }
+        return reponseJSON({ erreur: 'Transition impossible : état incompatible' }, 409);
+    }
+    return reponseJSON({ assignment: _p6MapAssignmentRow(row) }, 200);
 }
 
 // Crée une offering (groupe/module, enseignant optionnel).
@@ -2793,13 +3379,13 @@ async function handlePedagogieCreateModuleOffering(env, user, body) {
     }
 
     const t = await db.prepare(
-        `SELECT u.id, u.role, u.actif, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id LIMIT 1) AS has_profile
+        `SELECT u.id, u.role, u.actif, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id AND tt.status = 'active' LIMIT 1) AS has_profile
          FROM users u WHERE u.id = ?`
     ).bind(teacherUserId).first();
     if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
     if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
     if (!t.actif) return reponseJSON({ erreur: 'Utilisateur enseignant inactif' }, 403);
-    if (!t.has_profile) return reponseJSON({ erreur: 'Profil enseignant inexistant pour cet utilisateur' }, 404);
+    if (!t.has_profile) return reponseJSON({ erreur: 'Profil enseignant inexistant ou inactif pour cet utilisateur' }, 404);
 
     const authorized = await db.prepare(
         `SELECT 1 AS ok FROM teacher_module_assignments
@@ -2826,7 +3412,7 @@ async function handlePedagogieCreateModuleOffering(env, user, body) {
              JOIN teachers te ON te.user_id = u.id
              WHERE tma.teacher_user_id = ? AND tma.chapter_id = ?
                AND tma.academic_year_id = (SELECT academic_year_id FROM groups WHERE id = ?)
-               AND tma.status = 'active' AND u.role = 'teacher' AND u.actif = 1
+               AND tma.status = 'active' AND u.role = 'teacher' AND u.actif = 1 AND te.status = 'active'
          )`
     ).bind(groupId, chapterId, teacherUserId, groupId, groupId, chapterId, teacherUserId, chapterId, groupId);
 
@@ -2861,6 +3447,191 @@ async function handlePedagogieCreateModuleOffering(env, user, body) {
         teacherUserId: row.teacher_user_id, status: row.status, validFrom: row.valid_from, validTo: row.valid_to
     };
     return reponseJSON({ offering }, 201);
+}
+
+// ─── P6.4 — CYCLE DE VIE DES OFFERINGS (GO GLOBAL P6) ────────────────────
+// Cycle : active→archived (jamais la affectation ; pas de DELETE ; 'orphan'
+// jamais produit automatiquement). Update : SEUL champ modifiable =
+// teacher_user_id — Jamais NULL. Un changement de teacher RÉAPPLIQUE
+// INTÉGRALEMENT les règles P1 : PEP-only (groupe), teacher obligatoire,
+// compte teacher valide + actif, profil teacher valide + ACTIF, affectation
+// correspondante active, offering ⊆ assignment, cohérence année/semestre,
+// absence de doublon actif. Gardes authoritative reprise dans le WHERE de
+// l'UPDATE (TOCTOU fermé), sur le modèle de l'INSERT de création.
+const P6_OFFERING_SELECT_SQL = `SELECT id, group_id, chapter_id, teacher_user_id, status, valid_from, valid_to, created_at FROM group_module_offerings WHERE id = ?`;
+
+function _p6MapOfferingRow(row) {
+    return {
+        id: row.id, groupId: row.group_id, chapterId: row.chapter_id,
+        teacherUserId: row.teacher_user_id, status: row.status,
+        validFrom: row.valid_from, validTo: row.valid_to, createdAt: row.created_at
+    };
+}
+
+async function handlePedagogieUpdateModuleOffering(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.offeringId) || body.offeringId < 1) {
+        return reponseJSON({ erreur: 'offeringId doit être un entier > 0' }, 400);
+    }
+    const offeringId = body.offeringId;
+    // teacher obligatoire, jamais NULL (règle P1 maintenue en P6.4).
+    if (typeof body.teacherUserId !== 'string') {
+        return reponseJSON({ erreur: 'teacherUserId est requis' }, 400);
+    }
+    const teacherTrimmed = body.teacherUserId.trim();
+    if (!teacherTrimmed) return reponseJSON({ erreur: 'teacherUserId ne peut pas être vide' }, 400);
+    const teacherUserId = teacherTrimmed;
+
+    const existing = await db.prepare(P6_OFFERING_SELECT_SQL).bind(offeringId).first();
+    if (!existing) return reponseJSON({ erreur: 'Offering introuvable' }, 404);
+    if (existing.status !== 'active') {
+        return reponseJSON({ erreur: 'Modification impossible : offering non active' }, 409);
+    }
+    // Idempotence honnête : même teacher -> 200 sans écriture ni audit.
+    if (existing.teacher_user_id === teacherUserId) {
+        return reponseJSON({ offering: _p6MapOfferingRow(existing) }, 200);
+    }
+
+    // ── Règles P1 réapliquées intégralement (classification conviviale) ──
+    const grp = await db.prepare(
+        `SELECT g.id, g.academic_year_id, g.status, g.parcours, g.year_number, g.semester_number, ay.status AS year_status
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id
+         WHERE g.id = ?`
+    ).bind(existing.group_id).first();
+    if (!grp) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (grp.status !== 'active') return reponseJSON({ erreur: 'Groupe non actif' }, 409);
+    if (grp.year_status !== 'active') return reponseJSON({ erreur: 'Année académique du groupe non active' }, 409);
+    if (grp.parcours !== 'pep') return reponseJSON({ erreur: 'Les offerings sont réservées aux groupes PEP' }, 400);
+    const pepMatch = /^pep-y(\d)s(\d)-\d+$/.exec(existing.chapter_id);
+    if (!pepMatch) return reponseJSON({ erreur: 'chapterId PEP invalide (format pep-yYsS-NN attendu)' }, 400);
+    if (parseInt(pepMatch[1], 10) !== grp.year_number || parseInt(pepMatch[2], 10) !== grp.semester_number) {
+        return reponseJSON({ erreur: 'Incohérence module/groupe : le module pep-y' + pepMatch[1] + 's' + pepMatch[2] + " ne correspond pas à l'année/semestre du groupe" }, 400);
+    }
+    const t = await db.prepare(
+        `SELECT u.id, u.role, u.actif, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id AND tt.status = 'active' LIMIT 1) AS has_profile
+         FROM users u WHERE u.id = ?`
+    ).bind(teacherUserId).first();
+    if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
+    if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
+    if (!t.actif) return reponseJSON({ erreur: 'Utilisateur enseignant inactif' }, 403);
+    if (!t.has_profile) return reponseJSON({ erreur: 'Profil enseignant inexistant ou inactif pour cet utilisateur' }, 404);
+    const authorized = await db.prepare(
+        `SELECT 1 AS ok FROM teacher_module_assignments
+         WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active'`
+    ).bind(teacherUserId, existing.chapter_id, grp.academic_year_id).first();
+    if (!authorized) return reponseJSON({ erreur: "Ce teacher n'est pas autorisé sur ce module pour cette année" }, 409);
+
+    const oldValues = JSON.stringify({ teacherUserId: existing.teacher_user_id });
+    const newValues = JSON.stringify({ teacherUserId });
+
+    // UPDATE conditionnel atomique : offering encore active + mêmes gardes que
+    // l'INSERT de création (groupe actif/PEP, année active, teacher compte+profil
+    // actifs, affectation active offering⊆assignment, pas de doublon actif).
+    // NOTE : group_module_offerings n'a PAS de colonne updated_at (schéma)
+    // -> mutation limitée aux colonnes existantes (teacher_user_id).
+    const updateGuarded = db.prepare(
+        `UPDATE group_module_offerings SET teacher_user_id = ?
+         WHERE id = ? AND status = 'active'
+           AND EXISTS (
+             SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
+             WHERE g.id = group_module_offerings.group_id AND g.status = 'active' AND ay.status = 'active' AND g.parcours = 'pep'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM group_module_offerings
+             WHERE group_id = (SELECT group_id FROM group_module_offerings WHERE id = ?) AND chapter_id = (SELECT chapter_id FROM group_module_offerings WHERE id = ?)
+               AND status = 'active' AND id != ?
+           )
+           AND EXISTS (
+             SELECT 1 FROM teacher_module_assignments tma
+             JOIN users u ON u.id = tma.teacher_user_id
+             JOIN teachers te ON te.user_id = u.id
+             WHERE tma.teacher_user_id = ? AND tma.chapter_id = (SELECT chapter_id FROM group_module_offerings WHERE id = ?)
+               AND tma.academic_year_id = (SELECT g2.academic_year_id FROM groups g2 WHERE g2.id = (SELECT group_id FROM group_module_offerings WHERE id = ?))
+               AND tma.status = 'active' AND u.role = 'teacher' AND u.actif = 1 AND te.status = 'active'
+           )`
+    ).bind(teacherUserId, offeringId, offeringId, offeringId, offeringId, teacherUserId, offeringId, offeringId);
+
+    const selectStmt = db.prepare(P6_OFFERING_SELECT_SQL).bind(offeringId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'update_module_offering', 'group_module_offering', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(offeringId), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateGuarded, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-update-module-offering (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Offering introuvable' }, 404);
+    if (changesCount === 0) {
+        // Course : état devenu non-active, ou garde réévaluée fausse à l'écriture.
+        if (row.status !== 'active') return reponseJSON({ erreur: 'Modification impossible : offering non active' }, 409);
+        if (row.teacher_user_id === teacherUserId) return reponseJSON({ offering: _p6MapOfferingRow(row) }, 200);
+        return reponseJSON({ erreur: "Changement refusé : gardes P1 non satisfaites au moment de l'écriture (affectation active requise, pas de doublon)" }, 409);
+    }
+    return reponseJSON({ offering: _p6MapOfferingRow(row) }, 200);
+}
+
+// Archivage : active→archived, idempotent ; ne touche JAMAIS l'affectation
+// (pas de cascade) ; 'orphan' jamais produit ici.
+async function handlePedagogieArchiveModuleOffering(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.offeringId) || body.offeringId < 1) {
+        return reponseJSON({ erreur: 'offeringId doit être un entier > 0' }, 400);
+    }
+    const offeringId = body.offeringId;
+
+    const existing = await db.prepare(P6_OFFERING_SELECT_SQL).bind(offeringId).first();
+    if (!existing) return reponseJSON({ erreur: 'Offering introuvable' }, 404);
+    if (existing.status === 'archived') {
+        // Déjà archivée : 200 idempotent, aucune écriture, aucun audit.
+        return reponseJSON({ offering: _p6MapOfferingRow(existing) }, 200);
+    }
+    if (existing.status !== 'active') {
+        return reponseJSON({ erreur: 'Transition impossible : état incompatible' }, 409);
+    }
+
+    const oldValues = JSON.stringify({ status: 'active' });
+    const newValues = JSON.stringify({ status: 'archived' });
+
+    const updateStmt = db.prepare(
+        `UPDATE group_module_offerings SET status = 'archived'
+         WHERE id = ? AND status = 'active'`
+    ).bind(offeringId);
+    const selectStmt = db.prepare(P6_OFFERING_SELECT_SQL).bind(offeringId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'archive_module_offering', 'group_module_offering', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(offeringId), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-archive-module-offering (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Offering introuvable' }, 404);
+    // changes===0 après pré-lecture active = archivée en course -> idempotent.
+    return reponseJSON({ offering: _p6MapOfferingRow(row) }, 200);
 }
 
 export default {
@@ -3034,15 +3805,52 @@ export default {
             if (error) return error;
             return await handlePedagogieCreateTeacher(env, user, corpsBrut);
         }
+        // ─── P6.2 — cycle de vie des profils (GO GLOBAL P6) ───
+        if (actionAuth === 'pedagogie-update-teacher') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieUpdateTeacher(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-inactivate-teacher') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieInactivateTeacher(env, user, corpsBrut);
+        }
         if (actionAuth === 'pedagogie-create-student') {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieCreateStudent(env, user, corpsBrut);
         }
+        if (actionAuth === 'pedagogie-update-student') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieUpdateStudent(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-inactivate-student') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieInactivateStudent(env, user, corpsBrut);
+        }
         if (actionAuth === 'pedagogie-create-group') {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieCreateGroup(env, user, corpsBrut);
+        }
+        // ─── P6.1 — cycle de vie des groupes (GO GLOBAL P6) ───
+        if (actionAuth === 'pedagogie-update-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieUpdateGroup(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-inactivate-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieInactivateGroup(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-archive-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieArchiveGroup(env, user, corpsBrut);
         }
         if (actionAuth === 'pedagogie-add-student-to-group') {
             const { user, error } = await requirePedagogieAdmin(request, env);
@@ -3059,10 +3867,27 @@ export default {
             if (error) return error;
             return await handlePedagogieAssignTeacherModule(env, user, corpsBrut);
         }
+        // ─── P6.3 — cycle de vie des affectations (GO GLOBAL P6) ───
+        if (actionAuth === 'pedagogie-archive-teacher-assignment') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieArchiveTeacherAssignment(env, user, corpsBrut);
+        }
         if (actionAuth === 'pedagogie-create-module-offering') {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieCreateModuleOffering(env, user, corpsBrut);
+        }
+        // ─── P6.4 — cycle de vie des offerings (GO GLOBAL P6) ───
+        if (actionAuth === 'pedagogie-update-module-offering') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieUpdateModuleOffering(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-archive-module-offering') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieArchiveModuleOffering(env, user, corpsBrut);
         }
         if (actionAuth === 'pedagogie-create-user') {
             const { user, error } = await requirePedagogieAdmin(request, env);
