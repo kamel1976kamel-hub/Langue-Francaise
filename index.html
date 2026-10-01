@@ -6649,9 +6649,9 @@
           title: 'Proposer un module à un groupe',
           confirm: 'Confirmer la création de cette offering ?',
           fields: [
-            { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groups' },
+            { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groupsPep' },
             { key: 'chapterId', label: 'Module', type: 'select', req: true, valType: 'string', moduleCatalog: true },
-            { key: 'teacherUserId', label: 'Enseignant (optionnel, users.id)', type: 'select', req: false, valType: 'string', dyn: 'teachers', allowEmpty: true }
+            { key: 'teacherUserId', label: 'Enseignant', type: 'select', req: true, valType: 'string', dyn: 'teachers' }
           ]
         }
       };
@@ -6663,6 +6663,9 @@
         teachers: { wrapper: 'pedagogieListTeachers', listKey: 'teachers', value: 'userId', label: function (r) { return (r.displayName || r.userId) + ' (' + r.userId + ')'; } },
         students: { wrapper: 'pedagogieListStudents', listKey: 'students', value: 'id', label: function (r) { return (r.displayName || r.id) + (r.matricule ? ' · ' + r.matricule : ''); } },
         groups: { wrapper: 'pedagogieListGroups', listKey: 'groups', value: 'id', label: function (r) { return (r.name || r.code) + (r.code ? ' — ' + r.code : ''); } },
+        // Offering : seuls les groupes PEP peuvent recevoir une offre de module
+        // (autorité = Worker ; ce filtre n'est qu'une aide UI, en plus du filtrage module).
+        groupsPep: { wrapper: 'pedagogieListGroups', listKey: 'groups', value: 'id', filter: function (r) { return String(r.parcours || '').toLowerCase() === 'pep'; }, label: function (r) { return (r.name || r.code) + (r.code ? ' — ' + r.code : ''); } },
         // Comptes users actifs non encore liés, pour les selects « userId » des
         // formulaires de création de profils (source: pedagogie-list-users, READ).
         usersTeacher: { wrapper: 'pedagogieListUsers', listKey: 'users', value: 'id', label: function (r) { return (r.displayName ? r.displayName + ' · ' : '') + r.username; }, params: { role: 'teacher', excludeLinked: true } },
@@ -6691,7 +6694,8 @@
           var done = function () { if (--pending === 0) cb(); };
           if (typeof fn !== 'function') { _pedagogyFormOptions[k] = []; done(); return; }
           Promise.resolve(fn.call(window.AuthClient, Object.assign({ limit: 500, offset: 0, status: 'active' }, L.params || {}))).then(function (res) {
-            _pedagogyFormOptions[k] = (res && res.status === 200 && res.data && Array.isArray(res.data[L.listKey])) ? res.data[L.listKey] : [];
+            var arr = (res && res.status === 200 && res.data && Array.isArray(res.data[L.listKey])) ? res.data[L.listKey] : [];
+            _pedagogyFormOptions[k] = (typeof L.filter === 'function') ? arr.filter(L.filter) : arr;
           }).catch(function () { _pedagogyFormOptions[k] = []; }).then(done);
         });
       }
@@ -6754,7 +6758,7 @@
         var cs = document.getElementById('pgw-chapterId');
         if (!gs || !cs || typeof gs.addEventListener !== 'function') return;
         gs.addEventListener('change', function () {
-          var rows = _pedagogyFormOptions.groups || [];
+          var rows = _pedagogyFormOptions.groupsPep || [];
           var gid = String(gs.value);
           var g = null;
           for (var i = 0; i < rows.length; i++) {

@@ -2254,40 +2254,48 @@ async function handlePedagogieCreateModuleOffering(env, user, body) {
     if (typeof chapterId !== 'string' || !PEDAGOGY_CHAPTER_IDS.includes(chapterId)) {
         return reponseJSON({ erreur: 'chapterId invalide (ID technique attendu)' }, 400);
     }
-    let teacherUserId = null;
-    if (body.teacherUserId !== undefined && body.teacherUserId !== null) {
-        if (typeof body.teacherUserId !== 'string') {
-            return reponseJSON({ erreur: 'teacherUserId doit être une chaîne' }, 400);
-        }
-        const trimmed = body.teacherUserId.trim();
-        if (!trimmed) return reponseJSON({ erreur: 'teacherUserId ne peut pas être vide' }, 400);
-        teacherUserId = trimmed;
+    if (typeof body.teacherUserId !== 'string') {
+        return reponseJSON({ erreur: 'teacherUserId est requis' }, 400);
     }
+    const teacherTrimmed = body.teacherUserId.trim();
+    if (!teacherTrimmed) return reponseJSON({ erreur: 'teacherUserId ne peut pas être vide' }, 400);
+    const teacherUserId = teacherTrimmed;
 
     const grp = await db.prepare(
-        `SELECT g.id, g.academic_year_id, g.status, ay.status AS year_status
+        `SELECT g.id, g.academic_year_id, g.status, g.parcours, g.year_number, g.semester_number, ay.status AS year_status
          FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id
          WHERE g.id = ?`
     ).bind(groupId).first();
     if (!grp) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
     if (grp.status !== 'active') return reponseJSON({ erreur: 'Groupe non actif' }, 409);
     if (grp.year_status !== 'active') return reponseJSON({ erreur: 'Année académique du groupe non active' }, 409);
-
-    if (teacherUserId !== null) {
-        const t = await db.prepare(
-            `SELECT u.id, u.role, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id LIMIT 1) AS has_profile
-             FROM users u WHERE u.id = ?`
-        ).bind(teacherUserId).first();
-        if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
-        if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
-        if (!t.has_profile) return reponseJSON({ erreur: 'Profil enseignant inexistant pour cet utilisateur' }, 404);
-
-        const authorized = await db.prepare(
-            `SELECT 1 AS ok FROM teacher_module_assignments
-             WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active'`
-        ).bind(teacherUserId, chapterId, grp.academic_year_id).first();
-        if (!authorized) return reponseJSON({ erreur: "Ce teacher n'est pas autorisé sur ce module pour cette année" }, 409);
+    if (grp.parcours !== 'pep') {
+        return reponseJSON({ erreur: 'Les offerings sont réservées aux groupes PEP' }, 400);
     }
+    const pepMatch = /^pep-y(\d)s(\d)-\d+$/.exec(chapterId);
+    if (!pepMatch) {
+        return reponseJSON({ erreur: 'chapterId PEP invalide (format pep-yYsS-NN attendu)' }, 400);
+    }
+    const chapterYear = parseInt(pepMatch[1], 10);
+    const chapterSemester = parseInt(pepMatch[2], 10);
+    if (chapterYear !== grp.year_number || chapterSemester !== grp.semester_number) {
+        return reponseJSON({ erreur: 'Incohérence module/groupe : le module pep-y' + chapterYear + 's' + chapterSemester + " ne correspond pas à l'année/semestre du groupe" }, 400);
+    }
+
+    const t = await db.prepare(
+        `SELECT u.id, u.role, u.actif, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id LIMIT 1) AS has_profile
+         FROM users u WHERE u.id = ?`
+    ).bind(teacherUserId).first();
+    if (!t) return reponseJSON({ erreur: 'Utilisateur enseignant introuvable' }, 404);
+    if (t.role !== 'teacher') return reponseJSON({ erreur: 'Rôle teacher requis pour cet utilisateur' }, 400);
+    if (!t.actif) return reponseJSON({ erreur: 'Utilisateur enseignant inactif' }, 403);
+    if (!t.has_profile) return reponseJSON({ erreur: 'Profil enseignant inexistant pour cet utilisateur' }, 404);
+
+    const authorized = await db.prepare(
+        `SELECT 1 AS ok FROM teacher_module_assignments
+         WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active'`
+    ).bind(teacherUserId, chapterId, grp.academic_year_id).first();
+    if (!authorized) return reponseJSON({ erreur: "Ce teacher n'est pas autorisé sur ce module pour cette année" }, 409);
 
     const newValues = JSON.stringify({ groupId, chapterId, teacherUserId, status: 'active' });
 
@@ -2296,21 +2304,21 @@ async function handlePedagogieCreateModuleOffering(env, user, body) {
          SELECT ?, ?, ?, 'active', datetime('now'), NULL
          WHERE EXISTS (
              SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
-             WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active'
+             WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active' AND g.parcours = 'pep'
          )
          AND NOT EXISTS (
              SELECT 1 FROM group_module_offerings
              WHERE group_id = ? AND chapter_id = ? AND status = 'active'
          )
-         AND (? IS NULL OR EXISTS (
+         AND EXISTS (
              SELECT 1 FROM teacher_module_assignments tma
              JOIN users u ON u.id = tma.teacher_user_id
              JOIN teachers te ON te.user_id = u.id
              WHERE tma.teacher_user_id = ? AND tma.chapter_id = ?
                AND tma.academic_year_id = (SELECT academic_year_id FROM groups WHERE id = ?)
-               AND tma.status = 'active' AND u.role = 'teacher'
-         ))`
-    ).bind(groupId, chapterId, teacherUserId, groupId, groupId, chapterId, teacherUserId, teacherUserId, chapterId, groupId);
+               AND tma.status = 'active' AND u.role = 'teacher' AND u.actif = 1
+         )`
+    ).bind(groupId, chapterId, teacherUserId, groupId, groupId, chapterId, teacherUserId, chapterId, groupId);
 
     const selectStmt = db.prepare(
         `SELECT id, group_id, chapter_id, teacher_user_id, status, valid_from, valid_to FROM group_module_offerings WHERE id = last_insert_rowid()`
