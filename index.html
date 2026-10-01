@@ -6738,13 +6738,13 @@
           ]
         },
         members: {
-          buttonLabel: 'Ajouter un étudiant', wrapper: 'pedagogieAddStudentToGroup',
-          resultKey: 'membership', refresh: 'members',
-          title: 'Ajouter un étudiant à un groupe',
-          confirm: "Confirmer l'ajout de cet étudiant au groupe ?",
+          buttonLabel: 'Ajouter des étudiants', wrapper: 'pedagogieAddStudentsToGroup',
+          resultKey: 'added', refresh: 'members', bulk: true, bulkMax: 25,
+          title: 'Ajouter plusieurs étudiants à un groupe',
+          confirm: "Confirmer l'ajout de la sélection au groupe ?",
           fields: [
-            { key: 'studentId', label: 'Étudiant', type: 'select', req: true, valType: 'int', dyn: 'students' },
-            { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groups' }
+            { key: 'groupId', label: 'Groupe', type: 'select', req: true, valType: 'int', dyn: 'groups' },
+            { key: 'studentIds', label: 'Étudiants (sélection multiple)', type: 'multiselect', req: true, valType: 'int', dyn: 'students', max: 25 }
           ]
         },
         assignments: {
@@ -6818,6 +6818,22 @@
       function _pedagogyFormField(f) {
         var star = f.req ? ' *' : '';
         var ctl;
+        if (f.type === 'multiselect') {
+          // Sélection multiple (bulk). Mêmes labels humains que le select simple
+          // (OPT_LOADERS). max = plafond de selections (autorité réelle = Worker).
+          var mopts = '';
+          if (f.dyn) {
+            var mL = _PEDAGOGY_OPT_LOADERS[f.dyn];
+            var mArr = _pedagogyFormOptions[f.dyn] || [];
+            for (var mi = 0; mi < mArr.length; mi++) {
+              var mr = mArr[mi];
+              mopts += '<option value="' + _escapeHtml(String(mr[mL.value])) + '">' + _escapeHtml(String(mL.label(mr))) + '</option>';
+            }
+          }
+          var mhint = f.max ? ' <span style="color: var(--bs-text-muted); font-weight: normal;">(Ctrl/Cmd + clic · max ' + f.max + ')</span>' : '';
+          ctl = '<select id="pgw-' + f.key + '" multiple size="8" class="mt-1 rounded border px-2 py-1 text-sm w-full" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg); color: var(--bs-body-color);">' + mopts + '</select>';
+          return '<label class="flex flex-col text-xs" style="color: var(--bs-text-muted);">' + _escapeHtml(f.label + star) + mhint + ctl + '</label>';
+        }
         if (f.type === 'select') {
           var opts = '';
           if (f.dyn) {
@@ -6917,6 +6933,25 @@
         var params = {}, errors = [];
         for (var i = 0; i < wcfg.fields.length; i++) {
           var f = wcfg.fields[i];
+          if (f.type === 'multiselect') {
+            // Collecte les options selectionnees (entiers > 0, dedup), enforce le
+            // minimum (>=1 si requis) et le plafond (max). Autorite finale = Worker.
+            var mel = document.getElementById('pgw-' + f.key);
+            var picked = [];
+            if (mel && mel.options) {
+              for (var oi = 0; oi < mel.options.length; oi++) {
+                var op = mel.options[oi];
+                if (op.selected) {
+                  var on = parseInt(op.value, 10);
+                  if (Number.isInteger(on) && on > 0 && picked.indexOf(on) === -1) picked.push(on);
+                }
+              }
+            }
+            if (f.req && picked.length === 0) { errors.push(f.label + ' : sélectionnez au moins un élément'); continue; }
+            if (f.max && picked.length > f.max) { errors.push(f.label + ' : maximum ' + f.max + ' sélections'); continue; }
+            params[f.key] = picked;
+            continue;
+          }
           var el = document.getElementById('pgw-' + f.key);
           var val = el ? String(el.value).trim() : '';
           if (f.valType === 'int') {
@@ -6944,7 +6979,12 @@
       function _pedagogyResetForm(wcfg) {
         for (var i = 0; i < wcfg.fields.length; i++) {
           var el = document.getElementById('pgw-' + wcfg.fields[i].key);
-          if (el) el.value = '';
+          if (!el) continue;
+          if (el.multiple && el.options) {
+            for (var oi = 0; oi < el.options.length; oi++) el.options[oi].selected = false;
+          } else {
+            el.value = '';
+          }
         }
       }
 
@@ -6985,6 +7025,7 @@
       };
 
       function _pedagogyHandleWriteResult(wcfg, res, statusEl) {
+        if (wcfg && wcfg.bulk) { _pedagogyHandleBulkResult(wcfg, res, statusEl); return; }
         if (!res || typeof res.status !== 'number') {
           if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">Réponse invalide du serveur.</span>';
           return;
@@ -7016,6 +7057,68 @@
         else if (res.status === 503) msg = 'Service indisponible (503).';
         else msg = 'Erreur inattendue (' + res.status + ') : ' + (data.erreur || '');
         if (statusEl) statusEl.innerHTML = '<span style="color: var(--bs-danger);">' + _escapeHtml(msg) + '</span>';
+      }
+
+      // Rendu lisible d'un resultat bulk (added / alreadyMembers / incompatible /
+      // invalid / capacite). Les ids sont resolus en libelles humains via la meme
+      // source que le select (OPT_LOADERS.students). Aucune donnee sensible.
+      function _pedagogyStudentLabels(ids) {
+        var arr = _pedagogyFormOptions.students || [];
+        var map = {};
+        for (var i = 0; i < arr.length; i++) map[String(arr[i].id)] = arr[i];
+        var L = _PEDAGOGY_OPT_LOADERS.students;
+        return (ids || []).map(function (id) {
+          var r = map[String(id)];
+          return r ? String(L.label(r)) : ('#' + id);
+        });
+      }
+      function _bulkListLine(title, ids, tone) {
+        ids = ids || [];
+        if (!ids.length) return '';
+        var color = tone === 'danger' ? 'var(--bs-danger)'
+          : tone === 'warn' ? '#b45309'
+          : tone === 'success' ? 'var(--bs-success, #16a34a)'
+          : 'var(--bs-text-muted)';
+        return '<div class="text-xs mt-1" style="color: ' + color + ';">' + _escapeHtml(title + ' (' + ids.length + ') : ') + _escapeHtml(_pedagogyStudentLabels(ids).join(', ')) + '</div>';
+      }
+      function _bulkCapacityLine(cap) {
+        if (!cap) return '';
+        var limit = (cap.limit === null || cap.limit === undefined) ? '∞' : cap.limit;
+        return '<div class="text-xs mt-1" style="color: var(--bs-text-muted);">Capacité : ' + _escapeHtml(String(cap.activeBefore)) + ' actif(s) avant · limite ' + _escapeHtml(String(limit)) + ' · admissibles ' + _escapeHtml(String(cap.admissible)) + ' · demandé ' + _escapeHtml(String(cap.requested)) + '</div>';
+      }
+      function _pedagogyHandleBulkResult(wcfg, res, statusEl) {
+        function set(html) { if (statusEl) statusEl.innerHTML = html; }
+        if (!res || typeof res.status !== 'number') { set('<span style="color: var(--bs-danger);">Réponse invalide du serveur.</span>'); return; }
+        var data = res.data || {};
+        function listOf(a) { return Array.isArray(a) ? a : []; }
+        var added = listOf(data.added), alr = listOf(data.alreadyMembers), inc = listOf(data.incompatible), inv = listOf(data.invalid);
+        if (res.status === 200) {
+          var html = '<span style="color: var(--bs-success, #16a34a);">✓ ' + added.length + ' étudiant(s) ajouté(s) au groupe.</span>';
+          html += _bulkListLine('Ajouté(s)', added.map(function (a) { return a.studentId; }), 'success');
+          html += _bulkListLine('Déjà membres', alr, 'muted');
+          html += _bulkListLine('Incompatibles (même période)', inc, 'warn');
+          html += _bulkListLine('Non éligibles', inv, 'danger');
+          html += _bulkCapacityLine(data.capacity);
+          set(html);
+          _pedagogyResetForm(wcfg);
+          _pedagogyLoadSection(wcfg.refresh);
+          _pedagogyLoadSection('groups'); // rafraîchir activeMembers (P4)
+          return;
+        }
+        if (res.status === 409) {
+          var h409 = '<span style="color: var(--bs-danger);">' + _escapeHtml('Capacité insuffisante (409) — aucun étudiant ajouté : ' + (data.erreur || 'opération refusée')) + '</span>';
+          h409 += _bulkCapacityLine(data.capacity);
+          set(h409);
+          return; // 0 insertion : aucun rafraîchissement nécessaire
+        }
+        var msg;
+        if (res.status === 400) msg = 'Requête refusée (400) : ' + (data.erreur || 'sélection vide ou aucun étudiant admissible');
+        else if (res.status === 403) msg = 'Accès refusé par le serveur (403).';
+        else if (res.status === 404) msg = 'Groupe introuvable (404).';
+        else if (res.status === 429) msg = 'Trop d\'opérations récentes (429). Réessayez plus tard.';
+        else if (res.status === 503) msg = 'Service indisponible (503).';
+        else msg = 'Erreur inattendue (' + res.status + ') : ' + (data.erreur || '');
+        set('<span style="color: var(--bs-danger);">' + _escapeHtml(msg) + '</span>');
       }
 
       function loadAdminUserList() {

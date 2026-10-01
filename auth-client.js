@@ -254,6 +254,10 @@
         return workerFetch(Object.assign({ action: 'pedagogie-add-student-to-group' }, params || {}));
     }
 
+    function pedagogieAddStudentsToGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-add-students-to-group' }, params || {}));
+    }
+
     function pedagogieAssignTeacherModule(params) {
         return workerFetch(Object.assign({ action: 'pedagogie-assign-teacher-module' }, params || {}));
     }
@@ -340,6 +344,7 @@
         pedagogieCreateStudent: pedagogieCreateStudent,
         pedagogieCreateGroup: pedagogieCreateGroup,
         pedagogieAddStudentToGroup: pedagogieAddStudentToGroup,
+        pedagogieAddStudentsToGroup: pedagogieAddStudentsToGroup,
         pedagogieAssignTeacherModule: pedagogieAssignTeacherModule,
         pedagogieCreateModuleOffering: pedagogieCreateModuleOffering,
         pedagogieCreateUser: pedagogieCreateUser,

@@ -98,6 +98,9 @@ const BRUTE_FORCE_THRESHOLDS = [
 ];
 const RESET_RATE_LIMIT = 20; // Max resets par session concepteur
 const RESET_RATE_WINDOW_SECONDS = 600; // Fenêtre de 10 minutes
+// P3 : plafond de studentIds par opération bulk (D-L). Reste largement sous la
+// limite D1 de 100 paramètres liés / statement même avec la CTE commune.
+const PEDAGOGY_BULK_LIMIT = 25;
 
 // =================================================================
 // AUTHENTIFICATION — Fonctions utilitaires
@@ -2173,6 +2176,60 @@ async function handlePedagogieCreateGroup(env, user, body) {
     return reponseJSON({ group }, 201);
 }
 
+// ÉLIGIBILITÉ Commune (D-B) — SOURCE UNIQUE pour le single-add ET le bulk.
+// Un étudiant n'est admissible que si : profil students.existant AND
+// students.status='active' AND students.user_id renseigné AND user lié
+// role='student' AND user.actif=1, ET le groupe cible + son année sont actifs.
+// La regle n'est ENCODEE QU'UNE SEULE FOIS ici. studentIdExpr est une expression
+// CORRELEE a l'etudiant courant : '?' (single, via parametre) ou 's.sid' (ligne
+// candidate de la CTE req du bulk). Le bloc porte TOUJOURS exactement UN
+// placeholder (g.id = groupId), independamment de studentIdExpr.
+function _pedagogyEligibilityExists(studentIdExpr) {
+    return `EXISTS (SELECT 1 FROM students st JOIN users su ON su.id = st.user_id `
+        + `WHERE st.id = ${studentIdExpr} AND st.status = 'active' AND st.user_id IS NOT NULL `
+        + `AND su.role = 'student' AND su.actif = 1 `
+        + `AND EXISTS (SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id `
+        + `WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active'))`;
+}
+// Version single : identifiant etudiant corrélé via un parametre '?'.
+const PEDAGOGY_ELIGIBILITY_SQL = _pedagogyEligibilityExists('?');
+// Ordre des paramètres lié au bloc ci-dessus : [studentId, groupId] (2 placeholders).
+function pedagogyEligibilityParams(studentId, groupId) {
+    return [studentId, groupId];
+}
+// Bloc periode : interdit deux memberships actifs sur la MEME periode
+// (academic_year_id, parcours, year_number, semester_number). 1 parametre : groupId (gt).
+function _PERIODE_NOT_EXISTS_BLOCK(colSid) {
+    return 'AND NOT EXISTS (SELECT 1 FROM student_group_memberships m '
+        + 'JOIN groups g2 ON g2.id = m.group_id JOIN groups gt ON gt.id = ? '
+        + 'WHERE m.student_id = ' + colSid + ' AND m.status = \'active\' AND m.valid_to IS NULL '
+        + 'AND g2.academic_year_id = gt.academic_year_id AND g2.parcours = gt.parcours '
+        + 'AND g2.year_number = gt.year_number AND g2.semester_number = gt.semester_number)';
+}
+// CTE 'admissible' du bulk : chaque ligne candidate de req(sid) est testee avec LA
+// MEME regle que le single (eligibilite corrélé e) + periode libre. references la
+// CTE req(sid) prealablement declaree. 2 parametres lies apres les valeurs req :
+// [groupId (eligibilite g.id), groupId (periode gt)].
+function _pedagogyAdmissibleCte() {
+    return 'admissible AS (SELECT s.sid AS sid FROM req s '
+        + 'WHERE ' + _pedagogyEligibilityExists('s.sid') + ' '
+        + _PERIODE_NOT_EXISTS_BLOCK('s.sid') + ')';
+}
+function pedagogyAdmissibleCteBind(groupId) { return [groupId, groupId]; }
+// Bloc gate capacite (P3-ready) : capacity IS NULL OR capacity >= activeMembers +
+// incoming. 3 parametres : groupId (cap), groupId (cmp), groupId (am). L'appelant
+// ajoute '(SELECT COUNT(*) FROM <cte>)' via _INSERT_GATE_BLOCK.
+function _GATE_CAPACITY_BLOCK() {
+    return '(SELECT cg.capacity FROM groups cg WHERE cg.id = ?) IS NULL OR '
+        + '(SELECT cg.capacity FROM groups cg WHERE cg.id = ?) >= '
+        + '(SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = ? AND am.status = \'active\' AND am.valid_to IS NULL) + ';
+}
+// Bloc gate complet pour l'INSERT bulk : ajoute COUNT(cte admissible). 3 parametres.
+function _INSERT_GATE_BLOCK(cteAdmissible) {
+    return _GATE_CAPACITY_BLOCK() + '(SELECT COUNT(*) FROM ' + cteAdmissible + ')';
+}
+function pedagogyGateBind(groupId) { return [groupId, groupId, groupId]; }
+
 // Ajoute un étudiant à un groupe. Règle critique : un seul membership actif
 // (status='active' AND valid_to IS NULL) par (année + parcours + année + semestre).
 // Le contrôle NOT EXISTS est INTÉGRÉ à l'INSERT conditionnel (atomique, résistant
@@ -2206,14 +2263,11 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
 
     const newValues = JSON.stringify({ studentId, groupId, status: 'active' });
 
+    // Éligibilité commune (D-B) : profil actif + compte student actif (source unique).
     const insertStmt = db.prepare(
         `INSERT INTO student_group_memberships (student_id, group_id, status, valid_from, valid_to)
          SELECT ?, ?, 'active', datetime('now'), NULL
-         WHERE EXISTS (
-             SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
-             WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active'
-         )
-         AND EXISTS (SELECT 1 FROM students WHERE id = ?)
+         WHERE ${PEDAGOGY_ELIGIBILITY_SQL}
          AND NOT EXISTS (
              SELECT 1 FROM student_group_memberships m
              JOIN groups g2 ON g2.id = m.group_id
@@ -2233,7 +2287,7 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
                 (SELECT COUNT(*) FROM student_group_memberships am
                   WHERE am.group_id = ? AND am.status = 'active' AND am.valid_to IS NULL) + 1
          )`
-    ).bind(studentId, groupId, groupId, studentId, groupId, studentId, groupId, groupId, groupId);
+    ).bind(studentId, groupId, ...pedagogyEligibilityParams(studentId, groupId), groupId, studentId, groupId, groupId, groupId);
 
     const selectStmt = db.prepare(
         `SELECT id, student_id, group_id, status, valid_from, valid_to FROM student_group_memberships WHERE id = last_insert_rowid()`
@@ -2258,6 +2312,10 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
     if (changes === 0) {
         // Le refus est DEJA acquis (WHERE de l'INSERT). Cette relecture ne sert
         // qu'a choisir le message explicite ; elle n'est jamais l'autorite.
+        // Diagnostic : meme definition d'eligibilite que la source unique (D-B).
+        const eligibleNow = await db.prepare(
+            `SELECT ${PEDAGOGY_ELIGIBILITY_SQL} AS ok`
+        ).bind(...pedagogyEligibilityParams(studentId, groupId)).first();
         const diag = await db.prepare(
             `SELECT
                (SELECT g.capacity FROM groups g WHERE g.id = ?) AS capacity,
@@ -2272,6 +2330,9 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
                    AND g2.year_number = gt.year_number
                    AND g2.semester_number = gt.semester_number) AS already_active`
         ).bind(groupId, groupId, groupId, studentId).first();
+        if (!eligibleNow || eligibleNow.ok !== 1) {
+            return reponseJSON({ erreur: '\u00c9tudiant non \u00e9ligible (profil inactif, compte \u00e9tudiant absent/inactif, ou groupe/ann\u00e9e non actifs)' }, 409);
+        }
         if (diag && diag.already_active > 0) {
             return reponseJSON({ erreur: "L'étudiant a déjà un groupe actif pour cette période" }, 409);
         }
@@ -2290,7 +2351,153 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
     return reponseJSON({ membership }, 201);
 }
 
-// Termine (clot) un membership sans suppression physique.
+// P3 — Ajout BULK atomique (tout-ou-rien) d'étudiants à un groupe.
+// D-C : inadmissibles classés/retournés, admissibles ajoutés si capacité OK ;
+//       capacité globale insuffisante => 409 et 0 insertion.
+// D-B : éligibilité identique au single-add (PEDAGOGY_ELIGIBILITY_SQL, source unique).
+// Atomicité : UN seul INSERT...SELECT dont le gate compare capacity à
+//       (activeBefore + COUNT(admissibles)). Aucun SELECT-COUNT->JS->boucle d'INSERT.
+// Rate limiting : même mécanisme que P2/reset (login_attempts, RESET_RATE_*), D-G.
+async function handlePedagogieAddStudentsToGroup(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const groupId = body.groupId;
+
+    if (!Array.isArray(body.studentIds) || body.studentIds.length === 0) {
+        return reponseJSON({ erreur: 'studentIds doit être un tableau non vide' }, 400);
+    }
+    if (body.studentIds.length > PEDAGOGY_BULK_LIMIT) {
+        return reponseJSON({ erreur: 'studentIds limité à ' + PEDAGOGY_BULK_LIMIT + ' par opération' }, 400);
+    }
+    for (const sid of body.studentIds) {
+        if (!Number.isInteger(sid) || sid < 1) {
+            return reponseJSON({ erreur: 'chaque studentId doit être un entier > 0' }, 400);
+        }
+    }
+    const uniqueIds = [...new Set(body.studentIds)]; // dédup intra-payload
+
+    const grp = await db.prepare(
+        `SELECT g.id, g.capacity, g.status, ay.status AS year_status
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id
+         WHERE g.id = ?`
+    ).bind(groupId).first();
+    if (!grp) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (grp.status !== 'active') return reponseJSON({ erreur: 'Groupe non actif' }, 409);
+    if (grp.year_status !== 'active') return reponseJSON({ erreur: 'Année académique du groupe non active' }, 409);
+
+    // Rate limiting (D-G) : même mécanisme que P2/reset. Clé 'bulk-add:<actorId>'
+    // dans login_attempts (username + ip_hash NOT NULL), fenêtre RESET_RATE_*.
+    const rlKey = 'bulk-add:' + user.id;
+    const rlHash = await sha256Hex(rlKey);
+    const cutoff = new Date(Date.now() - RESET_RATE_WINDOW_SECONDS * 1000).toISOString();
+    const rlCount = await db.prepare(
+        "SELECT COUNT(*) AS c FROM login_attempts WHERE ip_hash = ? AND attempted_at > ? AND success = 1 AND username LIKE 'bulk-add:%'"
+    ).bind(rlHash, cutoff).first();
+    if (rlCount && rlCount.c >= RESET_RATE_LIMIT) {
+        return reponseJSON({ erreur: 'Trop d\'op\u00e9rations r\u00e9centes. R\u00e9essayez plus tard.' }, 429);
+    }
+
+    // Fragments SQL partages (source unique d'eligibilite, D-B). valuesPh produit
+    // la CTE req(sid) : une rangee (1 colonne 'sid') par etudiant demande.
+    const valuesPh = uniqueIds.map(() => 'SELECT ? AS sid').join(' UNION ALL ');
+    // CTE 'admissible' : MEME regle corrélée que le single (D-B) + periode libre.
+    const admissibleCte = _pedagogyAdmissibleCte();
+    // Placeholders req + admissible : values(N) + eligibilite(1) + periode(1) = N+2.
+    const admissibleCteBind = [].concat(uniqueIds, pedagogyAdmissibleCteBind(groupId));
+
+    // INSERT unique et atomique : le gate capacity porte sur TOUT l'ensemble
+    // admissible (tout-ou-rien, resistant a la concurrence D1). Placeholders :
+    // (N+2) + 1 (group_id) + 3 (gate) = N+6.
+    const gateSql = _INSERT_GATE_BLOCK('admissible');
+    const insertSql = 'WITH req(sid) AS (' + valuesPh + '), ' + admissibleCte
+        + ' INSERT INTO student_group_memberships (student_id, group_id, status, valid_from, valid_to)'
+        + ' SELECT a.sid, ?, \'active\', datetime(\'now\'), NULL FROM admissible a WHERE (' + gateSql + ')';
+    const insertBind = [].concat(admissibleCteBind, [groupId], pedagogyGateBind(groupId));
+
+    const auditSql = 'INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values) SELECT ?, \'add_students_to_group\', \'group\', ?, NULL, ? WHERE changes() > 0';
+
+    // Classification PRE-insertion (lit l'etat AVANT toute mutation), repartage LA
+    // MEME CTE admissible : pour chaque id demande -> adm (admissible, insere si
+    // gate OK), alr (deja membre ACTIF de CE groupe), per (membre actif MEME periode
+    // dans un autre groupe). Le reste => invalid. Placeholders : values(N) +
+    // admissible(2) + alreadyActive(1) + inPeriod(1) = N+4.
+    const classSql = 'WITH req(sid) AS (' + valuesPh + '), ' + admissibleCte
+        + ', alreadyActive AS (SELECT r.sid FROM req r WHERE EXISTS (SELECT 1 FROM student_group_memberships m WHERE m.student_id = r.sid AND m.group_id = ? AND m.status = \'active\' AND m.valid_to IS NULL)) '
+        + ', inPeriod AS (SELECT r.sid FROM req r WHERE EXISTS (SELECT 1 FROM student_group_memberships m JOIN groups g2 ON g2.id = m.group_id JOIN groups gt ON gt.id = ? WHERE m.student_id = r.sid AND m.status = \'active\' AND m.valid_to IS NULL AND g2.academic_year_id = gt.academic_year_id AND g2.parcours = gt.parcours AND g2.year_number = gt.year_number AND g2.semester_number = gt.semester_number)) '
+        + 'SELECT s.sid AS sid, CASE WHEN s.sid IN (SELECT sid FROM admissible) THEN 1 ELSE 0 END AS adm, '
+        + 'CASE WHEN s.sid IN (SELECT sid FROM alreadyActive) THEN 1 ELSE 0 END AS alr, '
+        + 'CASE WHEN s.sid IN (SELECT sid FROM inPeriod) THEN 1 ELSE 0 END AS per '
+        + 'FROM req s ORDER BY s.sid';
+    const classBind = [].concat(uniqueIds, pedagogyAdmissibleCteBind(groupId), [groupId], [groupId]);
+
+    const capSql = 'SELECT (SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = ? AND am.status = \'active\' AND am.valid_to IS NULL) AS v';
+
+    let results;
+    try {
+        results = await db.batch([
+            db.prepare(capSql).bind(groupId),
+            db.prepare(classSql).bind(classBind),   // PRE-insertion : etat avant mutation
+            db.prepare(insertSql).bind(insertBind), // gate tout-ou-rien
+            db.prepare(auditSql).bind([String(user.id), String(groupId), JSON.stringify({ groupId: groupId, requested: uniqueIds.length })]),
+        ]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-add-students-to-group (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const activeBefore = (results[0].results && results[0].results[0]) ? results[0].results[0].v : 0;
+    const crows = (results[1] && results[1].results) ? results[1].results : [];
+    const changes = (results[2] && results[2].meta && typeof results[2].meta.changes === 'number') ? results[2].meta.changes : 0;
+
+    // Le gate est un booleen unique sur tout l'INSERT : changes() ∈ {0, admissible}.
+    const addedSids = [];
+    const alreadyMembers = [], incompatible = [], invalid = [];
+    for (const r of crows) {
+        if (r.adm === 1) { addedSids.push(r.sid); continue; }
+        if (r.alr === 1) { alreadyMembers.push(r.sid); continue; }
+        if (r.per === 1) { incompatible.push(r.sid); continue; }
+        invalid.push(r.sid);
+    }
+    const admissibleCount = addedSids.length;
+    const capacityInfo = {
+        limit: (grp.capacity === undefined ? null : grp.capacity),
+        activeBefore: activeBefore,
+        requested: uniqueIds.length,
+        admissible: admissibleCount,
+        available: (grp.capacity === null || grp.capacity === undefined) ? null : Math.max(0, grp.capacity - activeBefore)
+    };
+
+    // Aucune insertion (changes()=0) : gate capacite (admissibles>0) => 409 / 0 ligne ;
+    // aucun admissible => 400.
+    if (changes === 0) {
+        if (admissibleCount > 0) {
+            return reponseJSON({ erreur: 'Capacité insuffisante pour ajouter tous les étudiants admissibles', added: [], alreadyMembers: [], incompatible: [], invalid: [], refused: 'capacity', capacity: capacityInfo }, 409);
+        }
+        return reponseJSON({ erreur: 'Aucun étudiant admissible à ajouter' }, 400);
+    }
+
+    // Insertion reussie : addedSids == l'ensemble insere (gate passe pour tous les
+    // admissibles). Relecture des membershipIds crees pour ces seuls etudiants.
+    let added = [];
+    if (addedSids.length > 0) {
+        const addedPh = addedSids.map(() => '?').join(',');
+        const addedRes = await db.prepare('SELECT id AS membershipId, student_id AS studentId FROM student_group_memberships WHERE group_id = ? AND status = \'active\' AND valid_to IS NULL AND student_id IN (' + addedPh + ') ORDER BY id ASC').bind(groupId, ...addedSids).all();
+        added = (addedRes && addedRes.results) ? addedRes.results : [];
+    }
+
+    // Compteur rate-limit (D-G) : best-effort apres insertion reussie.
+    try {
+        await db.prepare('INSERT INTO login_attempts (username, ip_hash, success) VALUES (?, ?, 1)').bind('bulk-add:' + user.id, await sha256Hex('bulk-add:' + user.id)).run();
+    } catch (e) { /* ne bloque pas le resultat */ }
+
+    return reponseJSON({ added: added, alreadyMembers: alreadyMembers, incompatible: incompatible, invalid: invalid, refused: null, capacity: capacityInfo }, 200);
+}
 // D-1 : valid_to = datetime('now') cote serveur uniquement. D-2 : idempotent (deja
 // termine -> 200, valid_to conserve). D-3 : cible par membershipId ; groupe/annee NON
 // controles (un actif peut etre termine meme si le groupe/annee n'est plus actif).
@@ -2741,6 +2948,11 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieAddStudentToGroup(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-add-students-to-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieAddStudentsToGroup(env, user, corpsBrut);
         }
         if (actionAuth === 'pedagogie-assign-teacher-module') {
             const { user, error } = await requirePedagogieAdmin(request, env);
