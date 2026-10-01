@@ -6198,13 +6198,13 @@
             { key: 'year_number', label: 'Année (1/2)', type: 'select', valType: 'int', options: ['1', '2'] },
             { key: 'semester_number', label: 'Semestre (1/2)', type: 'select', valType: 'int', options: ['1', '2'] }
           ],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'Année', key: 'academicYearLabel' }, { label: 'Parcours', key: 'parcours' }, { label: 'Niv.', key: 'yearNumber' }, { label: 'Sem.', key: 'semesterNumber' }, { label: 'Nom', key: 'name' }, { label: 'Code', key: 'code' }, { label: 'Statut', key: 'status' }, { label: 'Capacité', key: 'capacity' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Année', key: 'academicYearLabel' }, { label: 'Parcours', key: 'parcours' }, { label: 'Niv.', key: 'yearNumber' }, { label: 'Sem.', key: 'semesterNumber' }, { label: 'Nom', key: 'name' }, { label: 'Code', key: 'code' }, { label: 'Statut', key: 'status' }, { label: 'Capacité', key: 'capacity', render: function (r) { return _pedagogyCapacityCell(r); } }]
         },
         members: {
           listKey: 'members', wrapper: 'pedagogieListGroupMembers',
           statusOptions: ['active', 'ended', 'all'],
           filters: [{ key: 'groupId', label: 'Groupe (requis)', type: 'select', valType: 'int', dyn: 'groups', required: true }],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'studentId', key: 'studentId' }, { label: 'Nom étudiant', key: 'studentDisplayName' }, { label: 'Matricule', key: 'matricule' }, { label: 'groupId', key: 'groupId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'studentId', key: 'studentId' }, { label: 'Nom étudiant', key: 'studentDisplayName' }, { label: 'Matricule', key: 'matricule' }, { label: 'groupId', key: 'groupId' }, { label: 'Statut', key: 'status' }, { label: 'De', key: 'validFrom' }, { label: 'À', key: 'validTo' }, { label: 'Action', key: '_membershipAction', render: function (r) { return _pedagogyMembershipActionCell(r); } }]
         },
         assignments: {
           listKey: 'assignments', wrapper: 'pedagogieListTeacherAssignments',
@@ -6497,13 +6497,76 @@
         for (var i = 0; i < items.length; i++) {
           html += '<tr>';
           for (var c2 = 0; c2 < cols.length; c2++) {
-            html += '<td class="px-3 py-2 whitespace-nowrap" style="border-bottom: 1px solid var(--bs-border-color);">' + _pedagogyCell(items[i][cols[c2].key]) + '</td>';
+            var col = cols[c2];
+            var cellHtml = (typeof col.render === 'function') ? col.render(items[i]) : _pedagogyCell(items[i][col.key]);
+            html += '<td class="px-3 py-2 whitespace-nowrap" style="border-bottom: 1px solid var(--bs-border-color);">' + cellHtml + '</td>';
           }
           html += '</tr>';
         }
         html += '</tbody></table></div>';
         return html;
       }
+
+      // Cellule capacité : « actifs / capacity », ou « actifs / ∞ » si illimitée.
+      // Données numeriques uniquement (activeMembers/capacity) ; toute sortie est
+      // échappée hormis la balise colorée (contenu = texte déjà chiffré).
+      function _pedagogyCapacityCell(r) {
+        var used = (typeof r.activeMembers === 'number') ? r.activeMembers : Number(r.activeMembers || 0);
+        var cap = r.capacity;
+        if (cap === null || cap === undefined) return _escapeHtml(String(used)) + ' / ∞';
+        var txt = used + ' / ' + cap;
+        if (used >= cap) return '<span style="color: var(--bs-danger); font-weight:600;">' + _escapeHtml(txt) + '</span>';
+        return _escapeHtml(txt);
+      }
+
+      // Cellule action : bouton « Terminer » uniquement pour un membership actif.
+      // L'identifiant est un entier (AUTOINCREMENT) ; Number.isInteger garde l'onclick.
+      function _pedagogyMembershipActionCell(r) {
+        if (r && r.status === 'active') {
+          var mid = Number(r.id);
+          if (Number.isInteger(mid) && mid >= 1) {
+            return '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="endPedagogyMembership(' + mid + ')">Terminer</button>';
+          }
+        }
+        return _pedagogyCell(null);
+      }
+
+      // Bandeau de résultat transitoire, placé hors de #pedagogyResults pour survivre
+      // au re-rendu de la liste (textContent : aucun HTML injectable).
+      function _pedagogyShowActionNotice(msg, isErr) {
+        var results = document.getElementById('pedagogyResults');
+        if (!results || !results.parentNode) return;
+        var banner = document.getElementById('pgActionStatus');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'pgActionStatus';
+          banner.className = 'mb-2 text-sm';
+          results.parentNode.insertBefore(banner, results);
+        }
+        banner.style.color = isErr ? 'var(--bs-danger)' : 'var(--bs-success, #16a34a)';
+        banner.textContent = msg;
+      }
+
+      // Action « Terminer » (D5) : confirmation -> appel wrapper -> résultat + refresh.
+      window.endPedagogyMembership = function(membershipId) {
+        if (!Number.isInteger(membershipId) || membershipId < 1) return;
+        if (!window.confirm("Confirmer la fin de ce membership ?")) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieEndMembership;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { membershipId: membershipId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.membership) {
+            _pedagogyShowActionNotice('✓ Membership terminé.', false);
+            if (_pedagogyCurrentSection === 'members') _pedagogyLoadSection('members');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de la terminaison.', true);
+        });
+      };
 
       function _pedagogyUpdatePagination(cfg, st) {
         var prev = document.getElementById('pgPrev');

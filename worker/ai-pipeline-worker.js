@@ -1471,13 +1471,14 @@ async function handlePedagogieListGroups(env, body) {
     const total = countResult ? countResult.cnt : 0;
 
     const rows = await db.prepare(
-        `SELECT g.id, g.academic_year_id, ay.label AS academic_year_label, g.parcours, g.year_number, g.semester_number, g.name, g.code, g.status, g.capacity, g.created_at, g.updated_at FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id ${whereStr} ORDER BY ay.label DESC, g.parcours ASC, g.year_number ASC, g.semester_number ASC, g.name ASC LIMIT ? OFFSET ?`
+        `SELECT g.id, g.academic_year_id, ay.label AS academic_year_label, g.parcours, g.year_number, g.semester_number, g.name, g.code, g.status, g.capacity, g.created_at, g.updated_at, (SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = g.id AND am.status = 'active' AND am.valid_to IS NULL) AS active_members FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id ${whereStr} ORDER BY ay.label DESC, g.parcours ASC, g.year_number ASC, g.semester_number ASC, g.name ASC LIMIT ? OFFSET ?`
     ).bind(...params, pag.limit, pag.offset).all();
 
     const groups = (rows.results || []).map(r => ({
         id: r.id, academicYearId: r.academic_year_id, academicYearLabel: r.academic_year_label,
         parcours: r.parcours, yearNumber: r.year_number, semesterNumber: r.semester_number,
         name: r.name, code: r.code, status: r.status, capacity: r.capacity,
+        activeMembers: r.active_members,
         createdAt: r.created_at, updatedAt: r.updated_at
     }));
     return reponseJSON({ groups, total, limit: pag.limit, offset: pag.offset }, 200);
@@ -2222,8 +2223,17 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
                AND g2.parcours = gt.parcours
                AND g2.year_number = gt.year_number
                AND g2.semester_number = gt.semester_number
+         )
+         AND (
+             -- Capacité : autorite serveur, evaluee dans le MEME statement (aucun TOCTOU).
+             -- Predicat actif identique partout : status='active' AND valid_to IS NULL.
+             -- Forme P3-ready : capacity >= activeMembers + :incoming (ici :incoming = 1).
+             (SELECT cg.capacity FROM groups cg WHERE cg.id = ?) IS NULL
+             OR (SELECT cg.capacity FROM groups cg WHERE cg.id = ?) >=
+                (SELECT COUNT(*) FROM student_group_memberships am
+                  WHERE am.group_id = ? AND am.status = 'active' AND am.valid_to IS NULL) + 1
          )`
-    ).bind(studentId, groupId, groupId, studentId, groupId, studentId);
+    ).bind(studentId, groupId, groupId, studentId, groupId, studentId, groupId, groupId, groupId);
 
     const selectStmt = db.prepare(
         `SELECT id, student_id, group_id, status, valid_from, valid_to FROM student_group_memberships WHERE id = last_insert_rowid()`
@@ -2246,7 +2256,29 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
 
     const changes = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
     if (changes === 0) {
-        return reponseJSON({ erreur: "L'étudiant a déjà un groupe actif pour cette période" }, 409);
+        // Le refus est DEJA acquis (WHERE de l'INSERT). Cette relecture ne sert
+        // qu'a choisir le message explicite ; elle n'est jamais l'autorite.
+        const diag = await db.prepare(
+            `SELECT
+               (SELECT g.capacity FROM groups g WHERE g.id = ?) AS capacity,
+               (SELECT COUNT(*) FROM student_group_memberships am
+                  WHERE am.group_id = ? AND am.status = 'active' AND am.valid_to IS NULL) AS active_members,
+               (SELECT COUNT(*) FROM student_group_memberships m
+                  JOIN groups g2 ON g2.id = m.group_id
+                  JOIN groups gt ON gt.id = ?
+                 WHERE m.student_id = ? AND m.status = 'active' AND m.valid_to IS NULL
+                   AND g2.academic_year_id = gt.academic_year_id
+                   AND g2.parcours = gt.parcours
+                   AND g2.year_number = gt.year_number
+                   AND g2.semester_number = gt.semester_number) AS already_active`
+        ).bind(groupId, groupId, groupId, studentId).first();
+        if (diag && diag.already_active > 0) {
+            return reponseJSON({ erreur: "L'étudiant a déjà un groupe actif pour cette période" }, 409);
+        }
+        if (diag && diag.capacity !== null && diag.capacity !== undefined && diag.active_members >= diag.capacity) {
+            return reponseJSON({ erreur: 'Capacité du groupe atteinte (' + diag.active_members + '/' + diag.capacity + ')' }, 409);
+        }
+        return reponseJSON({ erreur: 'Ajout impossible (groupe ou année non actif, ou période déjà couverte)' }, 409);
     }
     const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
     const row = fetched[0];
@@ -2256,6 +2288,80 @@ async function handlePedagogieAddStudentToGroup(env, user, body) {
         status: row.status, validFrom: row.valid_from, validTo: row.valid_to
     };
     return reponseJSON({ membership }, 201);
+}
+
+// Termine (clot) un membership sans suppression physique.
+// D-1 : valid_to = datetime('now') cote serveur uniquement. D-2 : idempotent (deja
+// termine -> 200, valid_to conserve). D-3 : cible par membershipId ; groupe/annee NON
+// controles (un actif peut etre termine meme si le groupe/annee n'est plus actif).
+// Autorite de l'ecriture = WHERE id=? AND status='active' (aucune reecriture en course).
+async function handlePedagogieEndMembership(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.membershipId) || body.membershipId < 1) {
+        return reponseJSON({ erreur: 'membershipId doit être un entier > 0' }, 400);
+    }
+    const membershipId = body.membershipId;
+
+    // Pre-lecture : 404 si inexistant + detection idempotente (statut courant).
+    const existing = await db.prepare(
+        `SELECT id, student_id, group_id, status, valid_from, valid_to FROM student_group_memberships WHERE id = ?`
+    ).bind(membershipId).first();
+    if (!existing) return reponseJSON({ erreur: 'Membership introuvable' }, 404);
+
+    if (existing.status !== 'active') {
+        // Deja termine : 200, aucune reecriture, valid_to conserve.
+        return reponseJSON({
+            membership: {
+                id: existing.id, studentId: existing.student_id, groupId: existing.group_id,
+                status: existing.status, validFrom: existing.valid_from, validTo: existing.valid_to
+            }
+        }, 200);
+    }
+
+    const oldValues = JSON.stringify({ status: 'active' });
+    const newValues = JSON.stringify({ status: 'ended' });
+
+    const updateStmt = db.prepare(
+        `UPDATE student_group_memberships
+         SET status = 'ended', valid_to = datetime('now')
+         WHERE id = ? AND status = 'active'`
+    ).bind(membershipId);
+
+    const selectStmt = db.prepare(
+        `SELECT id, student_id, group_id, status, valid_from, valid_to FROM student_group_memberships WHERE id = ?`
+    ).bind(membershipId);
+
+    // Audit garde par changes()=1 : aucune trace si une course a deja termine la ligne.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'end_membership', 'student_group_membership', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(membershipId), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-end-membership (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Membership introuvable' }, 404);
+
+    // changes===0 ici = termine par une course concurrente ; on renvoie idempotemment
+    // l'etat 'ended' courant (valid_to conservé).
+    return reponseJSON({
+        membership: {
+            id: row.id, studentId: row.student_id, groupId: row.group_id,
+            status: row.status, validFrom: row.valid_from, validTo: row.valid_to
+        }
+    }, 200);
 }
 
 // Affecte un module (chapter_id) à un enseignant pour une année académique.
@@ -2650,6 +2756,11 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieCreateUser(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-end-membership') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieEndMembership(env, user, corpsBrut);
         }
 
         // ─── PIPELINE IA — Session requise ───

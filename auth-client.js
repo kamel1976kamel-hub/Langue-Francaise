@@ -266,6 +266,10 @@
         return workerFetch(Object.assign({ action: 'pedagogie-create-user' }, params || {}));
     }
 
+    function pedagogieEndMembership(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-end-membership' }, params || {}));
+    }
+
     // =================================================================
     // HELPERS
     // =================================================================
@@ -339,6 +343,7 @@
         pedagogieAssignTeacherModule: pedagogieAssignTeacherModule,
         pedagogieCreateModuleOffering: pedagogieCreateModuleOffering,
         pedagogieCreateUser: pedagogieCreateUser,
+        pedagogieEndMembership: pedagogieEndMembership,
         getToken: getToken,
         clearToken: clearToken,
         isAuthenticated: isAuthenticated,
