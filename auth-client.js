@@ -209,6 +209,10 @@
         return workerFetch(Object.assign({ action: 'pedagogie-list-students' }, params || {}));
     }
 
+    function pedagogieListUsers(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-list-users' }, params || {}));
+    }
+
     function pedagogieListGroups(params) {
         return workerFetch(Object.assign({ action: 'pedagogie-list-groups' }, params || {}));
     }
@@ -317,6 +321,7 @@
         pedagogieListAcademicYears: pedagogieListAcademicYears,
         pedagogieListTeachers: pedagogieListTeachers,
         pedagogieListStudents: pedagogieListStudents,
+        pedagogieListUsers: pedagogieListUsers,
         pedagogieListGroups: pedagogieListGroups,
         pedagogieListGroupMembers: pedagogieListGroupMembers,
         pedagogieListTeacherAssignments: pedagogieListTeacherAssignments,

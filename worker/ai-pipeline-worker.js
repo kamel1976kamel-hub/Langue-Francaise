@@ -1386,6 +1386,43 @@ async function handlePedagogieListStudents(env, body) {
     return reponseJSON({ students, total, limit: pag.limit, offset: pag.offset }, 200);
 }
 
+// READ-only : liste les comptes users actifs pour alimenter les selects userId
+// des formulaires « Nouvel étudiant » / « Nouvel enseignant ».
+// N'expose que { id, username, displayName }. Aucune écriture D1. Garde requirePedagogieAdmin.
+async function handlePedagogieListUsers(env, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    // role obligatoire et borné : évite de divulguer les autres comptes.
+    if (body.role !== 'student' && body.role !== 'teacher') {
+        return reponseJSON({ erreur: "role invalide (valeurs autorisées: student, teacher)" }, 400);
+    }
+    const pag = parsePagination(body);
+    if (pag.error) return reponseJSON({ erreur: pag.error }, 400);
+
+    // excludeLinked (défaut true) : masque les users déjà liés à un profil.
+    const excludeLinked = (body.excludeLinked === undefined || body.excludeLinked === null) ? true : (body.excludeLinked === true);
+    const profileTable = body.role === 'teacher' ? 'teachers' : 'students';
+
+    const conditions = ["u.role = ?", "u.actif = 1"];
+    const params = [body.role];
+    if (excludeLinked) {
+        conditions.push(`NOT EXISTS (SELECT 1 FROM ${profileTable} p WHERE p.user_id = u.id)`);
+    }
+    const whereStr = 'WHERE ' + conditions.join(' AND ');
+
+    const countSql = `SELECT COUNT(*) AS cnt FROM users u ${whereStr}`;
+    const sql = `SELECT u.id, u.username, u.display_name FROM users u ${whereStr} ORDER BY u.username ASC LIMIT ? OFFSET ?`;
+
+    const countResult = await db.prepare(countSql).bind(...params).first();
+    const total = countResult ? countResult.cnt : 0;
+
+    const rows = await db.prepare(sql).bind(...params, pag.limit, pag.offset).all();
+    const users = (rows.results || []).map(r => ({ id: r.id, username: r.username, displayName: r.display_name }));
+    return reponseJSON({ users, total, limit: pag.limit, offset: pag.offset }, 200);
+}
+
 async function handlePedagogieListGroups(env, body) {
     const db = env.DB;
     if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
@@ -2431,6 +2468,11 @@ export default {
             const { error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieListStudents(env, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-list-users') {
+            const { error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieListUsers(env, corpsBrut);
         }
         if (actionAuth === 'pedagogie-list-groups') {
             const { error } = await requirePedagogieAdmin(request, env);

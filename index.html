@@ -6592,7 +6592,7 @@
           title: 'Créer un profil enseignant',
           confirm: 'Confirmer la création de ce profil enseignant ?',
           fields: [
-            { key: 'userId', label: 'userId (users.id)', type: 'text', req: true },
+            { key: 'userId', label: 'userId (users.id)', type: 'select', req: true, valType: 'string', dyn: 'usersTeacher' },
             { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 }
           ]
         },
@@ -6603,7 +6603,7 @@
           confirm: 'Confirmer la création de ce profil étudiant ?',
           fields: [
             { key: 'displayName', label: 'Nom affiché', type: 'text', req: true, max: 120 },
-            { key: 'userId', label: 'userId (optionnel)', type: 'text', req: false },
+            { key: 'userId', label: 'userId (compte, optionnel)', type: 'select', req: false, valType: 'string', dyn: 'usersStudent', allowEmpty: true },
             { key: 'matricule', label: 'Matricule (optionnel)', type: 'text', req: false, max: 64 }
           ]
         },
@@ -6662,7 +6662,11 @@
         years: { wrapper: 'pedagogieListAcademicYears', listKey: 'academicYears', value: 'id', label: function (r) { return r.label; } },
         teachers: { wrapper: 'pedagogieListTeachers', listKey: 'teachers', value: 'userId', label: function (r) { return (r.displayName || r.userId) + ' (' + r.userId + ')'; } },
         students: { wrapper: 'pedagogieListStudents', listKey: 'students', value: 'id', label: function (r) { return (r.displayName || r.id) + (r.matricule ? ' · ' + r.matricule : ''); } },
-        groups: { wrapper: 'pedagogieListGroups', listKey: 'groups', value: 'id', label: function (r) { return (r.name || r.code) + (r.code ? ' — ' + r.code : ''); } }
+        groups: { wrapper: 'pedagogieListGroups', listKey: 'groups', value: 'id', label: function (r) { return (r.name || r.code) + (r.code ? ' — ' + r.code : ''); } },
+        // Comptes users actifs non encore liés, pour les selects « userId » des
+        // formulaires de création de profils (source: pedagogie-list-users, READ).
+        usersTeacher: { wrapper: 'pedagogieListUsers', listKey: 'users', value: 'id', label: function (r) { return (r.displayName ? r.displayName + ' · ' : '') + r.username; }, params: { role: 'teacher', excludeLinked: true } },
+        usersStudent: { wrapper: 'pedagogieListUsers', listKey: 'users', value: 'id', label: function (r) { return (r.displayName ? r.displayName + ' · ' : '') + r.username; }, params: { role: 'student', excludeLinked: true } }
       };
 
       var _pedagogyFormOptions = {};
@@ -6686,7 +6690,7 @@
           var fn = window.AuthClient && window.AuthClient[L.wrapper];
           var done = function () { if (--pending === 0) cb(); };
           if (typeof fn !== 'function') { _pedagogyFormOptions[k] = []; done(); return; }
-          Promise.resolve(fn.call(window.AuthClient, { limit: 500, offset: 0, status: 'active' })).then(function (res) {
+          Promise.resolve(fn.call(window.AuthClient, Object.assign({ limit: 500, offset: 0, status: 'active' }, L.params || {}))).then(function (res) {
             _pedagogyFormOptions[k] = (res && res.status === 200 && res.data && Array.isArray(res.data[L.listKey])) ? res.data[L.listKey] : [];
           }).catch(function () { _pedagogyFormOptions[k] = []; }).then(done);
         });
