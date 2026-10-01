@@ -1787,6 +1787,101 @@ async function handlePedagogieCreateAcademicYear(env, user, body) {
     return reponseJSON({ academicYear }, 201);
 }
 
+// P5 (D2) — Archive une année académique : soft archive 'active' -> 'archived'.
+// Décisions figées P5 : D-P5-1 pas de réactivation ; D-P5-2 payload { yearId } ;
+// D-P5-3 année déjà archivée = 200 idempotent (aucune obligation d'une active) ;
+// D-P5-4 aucune cascade, historique intégralement conservé (aucun DELETE, aucune
+// modification des groupes/memberships/offrings liés). L'autorité d'écriture est
+// le WHERE id=? AND status='active' (jamais de réécriture en course concurrente),
+// selon le pattern P4 end-membership. La rotation est un enchaînement de DEUX
+// opérations distinctes (archive puis create) : create-academic-year est inchangé
+// et porte déjà l'unicité active atomique (WHERE NOT EXISTS active) — jamais plus
+// d'une année active. Rate limiting (D-P5-8) : même mécanisme que P2/P3, clé
+// 'archive-year:<actorId>' dans login_attempts, fenêtre RESET_RATE_*.
+async function handlePedagogieArchiveAcademicYear(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+
+    if (!Number.isInteger(body.yearId) || body.yearId < 1) {
+        return reponseJSON({ erreur: 'yearId doit être un entier > 0' }, 400);
+    }
+    const yearId = body.yearId;
+
+    // Pré-lecture : 404 si inexistant + détection idempotente (statut courant).
+    const existing = await db.prepare(
+        `SELECT id, label, starts_on, ends_on, status, created_at, updated_at FROM academic_years WHERE id = ?`
+    ).bind(yearId).first();
+    if (!existing) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
+
+    const mapYear = (r) => ({
+        id: r.id, label: r.label, startsOn: r.starts_on, endsOn: r.ends_on,
+        status: r.status, createdAt: r.created_at, updatedAt: r.updated_at
+    });
+
+    if (existing.status === 'archived') {
+        // Déjà archivée : 200 idempotent, aucune réécriture, aucune trace d'audit.
+        return reponseJSON({ academicYear: mapYear(existing) }, 200);
+    }
+
+    // Rate limiting (D-P5-8) : même mécanisme que P2/P3 avant toute écriture.
+    const rlKey = 'archive-year:' + user.id;
+    const rlHash = await sha256Hex(rlKey);
+    const cutoff = new Date(Date.now() - RESET_RATE_WINDOW_SECONDS * 1000).toISOString();
+    const rlCount = await db.prepare(
+        "SELECT COUNT(*) AS c FROM login_attempts WHERE ip_hash = ? AND attempted_at > ? AND success = 1 AND username LIKE 'archive-year:%'"
+    ).bind(rlHash, cutoff).first();
+    if (rlCount && rlCount.c >= RESET_RATE_LIMIT) {
+        return reponseJSON({ erreur: 'Trop d\u0027opérations récentes. Réessayez plus tard.' }, 429);
+    }
+
+    const oldValues = JSON.stringify({ status: 'active' });
+    const newValues = JSON.stringify({ status: 'archived' });
+
+    const updateStmt = db.prepare(
+        `UPDATE academic_years
+         SET status = 'archived', updated_at = datetime('now')
+         WHERE id = ? AND status = 'active'`
+    ).bind(yearId);
+
+    const selectStmt = db.prepare(
+        `SELECT id, label, starts_on, ends_on, status, created_at, updated_at FROM academic_years WHERE id = ?`
+    ).bind(yearId);
+
+    // Audit gardé par changes()=1 : aucune trace si une course a déjà archivé.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'archive_academic_year', 'academic_year', ?, ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), String(yearId), oldValues, newValues);
+
+    let results;
+    try {
+        results = await db.batch([updateStmt, selectStmt, auditStmt]);
+    } catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-archive-academic-year (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
+
+    // changes===0 ici = archivée par une course concurrente ; on renvoie
+    // idempotemment l'état 'archived' courant.
+    const academicYear = mapYear(row);
+
+    if (academicYear.status === 'archived') {
+        // Compteur rate-limit : best-effort après archivage réellement effectué.
+        try {
+            await db.prepare('INSERT INTO login_attempts (username, ip_hash, success) VALUES (?, ?, 1)').bind('archive-year:' + user.id, await sha256Hex('archive-year:' + user.id)).run();
+        } catch (e) { /* ne bloque pas le résultat */ }
+    }
+
+    return reponseJSON({ academicYear }, 200);
+}
+
 // Crée un compte utilisateur (users uniquement) pour l'administration pédagogique.
 // Décisions P2 : id opaque généré côté serveur (D-2), username normalisé trim+lowercase
 // (D-3), mot de passe temporaire généré puis hashé et retourné UNE SEULE FOIS (D-1),
@@ -2928,6 +3023,11 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieCreateAcademicYear(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-archive-academic-year') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieArchiveAcademicYear(env, user, corpsBrut);
         }
         if (actionAuth === 'pedagogie-create-teacher') {
             const { user, error } = await requirePedagogieAdmin(request, env);

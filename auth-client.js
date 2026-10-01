@@ -238,6 +238,10 @@
         return workerFetch(Object.assign({ action: 'pedagogie-create-academic-year' }, params || {}));
     }
 
+    function pedagogieArchiveAcademicYear(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-archive-academic-year' }, params || {}));
+    }
+
     function pedagogieCreateTeacher(params) {
         return workerFetch(Object.assign({ action: 'pedagogie-create-teacher' }, params || {}));
     }
@@ -340,6 +344,7 @@
         pedagogieListModuleOfferings: pedagogieListModuleOfferings,
         pedagogieListAuditLog: pedagogieListAuditLog,
         pedagogieCreateAcademicYear: pedagogieCreateAcademicYear,
+        pedagogieArchiveAcademicYear: pedagogieArchiveAcademicYear,
         pedagogieCreateTeacher: pedagogieCreateTeacher,
         pedagogieCreateStudent: pedagogieCreateStudent,
         pedagogieCreateGroup: pedagogieCreateGroup,

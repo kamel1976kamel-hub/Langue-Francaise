@@ -6161,7 +6161,7 @@
         years: {
           listKey: 'academicYears', wrapper: 'pedagogieListAcademicYears',
           statusOptions: ['active', 'archived', 'all'], filters: [],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'Libellé', key: 'label' }, { label: 'Début', key: 'startsOn' }, { label: 'Fin', key: 'endsOn' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Libellé', key: 'label' }, { label: 'Début', key: 'startsOn' }, { label: 'Fin', key: 'endsOn' }, { label: 'Statut', key: 'status' }, { label: 'Créé le', key: 'createdAt' }, { label: 'Action', key: '_yearAction', render: function (r) { return _pedagogyYearActionCell(r); } }]
         },
         // Comptes users (table users) distincts des profils teachers/students.
         // Role fixe par section + excludeLinked:false pour voir tous les comptes
@@ -6531,6 +6531,18 @@
         return _pedagogyCell(null);
       }
 
+      // Cellule action années (P5) : bouton « Archiver » uniquement pour une année
+      // active (D-P5-7). L'archivage est définitif dans P5 (pas de réactivation).
+      function _pedagogyYearActionCell(r) {
+        if (r && r.status === 'active') {
+          var yid = Number(r.id);
+          if (Number.isInteger(yid) && yid >= 1) {
+            return '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyAcademicYear(' + yid + ')">Archiver</button>';
+          }
+        }
+        return _pedagogyCell(null);
+      }
+
       // Bandeau de résultat transitoire, placé hors de #pedagogyResults pour survivre
       // au re-rendu de la liste (textContent : aucun HTML injectable).
       function _pedagogyShowActionNotice(msg, isErr) {
@@ -6565,6 +6577,28 @@
           }
         }).catch(function () {
           _pedagogyShowActionNotice('Erreur réseau lors de la terminaison.', true);
+        });
+      };
+
+      // Action « Archiver » (P5 D-P5-7) : confirmation -> wrapper -> résultat + refresh
+      // de la liste des années uniquement (aucune cascade UI vers d'autres entités).
+      window.archivePedagogyAcademicYear = function(yearId) {
+        if (!Number.isInteger(yearId) || yearId < 1) return;
+        if (!window.confirm("Confirmer l'archivage de cette année académique ? L'opération est définitive.")) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieArchiveAcademicYear;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { yearId: yearId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.academicYear) {
+            _pedagogyShowActionNotice('✓ Année archivée.', false);
+            if (_pedagogyCurrentSection === 'years') _pedagogyLoadSection('years');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'archivage.', true);
         });
       };
 
