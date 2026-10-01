@@ -1389,9 +1389,12 @@ async function handlePedagogieListStudents(env, body) {
     return reponseJSON({ students, total, limit: pag.limit, offset: pag.offset }, 200);
 }
 
-// READ-only : liste les comptes users actifs pour alimenter les selects userId
-// des formulaires « Nouvel étudiant » / « Nouvel enseignant ».
-// N'expose que { id, username, displayName }. Aucune écriture D1. Garde requirePedagogieAdmin.
+// READ-only : liste les comptes users pour alimenter les selects userId des
+// formulaires « Nouvel étudiant » / « Nouvel enseignant » ET, en mode admin
+// (includeInactive=true), la table complète des comptes pour le lifecycle
+// P8-C.1. N'expose que { id, username, displayName, role, actif } (aucun secret,
+// jamais password_hash). Par défaut (selects) : uniquement les comptes ACTIFS.
+// Aucune écriture D1. Garde requirePedagogieAdmin.
 async function handlePedagogieListUsers(env, body) {
     const db = env.DB;
     if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
@@ -1407,22 +1410,27 @@ async function handlePedagogieListUsers(env, body) {
     // excludeLinked (défaut true) : masque les users déjà liés à un profil.
     const excludeLinked = (body.excludeLinked === undefined || body.excludeLinked === null) ? true : (body.excludeLinked === true);
     const profileTable = body.role === 'teacher' ? 'teachers' : 'students';
+    // includeInactive (défaut false) : la vue lifecycle admin veut voir aussi les
+    // comptes désactivés (pour pouvoir les réactiver). Les selects userId gardent
+    // le comportement actif-only.
+    const includeInactive = (body.includeInactive === true);
 
-    const conditions = ["u.role = ?", "u.actif = 1"];
+    const conditions = ["u.role = ?"];
     const params = [body.role];
+    if (!includeInactive) conditions.push("u.actif = 1");
     if (excludeLinked) {
         conditions.push(`NOT EXISTS (SELECT 1 FROM ${profileTable} p WHERE p.user_id = u.id)`);
     }
     const whereStr = 'WHERE ' + conditions.join(' AND ');
 
     const countSql = `SELECT COUNT(*) AS cnt FROM users u ${whereStr}`;
-    const sql = `SELECT u.id, u.username, u.display_name FROM users u ${whereStr} ORDER BY u.username ASC LIMIT ? OFFSET ?`;
+    const sql = `SELECT u.id, u.username, u.display_name, u.role, u.actif FROM users u ${whereStr} ORDER BY u.username ASC LIMIT ? OFFSET ?`;
 
     const countResult = await db.prepare(countSql).bind(...params).first();
     const total = countResult ? countResult.cnt : 0;
 
     const rows = await db.prepare(sql).bind(...params, pag.limit, pag.offset).all();
-    const users = (rows.results || []).map(r => ({ id: r.id, username: r.username, displayName: r.display_name }));
+    const users = (rows.results || []).map(r => ({ id: r.id, username: r.username, displayName: r.display_name, role: r.role, actif: r.actif }));
     return reponseJSON({ users, total, limit: pag.limit, offset: pag.offset }, 200);
 }
 
@@ -3634,6 +3642,533 @@ async function handlePedagogieArchiveModuleOffering(env, user, body) {
     return reponseJSON({ offering: _p6MapOfferingRow(row) }, 200);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ─── P8-C — COMPLÉMENT LIFECYCLE ADMINISTRATIF (GO GLOBAL P8-C) ──────────────
+// Base de vérité : audit P8-C.0 READ-ONLY. On n'ajoute QUE les primitives
+// réellement absentes ; rien n'est dupliqué (end_membership, update_group,
+// update_module_offering, teacher/student active/inactive existent déjà). Aucun
+// DELETE métier, aucune cascade, aucune migration, aucune réouverture d'année
+// archivée. Chaque mutation : autorité dans le WHERE conditionnel (TOCTOU fermé),
+// idempotence avant écriture, audit strictement par changes()=1.
+// ════════════════════════════════════════════════════════════════════════════
+
+// P8-C.1 — Cycle de vie des comptes users : désactivation/réactivation LOGIQUE
+// (users.actif = 0/1). SEULE mutation autorisée sur users : actif (+ updated_at).
+// Jamais id/username/role/password/must_change, jamais de DELETE. Protections :
+// impossible de modifier son propre compte (anti auto-lockout) ; impossible de
+// désactiver un membre de PEDAGOGIE_ADMIN_IDS (préserve l'accès au module et le
+// dernier admin nécessaire → pas de bypass d'autorisation). Réapplique la chaîne
+// session → PEDAGOGIE_ADMIN_IDS → user.actif (le requirePedagogieAdmin du
+// dispatcher a déjà validé l'acteur). Idempotent si l'état cible est atteint.
+// TOCTOU : UPDATE ... WHERE id=? AND actif=<état lu> ; audit par changes()=1.
+async function handlePedagogieSetUserActive(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (typeof body.userId !== 'string' || !body.userId.trim()) {
+        return reponseJSON({ erreur: 'userId doit être une chaîne non vide' }, 400);
+    }
+    const userId = body.userId.trim();
+    let actif;
+    if (body.actif === 1 || body.actif === true) actif = 1;
+    else if (body.actif === 0 || body.actif === false) actif = 0;
+    else return reponseJSON({ erreur: 'actif doit valoir 0 ou 1' }, 400);
+
+    if (userId === String(user.id)) {
+        return reponseJSON({ erreur: 'Impossible de modifier votre propre compte' }, 403);
+    }
+    if (actif === 0 && PEDAGOGIE_ADMIN_IDS.includes(userId)) {
+        return reponseJSON({ erreur: 'Impossible de désactiver un compte administrateur' }, 403);
+    }
+
+    const existing = await db.prepare('SELECT id, username, display_name, role, actif FROM users WHERE id = ?').bind(userId).first();
+    if (!existing) return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    const mapUser = (r) => ({ id: r.id, username: r.username, displayName: r.display_name, role: r.role, actif: r.actif });
+    const currentActif = existing.actif ? 1 : 0;
+    if (currentActif === actif) return reponseJSON({ user: mapUser(existing) }, 200);
+
+    const actionName = (actif === 1) ? 'set_user_active' : 'set_user_inactive';
+    const oldValues = JSON.stringify({ actif: currentActif });
+    const newValues = JSON.stringify({ actif });
+    const updateStmt = db.prepare(
+        `UPDATE users SET actif = ?, updated_at = datetime('now') WHERE id = ? AND actif = ?`
+    ).bind(actif, userId, currentActif);
+    const selectStmt = db.prepare('SELECT id, username, display_name, role, actif FROM users WHERE id = ?').bind(userId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, ?, 'user', ?, ?, ? WHERE changes() = 1`
+    ).bind(String(user.id), actionName, userId, oldValues, newValues);
+
+    let results;
+    try { results = await db.batch([updateStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-set-user-active (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Utilisateur introuvable' }, 404);
+    if (changesCount === 0) {
+        if ((row.actif ? 1 : 0) === actif) return reponseJSON({ user: mapUser(row) }, 200);
+        return reponseJSON({ erreur: 'Modification impossible (état du compte modifié concurremment)' }, 409);
+    }
+    return reponseJSON({ user: mapUser(row) }, 200);
+}
+
+// P8-C.2 — Réactivation d'un groupe : inactive -> active UNIQUEMENT. L'archivage
+// reste DÉFINITIF (contrat P5/P6) : archived -> active renvoie 409 ; active =
+// idempotent 200. La réactivation ne peut jamais placer le groupe au-dessus de sa
+// capacité : garde intégrée au UPDATE (comptage des memberships actives à
+// l'écriture). Aucun cascade, aucun DELETE. Audit changes()=1.
+async function handlePedagogieReactivateGroup(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (!Number.isInteger(body.groupId) || body.groupId < 1) {
+        return reponseJSON({ erreur: 'groupId doit être un entier > 0' }, 400);
+    }
+    const groupId = body.groupId;
+    const existing = await db.prepare(P6_GROUP_SELECT_SQL).bind(groupId).first();
+    if (!existing) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (existing.status === 'active') return reponseJSON({ group: _p6MapGroupRow(existing) }, 200);
+    if (existing.status === 'archived') {
+        return reponseJSON({ erreur: 'Réactivation impossible : archivage définitif (contrat P5/P6)' }, 409);
+    }
+    const oldValues = JSON.stringify({ status: 'inactive' });
+    const newValues = JSON.stringify({ status: 'active' });
+    const updateStmt = db.prepare(
+        `UPDATE groups SET status = 'active', updated_at = datetime('now')
+         WHERE id = ? AND status = 'inactive'
+           AND (capacity IS NULL OR (SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = groups.id AND am.status = 'active' AND am.valid_to IS NULL) <= capacity)`
+    ).bind(groupId);
+    const selectStmt = db.prepare(P6_GROUP_SELECT_SQL).bind(groupId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'reactivate_group', 'group', ?, ?, ? WHERE changes() = 1`
+    ).bind(String(user.id), String(groupId), oldValues, newValues);
+
+    let results;
+    try { results = await db.batch([updateStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-reactivate-group (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (changesCount === 0) {
+        if (row.status === 'active') return reponseJSON({ group: _p6MapGroupRow(row) }, 200);
+        return reponseJSON({ erreur: 'Réactivation impossible (état ou capacité)' }, 409);
+    }
+    return reponseJSON({ group: _p6MapGroupRow(row) }, 200);
+}
+
+// P8-C.3a — Réactivation d'une affectation : archived -> active seulement si
+// TOUTES les règles P1 sont encore satisfaites (compte teacher actif, profil
+// teacher actif, année active, chapitre autorisé, aucune autre active collision
+// sur le même (teacher, chapter, année)). 'orphan' et active ne sont jamais
+// réécrits. Collision en course -> 409. TOCTOU fermé dans l'UPDATE. Audit
+// changes()=1. Aucun cascade.
+async function handlePedagogieReactivateTeacherAssignment(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (!Number.isInteger(body.assignmentId) || body.assignmentId < 1) {
+        return reponseJSON({ erreur: 'assignmentId doit être un entier > 0' }, 400);
+    }
+    const assignmentId = body.assignmentId;
+    const existing = await db.prepare(P6_ASSIGNMENT_SELECT_SQL).bind(assignmentId).first();
+    if (!existing) return reponseJSON({ erreur: 'Affectation introuvable' }, 404);
+    if (existing.status === 'active') return reponseJSON({ assignment: _p6MapAssignmentRow(existing) }, 200);
+    if (existing.status !== 'archived') return reponseJSON({ erreur: 'Transition impossible : état incompatible' }, 409);
+    if (!PEDAGOGY_CHAPTER_IDS.includes(existing.chapter_id)) {
+        return reponseJSON({ erreur: "Réactivation impossible : le chapitre n'est plus autorisé" }, 409);
+    }
+    const year = await db.prepare('SELECT status FROM academic_years WHERE id = ?').bind(existing.academic_year_id).first();
+    if (!year || year.status !== 'active') return reponseJSON({ erreur: 'Réactivation impossible : année non active' }, 409);
+    const teacher = await db.prepare(
+        `SELECT u.id, u.role, u.actif, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id AND tt.status = 'active' LIMIT 1) AS has_profile
+         FROM users u WHERE u.id = ?`
+    ).bind(existing.teacher_user_id).first();
+    if (!teacher || teacher.role !== 'teacher') return reponseJSON({ erreur: 'Réactivation impossible : compte teacher introuvable' }, 409);
+    if (!teacher.actif) return reponseJSON({ erreur: 'Réactivation impossible : compte teacher inactif' }, 409);
+    if (!teacher.has_profile) return reponseJSON({ erreur: 'Réactivation impossible : profil teacher inactif' }, 409);
+    const dup = await db.prepare(
+        `SELECT 1 AS ok FROM teacher_module_assignments
+         WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active' AND id != ?`
+    ).bind(existing.teacher_user_id, existing.chapter_id, existing.academic_year_id, assignmentId).first();
+    if (dup) return reponseJSON({ erreur: 'Réactivation impossible : une affectation active identique existe déjà' }, 409);
+
+    const oldValues = JSON.stringify({ status: 'archived' });
+    const newValues = JSON.stringify({ status: 'active' });
+    const updateStmt = db.prepare(
+        `UPDATE teacher_module_assignments SET status = 'active', valid_to = NULL
+         WHERE id = ? AND status = 'archived'
+           AND EXISTS (SELECT 1 FROM academic_years ay WHERE ay.id = teacher_module_assignments.academic_year_id AND ay.status = 'active')
+           AND EXISTS (SELECT 1 FROM users u JOIN teachers te ON te.user_id = u.id
+                       WHERE u.id = teacher_module_assignments.teacher_user_id AND u.role = 'teacher' AND u.actif = 1 AND te.status = 'active')
+           AND NOT EXISTS (
+             SELECT 1 FROM teacher_module_assignments
+             WHERE teacher_user_id = (SELECT teacher_user_id FROM teacher_module_assignments WHERE id = ?)
+               AND chapter_id = (SELECT chapter_id FROM teacher_module_assignments WHERE id = ?)
+               AND academic_year_id = (SELECT academic_year_id FROM teacher_module_assignments WHERE id = ?)
+               AND status = 'active' AND id != ?
+           )`
+    ).bind(assignmentId, assignmentId, assignmentId, assignmentId, assignmentId);
+    const selectStmt = db.prepare(P6_ASSIGNMENT_SELECT_SQL).bind(assignmentId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'reactivate_teacher_assignment', 'teacher_module_assignment', ?, ?, ? WHERE changes() = 1`
+    ).bind(String(user.id), String(assignmentId), oldValues, newValues);
+
+    let results;
+    try { results = await db.batch([updateStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-reactivate-teacher-assignment (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Affectation introuvable' }, 404);
+    if (changesCount === 0) {
+        if (row.status === 'active') return reponseJSON({ assignment: _p6MapAssignmentRow(row) }, 200);
+        return reponseJSON({ erreur: 'Réactivation refusée : gardes P1 non satisfaites au moment de l\'écriture (affectation active ou état modifié)' }, 409);
+    }
+    return reponseJSON({ assignment: _p6MapAssignmentRow(row) }, 200);
+}
+
+// P8-C.3b — Réactivation d'une offering : archived -> active. Réapplique
+// INTÉGRALEMENT P1/P6 (groupe actif, année active, PEP-only, cohérence Y/S,
+// teacher compte+profil actifs si présent, offering ⊆ assignment actif, pas de
+// doublon actif). 'orphan' et active jamais réécrits. TOCTOU fermé dans le WHERE.
+// Audit changes()=1. Aucun cascade. NOTE : group_module_offerings n'a pas
+// d'updated_at -> mutation limitée à status/valid_to.
+async function handlePedagogieReactivateModuleOffering(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (!Number.isInteger(body.offeringId) || body.offeringId < 1) {
+        return reponseJSON({ erreur: 'offeringId doit être un entier > 0' }, 400);
+    }
+    const offeringId = body.offeringId;
+    const existing = await db.prepare(P6_OFFERING_SELECT_SQL).bind(offeringId).first();
+    if (!existing) return reponseJSON({ erreur: 'Offering introuvable' }, 404);
+    if (existing.status === 'active') return reponseJSON({ offering: _p6MapOfferingRow(existing) }, 200);
+    if (existing.status !== 'archived') return reponseJSON({ erreur: 'Transition impossible : état incompatible' }, 409);
+
+    const grp = await db.prepare(
+        `SELECT g.id, g.academic_year_id, g.status, g.parcours, g.year_number, g.semester_number, ay.status AS year_status
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id WHERE g.id = ?`
+    ).bind(existing.group_id).first();
+    if (!grp) return reponseJSON({ erreur: 'Groupe introuvable' }, 404);
+    if (grp.status !== 'active') return reponseJSON({ erreur: 'Réactivation impossible : groupe non actif' }, 409);
+    if (grp.year_status !== 'active') return reponseJSON({ erreur: 'Réactivation impossible : année académique non active' }, 409);
+    if (grp.parcours !== 'pep') return reponseJSON({ erreur: 'Les offerings sont réservées aux groupes PEP' }, 400);
+    const pepMatch = /^pep-y(\d)s(\d)-\d+$/.exec(existing.chapter_id);
+    if (!pepMatch) return reponseJSON({ erreur: 'chapterId PEP invalide (format pep-yYsS-NN attendu)' }, 400);
+    if (parseInt(pepMatch[1], 10) !== grp.year_number || parseInt(pepMatch[2], 10) !== grp.semester_number) {
+        return reponseJSON({ erreur: 'Incohérence module/groupe : le module ne correspond pas à l\'année/semestre du groupe' }, 400);
+    }
+    if (existing.teacher_user_id) {
+        const t = await db.prepare(
+            `SELECT u.id, u.role, u.actif, (SELECT 1 FROM teachers tt WHERE tt.user_id = u.id AND tt.status = 'active' LIMIT 1) AS has_profile
+             FROM users u WHERE u.id = ?`
+        ).bind(existing.teacher_user_id).first();
+        if (!t || t.role !== 'teacher') return reponseJSON({ erreur: 'Réactivation impossible : compte teacher introuvable' }, 409);
+        if (!t.actif) return reponseJSON({ erreur: 'Réactivation impossible : compte teacher inactif' }, 409);
+        if (!t.has_profile) return reponseJSON({ erreur: 'Réactivation impossible : profil teacher inactif' }, 409);
+        const auth = await db.prepare(
+            `SELECT 1 AS ok FROM teacher_module_assignments
+             WHERE teacher_user_id = ? AND chapter_id = ? AND academic_year_id = ? AND status = 'active'`
+        ).bind(existing.teacher_user_id, existing.chapter_id, grp.academic_year_id).first();
+        if (!auth) return reponseJSON({ erreur: 'Réactivation impossible : affectation active requise (offering ⊆ assignment)' }, 409);
+    }
+    const dup = await db.prepare(
+        `SELECT 1 AS ok FROM group_module_offerings
+         WHERE group_id = ? AND chapter_id = ? AND status = 'active' AND id != ?`
+    ).bind(existing.group_id, existing.chapter_id, offeringId).first();
+    if (dup) return reponseJSON({ erreur: 'Réactivation impossible : une offering active identique existe déjà' }, 409);
+
+    const oldValues = JSON.stringify({ status: 'archived' });
+    const newValues = JSON.stringify({ status: 'active' });
+    const updateStmt = db.prepare(
+        `UPDATE group_module_offerings SET status = 'active', valid_to = NULL
+         WHERE id = ? AND status = 'archived'
+           AND EXISTS (SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
+                       WHERE g.id = group_module_offerings.group_id AND g.status = 'active' AND ay.status = 'active' AND g.parcours = 'pep')
+           AND NOT EXISTS (
+             SELECT 1 FROM group_module_offerings
+             WHERE group_id = (SELECT group_id FROM group_module_offerings WHERE id = ?)
+               AND chapter_id = (SELECT chapter_id FROM group_module_offerings WHERE id = ?)
+               AND status = 'active' AND id != ?
+           )
+           AND (group_module_offerings.teacher_user_id IS NULL OR (
+             EXISTS (SELECT 1 FROM users u JOIN teachers te ON te.user_id = u.id
+                     WHERE u.id = group_module_offerings.teacher_user_id AND u.role = 'teacher' AND u.actif = 1 AND te.status = 'active')
+             AND EXISTS (SELECT 1 FROM teacher_module_assignments tma
+                     WHERE tma.teacher_user_id = group_module_offerings.teacher_user_id
+                       AND tma.chapter_id = (SELECT chapter_id FROM group_module_offerings WHERE id = ?)
+                       AND tma.academic_year_id = (SELECT g2.academic_year_id FROM groups g2 WHERE g2.id = (SELECT group_id FROM group_module_offerings WHERE id = ?))
+                       AND tma.status = 'active')))`
+    ).bind(offeringId, offeringId, offeringId, offeringId, offeringId, offeringId);
+    const selectStmt = db.prepare(P6_OFFERING_SELECT_SQL).bind(offeringId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'reactivate_module_offering', 'group_module_offering', ?, ?, ? WHERE changes() = 1`
+    ).bind(String(user.id), String(offeringId), oldValues, newValues);
+
+    let results;
+    try { results = await db.batch([updateStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-reactivate-module-offering (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Offering introuvable' }, 404);
+    if (changesCount === 0) {
+        if (row.status === 'active') return reponseJSON({ offering: _p6MapOfferingRow(row) }, 200);
+        return reponseJSON({ erreur: 'Réactivation refusée : gardes P1 non satisfaites au moment de l\'écriture' }, 409);
+    }
+    return reponseJSON({ offering: _p6MapOfferingRow(row) }, 200);
+}
+
+// P8-C.4 — Modification contrôlée d'une année académique ACTIVE : label et/ou
+// dates (starts_on/ends_on). Champs réellement présents dans le schéma. INTERDICTION
+// absolue : réouvrir une année archivée (contrat P5, archivage définitif) ->
+// archived renvoie 409 et ne peut être mutée. L'UPDATE porte WHERE status='active'
+// (jamais de réécriture d'une année archivée en course). Idempotent par diff.
+// UNIQUE(label) garde de concurrence (doublon -> 409). Audit changes()=1.
+async function handlePedagogieUpdateAcademicYear(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (!Number.isInteger(body.yearId) || body.yearId < 1) {
+        return reponseJSON({ erreur: 'yearId doit être un entier > 0' }, 400);
+    }
+    const yearId = body.yearId;
+
+    let label = null;
+    const labelPresent = body.label !== undefined;
+    if (labelPresent) {
+        if (typeof body.label !== 'string') return reponseJSON({ erreur: 'label doit être une chaîne de caractères' }, 400);
+        label = body.label.trim();
+        if (!label) return reponseJSON({ erreur: 'label ne peut pas être vide' }, 400);
+        if (label.length > 50) return reponseJSON({ erreur: 'label ne peut pas dépasser 50 caractères' }, 400);
+    }
+    const startsPresent = body.startsOn !== undefined;
+    const endsPresent = body.endsOn !== undefined;
+    let startsOn = null; let endsOn = null;
+    if (startsPresent) {
+        startsOn = body.startsOn;
+        if (startsOn !== null && (typeof startsOn !== 'string' || !isValidDate(startsOn))) {
+            return reponseJSON({ erreur: 'startsOn doit être une date valide au format YYYY-MM-DD' }, 400);
+        }
+    }
+    if (endsPresent) {
+        endsOn = body.endsOn;
+        if (endsOn !== null && (typeof endsOn !== 'string' || !isValidDate(endsOn))) {
+            return reponseJSON({ erreur: 'endsOn doit être une date valide au format YYYY-MM-DD' }, 400);
+        }
+    }
+    if (!labelPresent && !startsPresent && !endsPresent) {
+        return reponseJSON({ erreur: 'Rien à mettre à jour (label, startsOn ou endsOn attendu)' }, 400);
+    }
+
+    const existing = await db.prepare('SELECT id, label, starts_on, ends_on, status, created_at, updated_at FROM academic_years WHERE id = ?').bind(yearId).first();
+    if (!existing) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
+    if (existing.status !== 'active') {
+        return reponseJSON({ erreur: 'Modification impossible : année archivée (archivage définitif)' }, 409);
+    }
+    // Cohérence des bornes avec les valeurs effectives (nouvelle ou courante).
+    const effStarts = startsPresent ? startsOn : existing.starts_on;
+    const effEnds = endsPresent ? endsOn : existing.ends_on;
+    if (effStarts !== null && effEnds !== null && effStarts > effEnds) {
+        return reponseJSON({ erreur: 'startsOn ne peut pas être postérieure à endsOn' }, 400);
+    }
+
+    const changed = [];
+    const oldValues = {}; const newValues = {};
+    if (labelPresent && label !== existing.label) { changed.push('label'); oldValues.label = existing.label; newValues.label = label; }
+    if (startsPresent && startsOn !== existing.starts_on) { changed.push('starts_on'); oldValues.startsOn = existing.starts_on; newValues.startsOn = startsOn; }
+    if (endsPresent && endsOn !== existing.ends_on) { changed.push('ends_on'); oldValues.endsOn = existing.ends_on; newValues.endsOn = endsOn; }
+    if (changed.length === 0) {
+        const map = (r) => ({ id: r.id, label: r.label, startsOn: r.starts_on, endsOn: r.ends_on, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at });
+        return reponseJSON({ academicYear: map(existing) }, 200);
+    }
+    const map = (r) => ({ id: r.id, label: r.label, startsOn: r.starts_on, endsOn: r.ends_on, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at });
+
+    const setParts = changed.map((c) => (c === 'label' ? 'label = ?' : (c === 'starts_on' ? 'starts_on = ?' : 'ends_on = ?')));
+    const setValues = changed.map((c) => (c === 'label' ? label : (c === 'starts_on' ? startsOn : endsOn)));
+    const updateStmt = db.prepare(
+        `UPDATE academic_years SET ${setParts.join(', ')}, updated_at = datetime('now')
+         WHERE id = ? AND status = 'active'`
+    ).bind(...setValues, yearId);
+    const selectStmt = db.prepare('SELECT id, label, starts_on, ends_on, status, created_at, updated_at FROM academic_years WHERE id = ?').bind(yearId);
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'update_academic_year', 'academic_year', ?, ?, ? WHERE changes() = 1`
+    ).bind(String(user.id), String(yearId), JSON.stringify(oldValues), JSON.stringify(newValues));
+
+    let results;
+    try { results = await db.batch([updateStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        if (/UNIQUE constraint failed/i.test(msg)) {
+            return reponseJSON({ erreur: 'Une année portant ce label existe déjà' }, 409);
+        }
+        console.log('WORKER_ERROR pedagogie-update-academic-year (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+    const changesCount = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    const fetched = (results && results[1] && Array.isArray(results[1].results)) ? results[1].results : [];
+    const row = fetched[0];
+    if (!row) return reponseJSON({ erreur: 'Année académique introuvable' }, 404);
+    if (changesCount === 0) {
+        return reponseJSON({ erreur: 'Modification impossible : année non active' }, 409);
+    }
+    return reponseJSON({ academicYear: map(row) }, 200);
+}
+
+// P8-C.6 — Transfert étudiant groupe A -> groupe B, ATOMIQUE. Le mécanisme
+// existant end_membership + add_student reste valable ; cette primitive apporte
+// une vraie garantie transactionnelle : dans un SEUL batch, on INSÈRE d'abord
+// l'adhésion destination (toutes les gardes add-student : éligibilité, année
+// active, capacité, période libre — la période EXCLUT le groupe source pour
+// permettre le transfert intra-période), puis on TERMINE le source UNIQUEMENT si
+// l'insertion destination a réussi (WHERE EXISTS adhésion active dans B). Tout-ou-
+// rien sans état intermédiaire visible. Aucun DELETE, historique conservé
+// (valid_to horodaté sur le source ; la nouvelle adhésion porte son valid_from).
+// Audit 'transfer_student' par changes()=1. TOCTOU fermé dans les deux WHERE.
+async function handlePedagogieTransferStudent(env, user, body) {
+    const db = env.DB;
+    if (!db) return reponseJSON({ erreur: 'Service non configuré' }, 503);
+    body = body || {};
+    if (!Number.isInteger(body.studentId) || body.studentId < 1) {
+        return reponseJSON({ erreur: 'studentId doit être un entier > 0' }, 400);
+    }
+    if (!Number.isInteger(body.fromGroupId) || body.fromGroupId < 1) {
+        return reponseJSON({ erreur: 'fromGroupId doit être un entier > 0' }, 400);
+    }
+    if (!Number.isInteger(body.toGroupId) || body.toGroupId < 1) {
+        return reponseJSON({ erreur: 'toGroupId doit être un entier > 0' }, 400);
+    }
+    const studentId = body.studentId;
+    const fromGroupId = body.fromGroupId;
+    const toGroupId = body.toGroupId;
+    if (fromGroupId === toGroupId) return reponseJSON({ erreur: 'Groupes source et destination identiques' }, 400);
+
+    // Membership source active (étudiant, groupe source).
+    const src = await db.prepare(
+        `SELECT id FROM student_group_memberships
+         WHERE student_id = ? AND group_id = ? AND status = 'active' AND valid_to IS NULL`
+    ).bind(studentId, fromGroupId).first();
+    if (!src) return reponseJSON({ erreur: 'Aucune adhésion active de cet étudiant dans le groupe source' }, 404);
+
+    const dest = await db.prepare(
+        `SELECT g.id, g.status, g.capacity, ay.status AS year_status
+         FROM groups g LEFT JOIN academic_years ay ON ay.id = g.academic_year_id WHERE g.id = ?`
+    ).bind(toGroupId).first();
+    if (!dest) return reponseJSON({ erreur: 'Groupe de destination introuvable' }, 404);
+    if (dest.status !== 'active') return reponseJSON({ erreur: 'Groupe de destination non actif' }, 409);
+    if (dest.year_status !== 'active') return reponseJSON({ erreur: 'Année académique du groupe de destination non active' }, 409);
+
+    // Étudiant déjà actif dans la destination ?
+    const alreadyDest = await db.prepare(
+        `SELECT 1 AS ok FROM student_group_memberships WHERE student_id = ? AND group_id = ? AND status = 'active' AND valid_to IS NULL`
+    ).bind(studentId, toGroupId).first();
+    if (alreadyDest) return reponseJSON({ erreur: 'Transfert impossible : adhésion active déjà présente dans le groupe de destination' }, 409);
+
+    const oldValues = JSON.stringify({ studentId, fromGroupId });
+    const newValues = JSON.stringify({ studentId, toGroupId });
+
+    // (1) INSERT destination — même autorité que add-student, période EXCLUANT le
+    // groupe source ; capacité évaluée à l'écriture (TOCTOU fermé).
+    const insertDestStmt = db.prepare(
+        `INSERT INTO student_group_memberships (student_id, group_id, status, valid_from, valid_to)
+         SELECT ?, ?, 'active', datetime('now'), NULL
+         WHERE EXISTS (SELECT 1 FROM students st JOIN users su ON su.id = st.user_id
+                       WHERE st.id = ? AND st.status = 'active' AND st.user_id IS NOT NULL
+                         AND su.role = 'student' AND su.actif = 1
+                         AND EXISTS (SELECT 1 FROM groups g JOIN academic_years ay ON ay.id = g.academic_year_id
+                                     WHERE g.id = ? AND g.status = 'active' AND ay.status = 'active'))
+           AND NOT EXISTS (
+             SELECT 1 FROM student_group_memberships m
+             JOIN groups g2 ON g2.id = m.group_id
+             JOIN groups gt ON gt.id = ?
+             WHERE m.student_id = ? AND m.status = 'active' AND m.valid_to IS NULL
+               AND m.group_id != ?
+               AND g2.academic_year_id = gt.academic_year_id
+               AND g2.parcours = gt.parcours
+               AND g2.year_number = gt.year_number
+               AND g2.semester_number = gt.semester_number)
+           AND (
+             (SELECT cg.capacity FROM groups cg WHERE cg.id = ?) IS NULL
+             OR (SELECT cg.capacity FROM groups cg WHERE cg.id = ?) >=
+                (SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = ? AND am.status = 'active' AND am.valid_to IS NULL) + 1
+           )`
+    ).bind(studentId, toGroupId, studentId, toGroupId, toGroupId, studentId, fromGroupId, toGroupId, toGroupId, toGroupId);
+
+    // (2) END source UNIQUEMENT si l'adhésion destination est désormais active.
+    const endSourceStmt = db.prepare(
+        `UPDATE student_group_memberships SET status = 'ended', valid_to = datetime('now')
+         WHERE id = ? AND status = 'active'
+           AND EXISTS (SELECT 1 FROM student_group_memberships WHERE student_id = ? AND group_id = ? AND status = 'active' AND valid_to IS NULL)`
+    ).bind(src.id, studentId, toGroupId);
+
+    // (3) Relecture de la nouvelle adhésion (last_insert_rowid() = id de l'INSERT,
+    // non affecté par l'UPDATE ci-dessus).
+    const selectStmt = db.prepare(
+        `SELECT id, student_id, group_id, status, valid_from, valid_to FROM student_group_memberships WHERE id = last_insert_rowid()`
+    );
+
+    // (4) Audit — changes() porte encore sur l'UPDATE (un SELECT ne le réinitialise
+    // pas) ; la mutation n'est journalisée que si le transfert a réellement eu lieu.
+    const auditStmt = db.prepare(
+        `INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, old_values, new_values)
+         SELECT ?, 'transfer_student', 'student_group_membership', CAST(last_insert_rowid() AS TEXT), ?, ?
+         WHERE changes() = 1`
+    ).bind(String(user.id), oldValues, newValues);
+
+    let results;
+    try { results = await db.batch([insertDestStmt, endSourceStmt, selectStmt, auditStmt]); }
+    catch (err) {
+        const msg = (err && err.message) ? String(err.message) : '';
+        console.log('WORKER_ERROR pedagogie-transfer-student (D1):', msg);
+        return reponseJSON({ erreur: 'Erreur de base de données' }, 500);
+    }
+
+    const insertChanges = (results && results[0] && results[0].meta) ? (results[0].meta.changes || 0) : 0;
+    if (insertChanges === 0) {
+        // Rien inséré -> l'UPDATE source n'a rien fait non plus (tout-ou-rien).
+        // Diagnostic (message explicite uniquement ; l'autorité est le WHERE).
+        const diag = await db.prepare(
+            `SELECT
+               (SELECT g.capacity FROM groups g WHERE g.id = ?) AS capacity,
+               (SELECT COUNT(*) FROM student_group_memberships am WHERE am.group_id = ? AND am.status = 'active' AND am.valid_to IS NULL) AS active_members`
+        ).bind(toGroupId, toGroupId).first();
+        if (diag && diag.capacity !== null && diag.capacity !== undefined && diag.active_members >= diag.capacity) {
+            return reponseJSON({ erreur: 'Capacité du groupe de destination atteinte (' + diag.active_members + '/' + diag.capacity + ')' }, 409);
+        }
+        return reponseJSON({ erreur: 'Transfert impossible (étudiant non éligible, année/groupe non actifs ou période déjà couverte)' }, 409);
+    }
+    const fetched = (results && results[2] && Array.isArray(results[2].results)) ? results[2].results : [];
+    const row = fetched[0];
+    const membership = row ? {
+        id: row.id, studentId: row.student_id, groupId: row.group_id,
+        status: row.status, validFrom: row.valid_from, validTo: row.valid_to
+    } : null;
+    return reponseJSON({ membership, fromGroupId, toGroupId, endedMembershipId: src.id }, 200);
+}
+
 export default {
     async fetch(request, env, ctx) {
         // ─── Contrôle strict de l'origine CORS ───
@@ -3898,6 +4433,37 @@ export default {
             const { user, error } = await requirePedagogieAdmin(request, env);
             if (error) return error;
             return await handlePedagogieEndMembership(env, user, corpsBrut);
+        }
+        // ─── P8-C — complément lifecycle (GO GLOBAL P8-C) ───
+        if (actionAuth === 'pedagogie-set-user-active') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieSetUserActive(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-reactivate-group') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieReactivateGroup(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-reactivate-teacher-assignment') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieReactivateTeacherAssignment(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-reactivate-module-offering') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieReactivateModuleOffering(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-update-academic-year') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieUpdateAcademicYear(env, user, corpsBrut);
+        }
+        if (actionAuth === 'pedagogie-transfer-student') {
+            const { user, error } = await requirePedagogieAdmin(request, env);
+            if (error) return error;
+            return await handlePedagogieTransferStudent(env, user, corpsBrut);
         }
 
         // ─── PIPELINE IA — Session requise ───

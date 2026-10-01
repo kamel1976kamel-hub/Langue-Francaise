@@ -322,6 +322,31 @@
         return workerFetch(Object.assign({ action: 'pedagogie-archive-module-offering' }, params || {}));
     }
 
+    // ---- Complément lifecycle P8-C — wrappers fins, autorité = Worker ----
+    function pedagogieSetUserActive(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-set-user-active' }, params || {}));
+    }
+
+    function pedagogieReactivateGroup(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-reactivate-group' }, params || {}));
+    }
+
+    function pedagogieReactivateTeacherAssignment(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-reactivate-teacher-assignment' }, params || {}));
+    }
+
+    function pedagogieReactivateModuleOffering(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-reactivate-module-offering' }, params || {}));
+    }
+
+    function pedagogieUpdateAcademicYear(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-update-academic-year' }, params || {}));
+    }
+
+    function pedagogieTransferStudent(params) {
+        return workerFetch(Object.assign({ action: 'pedagogie-transfer-student' }, params || {}));
+    }
+
     // =================================================================
     // HELPERS
     // =================================================================
@@ -408,6 +433,12 @@
         pedagogieArchiveTeacherAssignment: pedagogieArchiveTeacherAssignment,
         pedagogieUpdateModuleOffering: pedagogieUpdateModuleOffering,
         pedagogieArchiveModuleOffering: pedagogieArchiveModuleOffering,
+        pedagogieSetUserActive: pedagogieSetUserActive,
+        pedagogieReactivateGroup: pedagogieReactivateGroup,
+        pedagogieReactivateTeacherAssignment: pedagogieReactivateTeacherAssignment,
+        pedagogieReactivateModuleOffering: pedagogieReactivateModuleOffering,
+        pedagogieUpdateAcademicYear: pedagogieUpdateAcademicYear,
+        pedagogieTransferStudent: pedagogieTransferStudent,
         getToken: getToken,
         clearToken: clearToken,
         isAuthenticated: isAuthenticated,

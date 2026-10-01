@@ -6169,14 +6169,14 @@
         accountTeacher: {
           listKey: 'users', wrapper: 'pedagogieListUsers',
           statusOptions: null, filters: [],
-          constantParams: { role: 'teacher', excludeLinked: false },
-          columns: [{ label: 'ID', key: 'id' }, { label: "Nom d'utilisateur", key: 'username' }, { label: 'Nom affiche', key: 'displayName' }]
+          constantParams: { role: 'teacher', excludeLinked: false, includeInactive: true },
+          columns: [{ label: 'ID', key: 'id' }, { label: "Nom d'utilisateur", key: 'username' }, { label: 'Nom affiche', key: 'displayName' }, { label: 'Rôle', key: 'role' }, { label: 'Statut', key: 'actif', render: function (r) { return _pedagogyActifCell(r); } }, { label: 'Action', key: '_userAction', render: function (r) { return _pedagogyUserAccountActionCell(r); } }]
         },
         accountStudent: {
           listKey: 'users', wrapper: 'pedagogieListUsers',
           statusOptions: null, filters: [],
-          constantParams: { role: 'student', excludeLinked: false },
-          columns: [{ label: 'ID', key: 'id' }, { label: "Nom d'utilisateur", key: 'username' }, { label: 'Nom affiche', key: 'displayName' }]
+          constantParams: { role: 'student', excludeLinked: false, includeInactive: true },
+          columns: [{ label: 'ID', key: 'id' }, { label: "Nom d'utilisateur", key: 'username' }, { label: 'Nom affiche', key: 'displayName' }, { label: 'Rôle', key: 'role' }, { label: 'Statut', key: 'actif', render: function (r) { return _pedagogyActifCell(r); } }, { label: 'Action', key: '_userAction', render: function (r) { return _pedagogyUserAccountActionCell(r); } }]
         },
         teachers: {
           listKey: 'teachers', wrapper: 'pedagogieListTeachers',
@@ -6235,7 +6235,7 @@
             { key: 'entityType', label: 'Type entité', type: 'text', valType: 'string' },
             { key: 'entityId', label: 'ID entité', type: 'text', valType: 'string' }
           ],
-          columns: [{ label: 'ID', key: 'id' }, { label: 'Acteur', key: 'actorUserId' }, { label: 'Action', key: 'action' }, { label: 'Type', key: 'entityType' }, { label: 'Entité', key: 'entityId' }, { label: 'Date', key: 'at' }]
+          columns: [{ label: 'ID', key: 'id' }, { label: 'Acteur', key: 'actorUserId' }, { label: 'Action', key: 'action' }, { label: 'Type', key: 'entityType' }, { label: 'Entité', key: 'entityId' }, { label: 'Anciennes valeurs', key: 'oldValues', render: function (r) { return _pedagogyAuditValuesCell(r.oldValues); } }, { label: 'Nouvelles valeurs', key: 'newValues', render: function (r) { return _pedagogyAuditValuesCell(r.newValues); } }, { label: 'Date', key: 'at' }]
         }
       };
 
@@ -6525,8 +6525,13 @@
       function _pedagogyMembershipActionCell(r) {
         if (r && r.status === 'active') {
           var mid = Number(r.id);
-          if (Number.isInteger(mid) && mid >= 1) {
-            return '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="endPedagogyMembership(' + mid + ')">Terminer</button>';
+          var sid = Number(r.studentId);
+          var gid = Number(r.groupId);
+          if (Number.isInteger(mid) && mid >= 1 && Number.isInteger(sid) && sid >= 1 && Number.isInteger(gid) && gid >= 1) {
+            return '<div class="flex gap-1">' +
+              '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="transferPedagogyStudent(' + sid + ',' + gid + ')">Transf\u00e9rer</button>' +
+              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="endPedagogyMembership(' + mid + ')">Terminer</button>' +
+              '</div>';
           }
         }
         return _pedagogyCell(null);
@@ -6538,9 +6543,13 @@
         if (r && r.status === 'active') {
           var yid = Number(r.id);
           if (Number.isInteger(yid) && yid >= 1) {
-            return '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyAcademicYear(' + yid + ')">Archiver</button>';
+            return '<div class="flex gap-1">' +
+              '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="editPedagogyRow(\'years\',' + yid + ')">Modifier</button>' +
+              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyAcademicYear(' + yid + ')">Archiver</button>' +
+              '</div>';
           }
         }
+        // archived : aucune action (r\u00e9ouverture interdite, contrat P5).
         return _pedagogyCell(null);
       }
 
@@ -6553,11 +6562,18 @@
           if (Number.isInteger(gid) && gid >= 1) {
             return '<div class="flex gap-1">' +
               '<button type="button" class="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" onclick="editPedagogyRow(\'groups\',' + gid + ')">Modifier</button>' +
-              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="inactivatePedagogyGroup(' + gid + ')">Désactiver</button>' +
+              '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="inactivatePedagogyGroup(' + gid + ')">D\u00e9sactiver</button>' +
               '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyGroup(' + gid + ')">Archiver</button>' +
               '</div>';
           }
         }
+        if (r && r.status === 'inactive') {
+          var gid2 = Number(r.id);
+          if (Number.isInteger(gid2) && gid2 >= 1) {
+            return '<button type="button" class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700" onclick="reactivatePedagogyGroup(' + gid2 + ')">R\u00e9activer</button>';
+          }
+        }
+        // archived : aucune action (archivage d\u00e9finitif, contrat P5/P6).
         return _pedagogyCell(null);
       }
 
@@ -6683,6 +6699,13 @@
             return '<button type="button" class="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700" onclick="archivePedagogyTeacherAssignment(' + aid + ')">Archiver</button>';
           }
         }
+        if (r && r.status === 'archived') {
+          var aid2 = Number(r.id);
+          if (Number.isInteger(aid2) && aid2 >= 1) {
+            return '<button type="button" class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700" onclick="reactivatePedagogyTeacherAssignment(' + aid2 + ')">R\u00e9activer</button>';
+          }
+        }
+        // orphan : aucune action (\u00e9tat hors cycle).
         return _pedagogyCell(null);
       }
 
@@ -6719,6 +6742,13 @@
               '</div>';
           }
         }
+        if (r && r.status === 'archived') {
+          var oid2 = Number(r.id);
+          if (Number.isInteger(oid2) && oid2 >= 1) {
+            return '<button type="button" class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700" onclick="reactivatePedagogyModuleOffering(' + oid2 + ')">R\u00e9activer</button>';
+          }
+        }
+        // orphan : aucune action (\u00e9tat hors cycle).
         return _pedagogyCell(null);
       }
 
@@ -6756,6 +6786,139 @@
         }
         banner.style.color = isErr ? 'var(--bs-danger)' : 'var(--bs-success, #16a34a)';
         banner.textContent = msg;
+      }
+
+      // ─── P8-C — actions lifecycle complémentaires (UI ; autorité = Worker) ───
+
+      // Réactivation groupe (inactive->active) : même mécanisme que la transition
+      // P6.1 ; archived est refusé côté Worker (409, archivage définitif).
+      window.reactivatePedagogyGroup = function(groupId) { _pedagogyGroupStatusAction(groupId, 'pedagogieReactivateGroup', 'réactiver'); };
+
+      // Réactivation affectation (archived->active) : le Worker réapplique toutes
+      // les gardes P1 et renvoie 409 en cas de collision / teacher inactif.
+      window.reactivatePedagogyTeacherAssignment = function(assignmentId) {
+        if (!Number.isInteger(assignmentId) || assignmentId < 1) return;
+        if (!window.confirm('Confirmer la réactivation de cette affectation ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieReactivateTeacherAssignment;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { assignmentId: assignmentId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.assignment) {
+            _pedagogyShowActionNotice('✓ Affectation réactivée.', false);
+            if (_pedagogyCurrentSection === 'assignments') _pedagogyLoadSection('assignments');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      };
+
+      // Réactivation offering (archived->active) : le Worker réapplique P1/P6.
+      window.reactivatePedagogyModuleOffering = function(offeringId) {
+        if (!Number.isInteger(offeringId) || offeringId < 1) return;
+        if (!window.confirm('Confirmer la réactivation de cette offering ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieReactivateModuleOffering;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { offeringId: offeringId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.offering) {
+            _pedagogyShowActionNotice('✓ Offering réactivée.', false);
+            if (_pedagogyCurrentSection === 'offerings') _pedagogyLoadSection('offerings');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      };
+
+      // Transfert étudiant (groupe source -> groupe destination), transactionnel
+      // côté Worker. Les seules valeurs injectées dans les messages sont des
+      // entiers validés ; aucune HTML/JS depuis le serveur.
+      window.transferPedagogyStudent = function(studentId, fromGroupId) {
+        if (!Number.isInteger(studentId) || studentId < 1 || !Number.isInteger(fromGroupId) || fromGroupId < 1) return;
+        var raw = window.prompt('Transfert étudiant #' + studentId + ' — ID du groupe de destination (entier) :');
+        if (raw === null) return;
+        var toGroupId = parseInt(String(raw).trim(), 10);
+        if (!Number.isInteger(toGroupId) || toGroupId < 1) { _pedagogyShowActionNotice('ID de groupe de destination invalide (entier > 0 requis).', true); return; }
+        if (toGroupId === fromGroupId) { _pedagogyShowActionNotice('Le groupe de destination doit différer du groupe source.', true); return; }
+        if (!window.confirm('Transférer cet étudiant du groupe ' + fromGroupId + ' vers le groupe ' + toGroupId + ' ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieTransferStudent;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { studentId: studentId, fromGroupId: fromGroupId, toGroupId: toGroupId })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.membership) {
+            _pedagogyShowActionNotice('✓ Étudiant transféré vers le groupe ' + toGroupId + '.', false);
+            if (_pedagogyCurrentSection === 'members') _pedagogyLoadSection('members');
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      };
+
+      // Cellule statut compte (users.actif) : libellé coloré, aucune donnée sensible.
+      function _pedagogyActifCell(r) {
+        if (!r) return _pedagogyCell(null);
+        var on = (r.actif === 1 || r.actif === true);
+        return on ? '<span style="color: var(--bs-success, #16a34a);">actif</span>' : '<span style="color: var(--bs-danger);">inactif</span>';
+      }
+
+      // Les identifiants users sont des chaînes opaques : on N'injecte JAMAIS une
+      // chaîne dans un onclick. Chaque bouton reçoit une poignée entière émise ici
+      // et résolue en { userId, actif } au clic (aucune XSS possible).
+      var _pedagogyUserHandleSeq = 0;
+      var _pedagogyUserHandleMap = {};
+      function _pedagogyUserAccountActionCell(r) {
+        if (!r || typeof r.id !== 'string' || !r.id) return _pedagogyCell(null);
+        var on = (r.actif === 1 || r.actif === true);
+        var target = on ? 0 : 1;
+        var h = ++_pedagogyUserHandleSeq;
+        _pedagogyUserHandleMap[h] = { userId: r.id, actif: target };
+        var label = on ? 'Désactiver' : 'Réactiver';
+        var cls = on ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700';
+        return '<button type="button" class="rounded ' + cls + ' px-2 py-1 text-xs font-medium text-white" onclick="setPedagogyUserActive(' + h + ')">' + label + '</button>';
+      }
+
+      window.setPedagogyUserActive = function(handle) {
+        var entry = _pedagogyUserHandleMap[handle];
+        if (!entry) { _pedagogyShowActionNotice('Entrée expirée — recharger la section.', true); return; }
+        var verb = entry.actif === 1 ? 'réactiver' : 'désactiver';
+        if (!window.confirm('Confirmer ' + verb + ' ce compte ?')) return;
+        var wrapper = window.AuthClient && window.AuthClient.pedagogieSetUserActive;
+        if (typeof wrapper !== 'function') { _pedagogyShowActionNotice('Wrapper indisponible.', true); return; }
+        _pedagogyShowActionNotice('Envoi…', false);
+        Promise.resolve(wrapper.call(window.AuthClient, { userId: entry.userId, actif: entry.actif })).then(function (res) {
+          var data = (res && res.data) || {};
+          if (res && res.status === 200 && data.user) {
+            _pedagogyShowActionNotice('✓ Compte mis à jour (' + (data.user.actif ? 'actif' : 'inactif') + ').', false);
+            if (_pedagogyCurrentSection === 'accountTeacher' || _pedagogyCurrentSection === 'accountStudent') _pedagogyLoadSection(_pedagogyCurrentSection);
+          } else {
+            var code = res ? res.status : '?';
+            _pedagogyShowActionNotice('Erreur (' + code + ') : ' + (data.erreur || 'opération échouée'), true);
+          }
+        }).catch(function () {
+          _pedagogyShowActionNotice('Erreur réseau lors de l\'opération.', true);
+        });
+      };
+
+      // Cellule valeurs d'audit : affiche le JSON d'origine en texte échappé, en
+      // ligne. Le Worker ne journalise jamais de secret (create_user = username/
+      // role/displayName ; set_user_active = {actif} ; etc.). Aucune mutation.
+      function _pedagogyAuditValuesCell(v) {
+        if (v === null || v === undefined || v === '') return _pedagogyCell(null);
+        var s;
+        if (typeof v === 'string') { s = v; }
+        else { try { s = JSON.stringify(v); } catch (e) { s = String(v); } }
+        return '<span class="whitespace-normal break-all" style="color: var(--bs-text-muted);">' + _escapeHtml(s) + '</span>';
       }
 
       // Action « Terminer » (D5) : confirmation -> appel wrapper -> résultat + refresh.
@@ -6906,7 +7069,22 @@
             { key: 'label', label: 'Libellé', type: 'text', req: true, max: 50 },
             { key: 'startsOn', label: 'Début (YYYY-MM-DD)', type: 'date', req: false },
             { key: 'endsOn', label: 'Fin (YYYY-MM-DD)', type: 'date', req: false }
-          ]
+          ],
+          // P8-C.4 — édition : label + dates. Le Worker n'autorise la mutation que
+          // sur une année ACTIVE (jamais de réouverture d'une année archivée) ;
+          // status/id immuables. Soumission en diff ; autorité finale = Worker.
+          edit: {
+            wrapper: 'pedagogieUpdateAcademicYear', idKey: 'yearId', resultKey: 'academicYear',
+            refresh: 'years',
+            titleEdit: 'Modifier l\'année académique',
+            confirm: 'Confirmer la modification de cette année académique ?',
+            immutable: [{ key: 'id', label: 'Année (id)' }, { key: 'status', label: 'Statut' }],
+            fields: [
+              { key: 'label', label: 'Libellé', type: 'text', req: true, max: 50 },
+              { key: 'startsOn', label: 'Début (YYYY-MM-DD)', type: 'date', req: false, emptyAsNull: true },
+              { key: 'endsOn', label: 'Fin (YYYY-MM-DD)', type: 'date', req: false, emptyAsNull: true }
+            ]
+          }
         },
         // Création de comptes users (P2). Le rôle est un paramètre constant côté
         // serveur (imposé par le handler) ; jamais un champ saisissable. Le mot de
