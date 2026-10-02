@@ -3442,7 +3442,7 @@
               <div class="flex items-center gap-2">
                 <button onclick="toggleYoutubeModal()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: #FF0000;" title="Vidéos YouTube">
                   <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502 5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
                 </button>
                 <!-- Bouton réinitialiser conversation -->
@@ -3451,11 +3451,58 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
                 </button>
-                <button onclick="toggleColumn4()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: var(--bs-text-muted);" title="Informations du module">
+                <button onclick="toggleChatModuleFiche()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: var(--bs-text-muted);" title="Informations du module">
                   <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                   </svg>
                 </button>
+              </div>
+            </div>
+
+            <!-- FICHE DU MODULE : ancienne 4e colonne du chat fusionnée
+                 dans le workspace principal en un panneau déroulable.
+                 Les ids utiles (chatModuleTitle, chatModuleContext,
+                 chatModuleFinalities, chatModuleObjectives, chatModuleContent)
+                 sont conservés : updateChatModuleFiche()/p10SyncContexte()/
+                 speakChatModuleText() continuent de les alimenter. -->
+            <div id="chatModuleFiche" class="hidden flex-shrink-0 border-b max-h-[40%] overflow-y-auto px-6 py-4" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg);">
+              <div class="flex items-center justify-between mb-3">
+                <div class="min-w-0">
+                  <h3 id="chatModuleTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Techniques et pratiques de l'écrit</h3>
+                  <!-- P10.8 — parcours / année / semestre / discussion active. -->
+                  <p id="chatModuleContext" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
+                </div>
+                <button 
+                  onclick="speakChatModuleText()"
+                  class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors flex-shrink-0"
+                  title="Lire les informations du module"
+                >
+                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="space-y-4 text-sm" style="color: var(--bs-text-muted);">
+                <div>
+                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">🎯 Finalités</h4>
+                  <p id="chatModuleFinalities">Ce module vise à développer les compétences rédactionnelles des étudiants en les familiarisant avec les techniques et pratiques essentielles de la production écrite. L'objectif est de maîtriser les différentes étapes de l'écriture et d'appliquer les méthodes appropriées selon les types de textes.</p>
+                </div>
+
+                <div>
+                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">📚 Objectifs</h4>
+                  <ul id="chatModuleObjectives" class="list-disc list-inside space-y-1">
+                    <li>Comprendre les mécanismes de la production écrite</li>
+                    <li>Maîtriser les techniques de planification</li>
+                    <li>Développer des stratégies de révision</li>
+                    <li>Adapter son écriture selon le contexte</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">📝 Contenu</h4>
+                  <p id="chatModuleContent">Le module couvre : l'analyse de la consigne, la recherche documentaire, l'élaboration d'un plan, la rédaction des parties, la cohérence textuelle, la correction et la réécriture. Des exercices pratiques accompagnent chaque étape.</p>
+                </div>
               </div>
             </div>
             
@@ -3690,63 +3737,6 @@
               </div>
             </div>
           </main>
-
-          <!-- COLONNE 4: Informations du module (pliable) -->
-          <aside id="chatColumn4" class="w-[380px] overflow-y-auto flex-shrink-0 border-l hidden" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
-            <!-- Vidéo de présentation -->
-            <div class="relative h-48" style="background: linear-gradient(135deg, #1a1a2e, #16213e);">
-              <div class="absolute inset-0 flex items-center justify-center">
-                <div class="text-center">
-                  <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-2" style="background-color: rgba(255,255,255,0.2);">
-                    <svg class="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  </div>
-                  <span class="text-xs text-white/80">Présentation du module</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Contenu du module -->
-            <div class="p-4">
-              <div class="flex items-center justify-between mb-3">
-                <h3 id="chatModuleTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Techniques et pratiques de l'écrit</h3>
-                <!-- P10.8 — parcours / année / semestre / discussion active. -->
-                <p id="chatModuleContext" class="text-xs mt-1 mb-1" style="color: var(--bs-text-muted);"></p>
-                <button 
-                  onclick="speakChatModuleText()"
-                  class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                  title="Lire les informations du module"
-                >
-                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                  </svg>
-                </button>
-              </div>
-              
-              <div class="space-y-4 text-sm" style="color: var(--bs-text-muted);">
-                <div>
-                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">🎯 Finalités</h4>
-                  <p id="chatModuleFinalities">Ce module vise à développer les compétences rédactionnelles des étudiants en les familiarisant avec les techniques et pratiques essentielles de la production écrite. L'objectif est de maîtriser les différentes étapes de l'écriture et d'appliquer les méthodes appropriées selon les types de textes.</p>
-                </div>
-                
-                <div>
-                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">📚 Objectifs</h4>
-                  <ul id="chatModuleObjectives" class="list-disc list-inside space-y-1">
-                    <li>Comprendre les mécanismes de la production écrite</li>
-                    <li>Maîtriser les techniques de planification</li>
-                    <li>Développer des stratégies de révision</li>
-                    <li>Adapter son écriture selon le contexte</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">📝 Contenu</h4>
-                  <p id="chatModuleContent">Le module couvre : l'analyse de la consigne, la recherche documentaire, l'élaboration d'un plan, la rédaction des parties, la cohérence textuelle, la correction et la réécriture. Des exercices pratiques accompagnent chaque étape.</p>
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
 
         <!-- COLONNE 2: Parcours d'apprentissage (10cm ≈ 378px) -->
@@ -10278,7 +10268,7 @@
         if (p10Disponible()) {
           p10SyncContexte(window.P10.context(), data);
         } else {
-          updateColumn4(data && data.column4 ? data.column4 : null);
+          updateChatModuleFiche(data && data.column4 ? data.column4 : null);
         }
         
         console.log('✅ SÉLECTION DE DISCUSSION - FIN');
@@ -10516,10 +10506,13 @@
         alert('Lecture de la vidéo : ' + videoTitle);
       };
 
-      // ============ TOGGLE COLONNE 4 CHAT ============
-      window.toggleColumn4 = function() {
-        const column4 = document.getElementById('chatColumn4');
-        column4.classList.toggle('hidden');
+      // ============ TOGGLE FICHE DU MODULE (chat) ============
+      // GO 4 COLONNES : l'ancienne 4e colonne structurelle du chat a été
+      // supprimée. La fiche du module vit désormais dans le workspace principal
+      // du chat, en panneau déroulable ; ce bouton plie/déplie le panneau.
+      window.toggleChatModuleFiche = function() {
+        const fiche = document.getElementById('chatModuleFiche');
+        if (fiche) fiche.classList.toggle('hidden');
       };
 
       // Toggle sections dans les paramètres
@@ -10830,7 +10823,7 @@
       // ---------- Zone centrale (P10.8) ----------
       // Fiche de module réellement chargée : texte uniquement, jamais de HTML
       // injecté depuis les données, donc aucun vecteur d'injection.
-      function updateColumn4(fiche) {
+      function updateChatModuleFiche(fiche) {
         if (!fiche || typeof fiche !== 'object') return;
         var titreEl = document.getElementById('chatModuleTitle');
         if (titreEl) titreEl.textContent = (typeof fiche.title === 'string') ? fiche.title : '';
@@ -10863,7 +10856,7 @@
             if (el) el.textContent = ligne;
           });
         var fiche = window.P10.column4For(c, window.discussionData || {});
-        if (fiche) updateColumn4(fiche);
+        if (fiche) updateChatModuleFiche(fiche);
         var titreChat = document.getElementById('chatTitle');
         var dd = window.discussionData || {};
         if (titreChat && c.discussionTopic && dd[c.discussionTopic]) {

@@ -222,7 +222,8 @@ function creerEnvironnement(hashInitial) {
 
     // État initial tel qu'écrit dans le HTML pour les éléments qui nous intéressent.
     // GO 3 : #theoryColumn n'existe plus — le cours vit dans #lessonContent (col 3).
-    elements['chatColumn4'].classList.add('hidden');
+    // GO 4 COLONNES : la 4e colonne du chat n'existe plus — la fiche module est
+    // un panneau (#chatModuleFiche) du workspace principal du chat.
     PARCOURS.forEach(function (p) {
         if (elements['modules-' + p]) elements['modules-' + p].classList.add('hidden');
     });
