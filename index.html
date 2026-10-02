@@ -5501,6 +5501,18 @@
 
         // ─── BOOTSTRAP : vérifier session existante via /me ───
         async bootstrapAuth() {
+          // ─── Mode invité (authentification mise en sommeil, réversible) ───
+          // window.AUTH_ENABLED = false (déclaré dans auth-client.js) : on ouvre
+          // directement #mainApp sans écran de connexion ni appel /me bloquant.
+          // Aucune identité serveur n'est créée ; concepteur=false garantit que
+          // les fonctions admin/pédagogie restent masquées et que les garde-fous
+          // isAuthenticated() continuent de refuser toute écriture. Tout le code
+          // d'authentification reste en place : repasser AUTH_ENABLED à true
+          // ramène ce bootstrapAuth() sur le chemin normal (login réel).
+          if (window.AUTH_ENABLED === false) {
+            this.enterGuestMode();
+            return;
+          }
           if (!window.AuthClient || !window.AuthClient.isAuthenticated()) {
             this.showLoginScreen();
             return;
@@ -5522,6 +5534,31 @@
             window.AuthClient.clearToken();
             this.showLoginScreen();
           }
+        }
+
+        // ─── MODE INVITÉ : ouverture sans authentification (strictement cosmétique) ───
+        // Aucun token écrit, aucune lecture /me, rien persisté dans localStorage :
+        // l'état invité n'existe qu'en mémoire pour laisser l'interface accessible.
+        // concepteur=false et rôle 'guest' garantissent qu'aucun privilège n'est
+        // accordé (admin/pédagogie masqués, écritures refusées par le Worker).
+        enterGuestMode() {
+          this.currentUser = {
+            id: 'guest',
+            username: 'invite',
+            displayName: 'Invité',
+            role: 'guest',
+            concepteur: false
+          };
+          this.mustChangePassword = false;
+          currentUser = this.currentUser;
+          // Les entrées réservées au concepteur restent masquées (elles le sont
+          // déjà par défaut ; on le réaffirme explicitement pour le mode invité).
+          var adminBtn = document.getElementById('adminPanelBtn');
+          if (adminBtn) { adminBtn.classList.add('hidden'); adminBtn.classList.remove('flex'); }
+          var pedagogyBtn = document.getElementById('pedagogyAdminBtn');
+          if (pedagogyBtn) { pedagogyBtn.classList.add('hidden'); pedagogyBtn.classList.remove('flex'); }
+          // Ouverture directe de l'application (Parcours PEP/PEM/PES, Chat local).
+          this.showMainApp();
         }
 
         // ─── LOGIN ───
@@ -5661,9 +5698,19 @@
 
         // ─── NAVIGATION ÉCRANS ───
         showLoginScreen() {
-          const authModal = document.getElementById('authModal');
-          const mainApp = document.getElementById('mainApp');
-          const cpModal = document.getElementById('changePasswordModal');
+          var authModal = document.getElementById('authModal');
+          var mainApp = document.getElementById('mainApp');
+          var cpModal = document.getElementById('changePasswordModal');
+          // Mode invité : ne JAMAIS réafficher la connexion, même si main.js
+          // appelle showLoginScreen() après un 401 du Worker (assistant IA).
+          // La requête IA échoue (endpoint fermé = comportement sécurisé
+          // conservé), mais l'accès invité à l'application est préservé.
+          if (window.AUTH_ENABLED === false) {
+            if (authModal) authModal.classList.add('hidden');
+            if (cpModal) cpModal.classList.add('hidden');
+            if (mainApp) mainApp.classList.remove('hidden');
+            return;
+          }
           if (authModal) authModal.classList.remove('hidden');
           if (mainApp) mainApp.classList.add('hidden');
           if (cpModal) cpModal.classList.add('hidden');
@@ -11124,6 +11171,9 @@
     (function() {
       window.addEventListener('load', function() {
         setTimeout(function() {
+          // Mode invité (AUTH_ENABLED=false) : ce garde-fou de secours ne doit
+          // jamais réimposer la connexion. L'accès invité est délibéré.
+          if (window.AUTH_ENABLED === false) return;
           var mainApp = document.getElementById('mainApp');
           var authModal = document.getElementById('authModal');
           var cpModal = document.getElementById('changePasswordModal');

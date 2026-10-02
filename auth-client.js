@@ -22,6 +22,28 @@
     var TOKEN_KEY = 'auth_session_token';
 
     // =================================================================
+    // INTERRUPTEUR CENTRAL D'AUTHENTIFICATION (mise en sommeil réversible)
+    // =================================================================
+    // AUTH_ENABLED = false → l'application s'ouvre directement en mode invité :
+    // aucun écran de connexion, aucun appel /me bloquant (voir ProfileSelector
+    // dans index.html). TOUT le système d'authentification existant (login,
+    // logout, me, change-password, admin, pédagogie, token, Worker, base D1)
+    // est CONSERVÉ inchangé et redevient actif dès AUTH_ENABLED = true.
+    //
+    // ⚠️ Ce drapeau est strictement cosmétique côté client. Il n'ouvre AUCUN
+    // endpoint protégé : isAuthenticated() reste fondé sur le seul token, le
+    // Worker conserve AUTH_REQUIRED = true, et requireConcepteur /
+    // requirePedagogieAdmin restent appliqués. Une requête IA en mode invité
+    // renvoie 401 et demeure refusée (comportement sécurisé volontaire).
+    //
+    // Réversibilité : passer la valeur par défaut à true ci-dessous, ou définir
+    // window.AUTH_ENABLED = true AVANT le chargement de ce script, restaure le
+    // fonctionnement normal (connexion, session, /me, rôles, administration).
+    if (typeof global.AUTH_ENABLED === 'undefined') {
+        global.AUTH_ENABLED = false; // ← interrupteur : false = sommeil, true = actif
+    }
+
+    // =================================================================
     // STOCKAGE TOKEN (sessionStorage uniquement)
     // =================================================================
     function getToken() {
