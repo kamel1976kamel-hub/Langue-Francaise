@@ -221,7 +221,7 @@ function creerEnvironnement(hashInitial) {
     });
 
     // État initial tel qu'écrit dans le HTML pour les éléments qui nous intéressent.
-    elements['theoryColumn'].classList.add('hidden');
+    // GO 3 : #theoryColumn n'existe plus — le cours vit dans #lessonContent (col 3).
     elements['chatColumn4'].classList.add('hidden');
     PARCOURS.forEach(function (p) {
         if (elements['modules-' + p]) elements['modules-' + p].classList.add('hidden');
@@ -401,8 +401,13 @@ section('T3 — Initialisation avec #narratif-1 (absence de TDZ)', function () {
         'parcours narratif déplié au chargement');
     assert(env.elements['arrow-narratif'].style.transform === 'rotate(90deg)',
         'flèche du parcours orientée');
-    assert(!env.elements['theoryColumn'].classList.contains('hidden'),
-        '#theoryColumn rendu visible');
+    // GO 3 — nouveau contrat : plus de 4e colonne, le cours est dans la colonne 3.
+    assert(env.elements['theoryColumn'] === undefined,
+        '#theoryColumn absent du DOM (4e colonne Parcours supprimée)');
+    assert(env.elements['lessonContent'] !== undefined,
+        '#lessonContent présent (bloc de cours de la colonne 3)');
+    assert(/id="middleColumn"[\s\S]*id="lessonContent"[\s\S]*id="theoryContent"[\s\S]*id="activitiesContainer"/.test(html),
+        'cours + activités confinés dans #middleColumn (une seule colonne 3)');
 });
 
 section('T4 — Initialisation avec #resume-1 (non déclenchée, comportement actuel)', function () {
@@ -411,7 +416,7 @@ section('T4 — Initialisation avec #resume-1 (non déclenchée, comportement ac
         'aucun history.replaceState (chapters["resume-1"] inexistant)');
     assert(env.elements['theoryContent'].innerHTML === '', '#theoryContent non alimenté');
     assert(env.elements['modules-resume'].classList.contains('hidden'), 'parcours resume non déplié');
-    assert(env.elements['theoryColumn'].classList.contains('hidden'), '#theoryColumn reste caché');
+    assert(env.elements['theoryColumn'] === undefined, '#theoryColumn absent du DOM');
     assert(env.currentModule() === null, 'currentModule laissé à null par l\'initialisation');
 });
 
@@ -429,7 +434,7 @@ section('T5 — Les 20 identifiants de module', function () {
     assert(dernier === '#resume-4', 'dernier hash = #resume-4 (obtenu: ' + dernier + ')');
 });
 
-section('T6 — Branche chapters (16 modules) : titres, contenus et vidéo exacts', function () {
+section('T6 — Branche chapters (16 modules) : titres et contenus exacts', function () {
     var env = creerEnvironnement();
     IDS_CHAPITRES.forEach(function (id) {
         var attenduTitre = env.lire('chapters["' + id + '"].title');
@@ -437,14 +442,12 @@ section('T6 — Branche chapters (16 modules) : titres, contenus et vidéo exact
         env.sandbox.selectModule(id);
         var titre = env.elements['theoryTitle'].textContent;
         var contenu = env.elements['theoryContent'].innerHTML;
-        var video = env.elements['theoryVideoLabel'].textContent;
-        var ok = (titre === attenduTitre) &&
-                 (contenu === attenduBody) &&
-                 (video === 'Vidéo : ' + attenduTitre);
-        assert(ok, id + ' → titre/body/vidéo === chapters["' + id + '"]'
+        // GO 3 : l'étiquette « Vidéo » vivait dans la 4e colonne supprimée ; le
+        // contrat porte désormais sur le titre et le corps du cours (colonne 3).
+        var ok = (titre === attenduTitre) && (contenu === attenduBody);
+        assert(ok, id + ' → titre/body === chapters["' + id + '"]'
             + (ok ? '' : ' (titre: ' + JSON.stringify(titre) + ' attendu ' + JSON.stringify(attenduTitre)
-                + ' ; body: ' + (contenu === attenduBody ? 'ok' : '≠')
-                + ' ; vidéo: ' + JSON.stringify(video) + ')'));
+                + ' ; body: ' + (contenu === attenduBody ? 'ok' : '≠') + ')'));
     });
 });
 
@@ -457,14 +460,11 @@ section('T7 — Branche fallback resume-* (4 modules) : valeurs de parcoursData'
         env.sandbox.selectModule(id);
         var titre = env.elements['theoryTitle'].textContent;
         var contenu = env.elements['theoryContent'].innerHTML;
-        var video = env.elements['theoryVideoLabel'].textContent;
-        var ok = (titre === attenduTitre) &&
-                 (contenu === '<p>' + attenduTheory + '</p>') &&
-                 (video === 'Vidéo : ' + attenduTitre);
-        assert(ok, id + ' → titre/<p>theory</p>/vidéo === parcoursData["' + parcours + '"].modules["' + id + '"]'
+        // GO 3 : plus d'étiquette vidéo (4e colonne supprimée) — titre + corps uniquement.
+        var ok = (titre === attenduTitre) && (contenu === '<p>' + attenduTheory + '</p>');
+        assert(ok, id + ' → titre/<p>theory</p> === parcoursData["' + parcours + '"].modules["' + id + '"]'
             + (ok ? '' : ' (titre: ' + JSON.stringify(titre) + ' attendu ' + JSON.stringify(attenduTitre)
-                + ' ; contenu: ' + (contenu === '<p>' + attenduTheory + '</p>' ? 'ok' : JSON.stringify(contenu.slice(0, 40)))
-                + ' ; vidéo: ' + JSON.stringify(video) + ')'));
+                + ' ; contenu: ' + (contenu === '<p>' + attenduTheory + '</p>' ? 'ok' : JSON.stringify(contenu.slice(0, 40))) + ')'));
     });
 });
 
@@ -506,13 +506,17 @@ section('T10 — Activation du bon bouton', function () {
     assert(malEteints.length === 0, 'les 19 autres boutons portent text-slate-300');
 });
 
-section('T11 — Affichage de #theoryColumn', function () {
+section('T11 — Rendu du cours dans la colonne 3 (sans 4e colonne)', function () {
     var env = creerEnvironnement();
-    assert(env.elements['theoryColumn'].classList.contains('hidden'),
-        '#theoryColumn caché avant sélection');
+    assert(env.elements['theoryColumn'] === undefined,
+        'aucune 4e colonne #theoryColumn avant sélection');
+    var avant = env.elements['theoryContent'].innerHTML;
     env.sandbox.selectModule('explicatif-1');
-    assert(!env.elements['theoryColumn'].classList.contains('hidden'),
-        '#theoryColumn révélé après sélection');
+    assert(env.elements['theoryContent'].innerHTML.length > 0 &&
+        env.elements['theoryContent'].innerHTML !== avant,
+        '#theoryContent (colonne 3) alimenté après sélection — sans révéler de colonne');
+    assert(env.elements['theoryTitle'].textContent === env.lire('chapters["explicatif-1"].title'),
+        '#theoryTitle reflète le chapitre sélectionné');
 });
 
 section('T12 — Mise à jour du hash', function () {

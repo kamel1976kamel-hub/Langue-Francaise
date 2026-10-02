@@ -828,6 +828,19 @@
             return parts.join(' ');
         }
 
+        // ─── SÉCURITÉ : échappement HTML pour toute donnée dynamique (réponse
+        // de l'élève, correction, texte renvoyé par l'IA) injectée dans un
+        // innerHTML. Neutralise les métacaractères des contenus non fiables
+        // sans altérer la structure HTML statique qui les entoure.
+        window.escapeHtml = function(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
         // Fonctions pour la correction des activités
         
         function processActivityCorrections(corrections, originalAnswer, chapterId, activityId) {
@@ -1028,7 +1041,7 @@
                                         <div class="flex-1">
                                             <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                                                 <div class="flex justify-between items-start">
-                                                    <p class="text-sm flex-1" style="color: var(--bs-black);">${messageToDisplay}</p>
+                                                    <p class="text-sm flex-1" style="color: var(--bs-black);">${window.escapeHtml(messageToDisplay)}</p>
                                                     <button 
                                                         onclick="readText(this)"
                                                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -1185,14 +1198,14 @@
                             </div>
                             <div class="flex-1">
                                 <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-800">${error.type || 'Erreur'}</span>
-                                    <span class="text-sm font-medium text-red-700">"${error.original || error.text}"</span>
+                                    <span class="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-800">${window.escapeHtml(error.type || 'Erreur')}</span>
+                                    <span class="text-sm font-medium text-red-700">"${window.escapeHtml(error.original || error.text)}"</span>
                                 </div>
-                                <p class="text-sm text-red-600">${error.explanation || error.message}</p>
+                                <p class="text-sm text-red-600">${window.escapeHtml(error.explanation || error.message)}</p>
                                 ${error.suggestion ? `
                                     <div class="mt-2 p-2 rounded bg-green-50">
                                         <p class="text-xs font-medium text-green-800">💡 Suggestion :</p>
-                                        <p class="text-sm text-green-700">"${error.suggestion}"</p>
+                                        <p class="text-sm text-green-700">"${window.escapeHtml(error.suggestion)}"</p>
                                     </div>
                                 ` : ''}
                             </div>
@@ -1206,7 +1219,7 @@
                 html += `
                     <div class="p-3 rounded-lg bg-green-50 border border-green-200">
                         <p class="text-sm font-medium text-green-800 mb-2">✅ Réponse corrigée :</p>
-                        <p class="text-sm text-green-700">${corrections.correctedText}</p>
+                        <p class="text-sm text-green-700">${window.escapeHtml(corrections.correctedText)}</p>
                     </div>
                 `;
             }
@@ -1266,7 +1279,7 @@
                         </svg>
                         <span class="text-sm font-medium text-red-800">❌ Erreur lors de l'analyse</span>
                     </div>
-                    <p class="text-sm mt-2 text-red-600">${error.message || 'Une erreur est survenue'}</p>
+                    <p class="text-sm mt-2 text-red-600">${window.escapeHtml(error.message || 'Une erreur est survenue')}</p>
                 </div>
             `;
         }
@@ -1408,7 +1421,7 @@
                                         <div class="flex-1">
                                             <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                                                 <div class="flex justify-between items-start">
-                                                    <p class="text-sm flex-1" style="color: var(--bs-black);">${messageToDisplay}</p>
+                                                    <p class="text-sm flex-1" style="color: var(--bs-black);">${window.escapeHtml(messageToDisplay)}</p>
                                                     <button 
                                                         onclick="readText(this)"
                                                         class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -3768,28 +3781,48 @@
               <!-- P10.8 — contexte partagé affiché dans la zone centrale. -->
               <p id="activitiesContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
             </div>
-            <!-- Icônes YouTube et Livre -->
+            <!-- Icône YouTube -->
             <div class="flex items-center gap-2">
               <button onclick="toggleParcoursYoutubeModal()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5" style="color: #FF0000;" title="Vidéos sur le type de texte">
                 <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                 </svg>
               </button>
-              <button onclick="toggleTheoryColumn()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5" style="color: var(--bs-text-muted);" title="Théorie du module">
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                </svg>
-              </button>
             </div>
           </div>
           
-          <!-- Contenu des activités (scrollable) -->
-          <div id="activitiesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
-            <div class="text-center py-8" style="color: var(--bs-text-muted);">
-              <svg class="h-12 w-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-              </svg>
-              <p class="text-sm" style="color: var(--bs-text-muted);">Sélectionnez un module pour voir les activités</p>
+          <!-- CONTENU ACTIF (colonne 3) : cours puis activités, dans un seul scroll -->
+          <div class="flex-1 overflow-y-auto">
+            <!-- Bloc de cours (contenu théorique) — anciennement 4e colonne -->
+            <div id="lessonContent" class="px-6 py-6 border-b" style="border-color: var(--bs-border-color);">
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <h2 id="theoryTitle" class="text-xl font-semibold" style="color: var(--bs-body-color);">Sélectionnez un module</h2>
+                  <!-- P10.8 — même contexte que l'arbre Parcours et la discussion. -->
+                  <p id="theoryContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
+                </div>
+                <button
+                  onclick="speakTheoryText()"
+                  class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors flex-shrink-0"
+                  title="Lire la théorie"
+                >
+                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                  </svg>
+                </button>
+              </div>
+              <div id="theoryContent" class="prose max-w-none text-sm" style="color: var(--bs-body-color);">
+                <p style="color: var(--bs-text-muted);">Cliquez sur un parcours et sélectionnez un module pour voir le contenu du cours.</p>
+              </div>
+            </div>
+            <!-- Contenu des activités -->
+            <div id="activitiesContainer" class="p-4 space-y-4">
+              <div class="text-center py-8" style="color: var(--bs-text-muted);">
+                <svg class="h-12 w-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <p class="text-sm" style="color: var(--bs-text-muted);">Sélectionnez un module pour voir les activités</p>
+              </div>
             </div>
           </div>
           
@@ -3797,46 +3830,6 @@
           <div class="border-t flex-shrink-0" style="height: 113px; background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
           </div>
         </aside>
-
-        <!-- COLONNE 4: Contenu théorique (10cm ≈ 378px) - Fond global -->
-        <main id="theoryColumn" class="overflow-y-auto flex-shrink-0 border-l hidden" style="width: 378px; background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
-          <!-- Vidéo de présentation -->
-          <div class="relative h-48" style="background: linear-gradient(135deg, #1a1a2e, #16213e);">
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="text-center">
-                <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-2" style="background-color: rgba(255,255,255,0.2);">
-                  <svg class="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </div>
-                <span id="theoryVideoLabel" class="text-xs text-white/80">Vidéo de présentation</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="max-w-3xl mx-auto px-6 py-6">
-            <!-- En-tête du contenu avec bouton audio -->
-            <div class="mb-4 flex items-center justify-between">
-              <h2 id="theoryTitle" class="text-xl font-semibold" style="color: var(--bs-body-color);">Sélectionnez un module</h2>
-              <!-- P10.8 — même contexte que l'arbre Parcours et la discussion. -->
-              <p id="theoryContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
-              <button 
-                onclick="speakTheoryText()"
-                class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
-                title="Lire la théorie"
-              >
-                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                </svg>
-              </button>
-            </div>
-            
-            <!-- Corps du contenu -->
-            <div id="theoryContent" class="prose max-w-none text-sm" style="color: var(--bs-body-color);">
-              <p style="color: var(--bs-text-muted);">Cliquez sur un parcours et sélectionnez un module pour voir la théorie correspondante.</p>
-            </div>
-          </div>
-        </main>
       </div>
     </div>
 
@@ -9828,11 +9821,9 @@
         // Cacher la vue des parcours
         const learningPathColumn = document.getElementById('learningPathColumn');
         const middleColumn = document.getElementById('middleColumn');
-        const theoryColumn = document.getElementById('theoryColumn');
         
         if (learningPathColumn) learningPathColumn.classList.add('hidden');
         if (middleColumn) middleColumn.classList.add('hidden');
-        if (theoryColumn) theoryColumn.classList.add('hidden');
         
         // Afficher la vue chat
         const chatView = document.getElementById('chatView');
@@ -9852,7 +9843,8 @@
         
         if (learningPathColumn) learningPathColumn.classList.remove('hidden');
         if (middleColumn) middleColumn.classList.remove('hidden');
-        // Note: theoryColumn reste caché jusqu'à ce que l'utilisateur clique sur le livre
+        // Note : le contenu du cours vit désormais dans #lessonContent (colonne 3),
+        // visible en permanence avec les activités — plus de 4e colonne à déplier.
         
         // Cacher la vue chat
         const chatView = document.getElementById('chatView');
@@ -10400,26 +10392,11 @@
         alert('Lecture de la vidéo : ' + videoTitle);
       };
 
-      // ============ TOGGLE COLONNE THÉORIE ============
-      window.toggleTheoryColumn = function() {
-        const column4 = document.getElementById('theoryColumn');
-        column4.classList.toggle('hidden');
-        
-        if (!column4.classList.contains('hidden') && currentModule) {
-          updateTheoryContent();
-        }
-      };
-
-      function updateTheoryContent() {
-        if (!currentParcours || !currentModule) return;
-        
-        const moduleData = parcoursData[currentParcours].modules[currentModule];
-        if (moduleData) {
-          document.getElementById('theoryTitle').textContent = moduleData.title;
-          document.getElementById('theoryContent').innerHTML = `<p>${moduleData.theory}</p>`;
-          document.getElementById('theoryVideoLabel').textContent = 'Vidéo : ' + moduleData.title;
-        }
-      }
+      // ============ CONTENU DU COURS (colonne 3) ============
+      // La 4e colonne « théorie » (#theoryColumn) a été supprimée : le contenu
+      // du cours est désormais rendu directement dans #lessonContent (colonne 3)
+      // par selectModule(). toggleTheoryColumn() / updateTheoryContent() n'ont
+      // plus aucun appelant et ont donc été retirés.
 
       // ============ SÉLECTION DE MODULE ============
       window.selectModule = function(moduleId) {
@@ -10437,9 +10414,9 @@
         currentModule = moduleId;
         currentParcours = parcoursId;
 
-        // Retry historique (100 ms) : la colonne théorie n'est pas encore dans le DOM.
-        // Sémantique inchangée par rapport à l'ancienne définition D1 : avertir,
-        // réessayer, ne rien modifier d'autre pour l'instant.
+        // Retry historique (100 ms) : le bloc de cours (#theoryContent) n'est pas
+        // encore dans le DOM. Sémantique inchangée : avertir, réessayer, ne rien
+        // modifier d'autre pour l'instant.
         const theoryContentDisponible = document.getElementById("theoryContent");
         if (!theoryContentDisponible) {
           console.warn('Élément theoryContent non disponible, retry dans 100ms...');
@@ -10459,24 +10436,18 @@
           }
         }
         
-        // 4. Afficher et mettre à jour la colonne théorie avec le contenu détaillé de chapters
-        const theoryColumn = document.getElementById('theoryColumn');
-        if (theoryColumn) {
-          theoryColumn.classList.remove('hidden');
-          
-          // Utiliser le contenu détaillé de l'objet chapters s'il existe
-          const chapter = chapters[moduleId];
-          if (chapter) {
-            document.getElementById('theoryTitle').textContent = chapter.title;
-            document.getElementById('theoryContent').innerHTML = chapter.body;
-            document.getElementById('theoryVideoLabel').textContent = 'Vidéo : ' + chapter.title;
-          } else if (parcoursData[parcoursId] && parcoursData[parcoursId].modules[moduleId]) {
-            // Fallback sur parcoursData si chapters n'a pas ce module
-            const moduleData = parcoursData[parcoursId].modules[moduleId];
-            document.getElementById('theoryTitle').textContent = moduleData.title;
-            document.getElementById('theoryContent').innerHTML = `<p>${moduleData.theory}</p>`;
-            document.getElementById('theoryVideoLabel').textContent = 'Vidéo : ' + moduleData.title;
-          }
+        // 4. Alimenter le bloc de cours (#lessonContent) situé dans la colonne 3.
+        //    La 4e colonne (#theoryColumn) n'existe plus : le contenu théorique
+        //    est rendu dans #theoryContent/#theoryTitle, au-dessus des activités.
+        const chapter = chapters[moduleId];
+        if (chapter) {
+          document.getElementById('theoryTitle').textContent = chapter.title;
+          document.getElementById('theoryContent').innerHTML = chapter.body;
+        } else if (parcoursData[parcoursId] && parcoursData[parcoursId].modules[moduleId]) {
+          // Fallback sur parcoursData si chapters n'a pas ce module
+          const moduleData = parcoursData[parcoursId].modules[moduleId];
+          document.getElementById('theoryTitle').textContent = moduleData.title;
+          document.getElementById('theoryContent').innerHTML = `<p>${moduleData.theory}</p>`;
         }
         
         // 5. Mettre à jour l'apparence des boutons de module
