@@ -1191,6 +1191,11 @@ function p10DiscussionLeaf(topic, title, active) {
  * possède réellement. Un module sans discussion reste sélectionnable et
  * affiche « sans contenu » : rien n'est inventé.
  *
+ * À l'image de la colonne Parcours, le dépliement initial suit uniquement
+ * P10_DEFAULT_OPEN (accueil réduit aux trois parcours, PEP replié) : le
+ * contexte courant ne force plus l'ouverture des années/semestres. On déplie
+ * au clic (toggleTree), comme dans le Parcours.
+ *
  * @param {Object} opts { context, discussionTitles: { topic: titre } }
  */
 function p10RenderDiscussionTree(opts) {
@@ -1249,7 +1254,7 @@ function p10RenderDiscussionTree(opts) {
                     label: P10_SEMESTER_LABELS[s],
                     nodeKey: legacySemKey,
                     subtree: modsHtml,
-                    open: p10IsCurrentSemester(ctx, p, y, s) || !!P10_DEFAULT_OPEN[semPathKey]
+                    open: !!P10_DEFAULT_OPEN[semPathKey]
                 });
             }
             var yearPathKey = p + '/y' + y;
@@ -1257,14 +1262,14 @@ function p10RenderDiscussionTree(opts) {
                 label: P10_YEAR_LABELS[y],
                 nodeKey: P10_LEGACY_TREE_KEYS[yearPathKey] || yearPathKey,
                 subtree: semHtml,
-                open: (ctx.parcours === p && ctx.yearNumber === y) || !!P10_DEFAULT_OPEN[yearPathKey]
+                open: !!P10_DEFAULT_OPEN[yearPathKey]
             });
         }
         html += p10DBranch({
             label: P10_PARCOURS_LABELS[p] || p,
             nodeKey: p,
             subtree: yearsHtml,
-            open: true,
+            open: !!P10_DEFAULT_OPEN[p],
             labelClass: P10_DNODE.parcoursLabel
         });
     }

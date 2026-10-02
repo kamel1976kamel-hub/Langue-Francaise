@@ -3463,6 +3463,14 @@
                  année, semestre, module) reste porté par P10. -->
 
             <!-- Zone de chat (messages) -->
+            <!-- État initial du Chat : aucun module sélectionné. Ce message est
+                 masqué dès qu'une discussion est ouverte (selectDiscussion) ou
+                 qu'un module est sélectionné (p10MasquerDiscussions), comme
+                 l'état vide « Cliquez sur un parcours… » de la colonne 3 Parcours. -->
+            <div id="chatEmptyState" class="flex-1 overflow-y-auto px-6 py-4">
+              <p class="text-sm" style="color: var(--bs-text-muted);">Cliquez sur un parcours et sélectionnez un module pour voir le contenu du chat.</p>
+            </div>
+
             <div id="chatMessages-techniques" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
               <!-- Message de bienvenue de l'IA -->
               <div class="flex gap-3">
@@ -10011,10 +10019,11 @@
         }
       };
 
-      window.currentDiscussion = 'techniques';
-
-      // Afficher le premier conteneur par défaut
-      document.getElementById('chatMessages-techniques').classList.remove('hidden');
+      // À l'accueil, aucune discussion n'est ouverte : le reflet legacy démarre
+      // vide (chaîne vide, jamais null) et #chatEmptyState reste visible jusqu'au
+      // premier clic sur un module. La sélection (selectDiscussion /
+      // p10MasquerDiscussions) masquera l'état vide et révèlera le conteneur.
+      window.currentDiscussion = '';
 
       // ============ GESTION DE L'HISTORIQUE DES CHATS ============
       function loadChatHistory(topic) {
@@ -10176,6 +10185,9 @@
         document.querySelectorAll('[id^="chatMessages-"]').forEach(container => {
           container.classList.add('hidden');
         });
+        // Une discussion étant ouverte, l'état vide du Chat disparait.
+        var etatVideSel = document.getElementById('chatEmptyState');
+        if (etatVideSel) etatVideSel.classList.add('hidden');
         
         // Afficher le conteneur de chat correspondant
         const targetChatContainer = document.getElementById(`chatMessages-${topic}`);
@@ -10937,6 +10949,10 @@
           if (container.id === 'chatMessages-module') return;
           container.classList.add('hidden');
         });
+        // Un module étant sélectionné, l'état vide initial est remplacé par la
+        // conversation de niveau module.
+        var etatVideMasq = document.getElementById('chatEmptyState');
+        if (etatVideMasq) etatVideMasq.classList.add('hidden');
         if (p10ConteneurModule() && typeof displayChatHistory === 'function') {
           displayChatHistory(window.P10.MODULE_CHAT_TOPIC);
         }
@@ -10962,6 +10978,25 @@
           return;
         }
         p10MasquerDiscussions();
+      }
+
+      // Accueil du Chat, en parité avec la colonne Parcours : aucun module ni
+      // aucune discussion n'est ouvert au démarrage. On masque tous les
+      // conteneurs de conversation, on affiche l'état vide #chatEmptyState
+      // (« Cliquez sur un parcours et sélectionnez un module pour voir le
+      // contenu du chat. ») et on remet un titre neutre. Appelé en toute fin de
+      // p10Demarrer, après les éventuelles projections du subscribe, pour
+      // garantir un landing vide. L'utilisateur ouvre une conversation en
+      // cliquant un module (p10SelectModule → selectDiscussion / p10MasquerDiscussions).
+      function p10ChatEtatVide() {
+        window.currentDiscussion = '';
+        document.querySelectorAll('[id^="chatMessages-"]').forEach(function (container) {
+          container.classList.add('hidden');
+        });
+        var etatVide = document.getElementById('chatEmptyState');
+        if (etatVide) etatVide.classList.remove('hidden');
+        var titreChat = document.getElementById('chatTitle');
+        if (titreChat) titreChat.textContent = 'Assistant';
       }
 
       // ---------- Pipeline de sélection d'un module canonique (P10.4) ----------
@@ -11068,23 +11103,17 @@
           window.P10.selectModule(window.P10.LEGACY_DISCUSSION_CHAPTER_ID);
         }
         var ctx0 = window.P10.context();
-        var mod0 = window.P10.module(ctx0.chapterId);
-        if (!ctx0.discussionTopic && mod0 && mod0.discussionTopics.length) {
-          // Le module porte des discussions héritées : on reprend celle qui
-          // était ouverte par défaut, sinon la première du module.
-          var herdlee = (typeof window.currentDiscussion === 'string') ? window.currentDiscussion : null;
-          var choix = (herdlee && mod0.discussionTopics.indexOf(herdlee) !== -1)
-            ? herdlee : mod0.discussionTopics[0];
-          window.P10.update({ discussionTopic: choix }, 'boot');
-        }
-        p10DernierModule = window.P10.context().chapterId;
+        p10DernierModule = ctx0.chapterId;
         p10RenderParcours();
         p10RenderDiscussions();
-        p10ReflectLecon(window.P10.context());
-        p10SyncContexte(window.P10.context());
-        // P10.11 — au démarrage comme après un deep-link, le reflet du Chat est
-        // aligné sur ce que le module publie réellement.
-        p10SynchroniserReflet(window.P10.context());
+        p10ReflectLecon(ctx0);
+        p10SyncContexte(ctx0);
+        // Accueil du Chat : parité avec la colonne Parcours. Aucune discussion
+        // n'est sélectionnée au démarrage ; l'état vide #chatEmptyState reste
+        // affiché et l'arbre Discussion est replié sur les trois parcours. Ce
+        // rendu est posé APRÈS les éventuelles projections du subscribe pour
+        // garantir un landing vide jusqu'au premier clic sur un module.
+        p10ChatEtatVide();
       }
 
       p10Demarrer();
