@@ -3720,12 +3720,9 @@
         <!-- COLONNE 3: Activités (reste de l'espace) avec en-tête et pied de 3cm - Toolbar clair -->
         <aside class="border-r flex-shrink-0 flex flex-col" id="middleColumn" style="flex: 1; background-color: var(--bs-toolbar-bg); border-color: var(--bs-border-color);">
           <!-- En-tête (3cm ≈ 113px) -->
-          <div class="border-b flex-shrink-0 flex items-center justify-between px-4" style="height: 113px; background-color: var(--bs-card-bg); border-color: var(--bs-border-color);">
+          <div id="activitiesHeader" class="border-b flex-shrink-0 flex items-center justify-between px-4" style="height: 113px; background-color: var(--bs-card-bg); border-color: var(--bs-border-color); display: none;">
             <div>
-              <h2 id="activitiesTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Activités</h2>
-              <p class="text-sm mt-1" style="color: var(--bs-text-muted);">Sélectionnez une activité pour commencer</p>
-              <!-- P10.8 — contexte partagé affiché dans la zone centrale. -->
-              <p id="activitiesContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
+              <h2 id="activitiesTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);"></h2>
             </div>
             <!-- Icône YouTube -->
             <div class="flex items-center gap-2">
@@ -3741,11 +3738,9 @@
           <div class="flex-1 overflow-y-auto">
             <!-- Bloc de cours (contenu théorique) — anciennement 4e colonne -->
             <div id="lessonContent" class="px-6 py-6 border-b" style="border-color: var(--bs-border-color);">
-              <div class="mb-4 flex items-center justify-between gap-3">
+              <div id="theoryHeader" class="mb-4 flex items-center justify-between gap-3" style="display: none;">
                 <div class="min-w-0">
-                  <h2 id="theoryTitle" class="text-xl font-semibold" style="color: var(--bs-body-color);">Sélectionnez un module</h2>
-                  <!-- P10.8 — même contexte que l'arbre Parcours et la discussion. -->
-                  <p id="theoryContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
+                  <h2 id="theoryTitle" class="text-xl font-semibold" style="color: var(--bs-body-color);"></h2>
                 </div>
                 <button
                   onclick="speakTheoryText()"
@@ -3761,15 +3756,9 @@
                 <p style="color: var(--bs-text-muted);">Cliquez sur un parcours et sélectionnez un module pour voir le contenu du cours.</p>
               </div>
             </div>
-            <!-- Contenu des activités -->
-            <div id="activitiesContainer" class="p-4 space-y-4">
-              <div class="text-center py-8" style="color: var(--bs-text-muted);">
-                <svg class="h-12 w-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                </svg>
-                <p class="text-sm" style="color: var(--bs-text-muted);">Sélectionnez un module pour voir les activités</p>
-              </div>
-            </div>
+            <!-- Contenu des activités — vidé dans l'état initial ; loadActivities()
+                 le peuple normalement une fois un module sélectionné. -->
+            <div id="activitiesContainer" class="p-4 space-y-4"></div>
           </div>
           
           <!-- Pied de page (3cm ≈ 113px) -->
@@ -10366,7 +10355,14 @@
           document.getElementById('theoryTitle').textContent = moduleData.title;
           document.getElementById('theoryContent').innerHTML = `<p>${moduleData.theory}</p>`;
         }
-        
+
+        // Un module étant sélectionné, révéler l'en-tête des activités et l'en-tête
+        // du cours (masqués dans l'état initial « Cliquez sur un parcours… »).
+        var enteteActivites = document.getElementById('activitiesHeader');
+        if (enteteActivites) enteteActivites.style.display = '';
+        var enteteTheorie = document.getElementById('theoryHeader');
+        if (enteteTheorie) enteteTheorie.style.display = '';
+
         // 5. Mettre à jour l'apparence des boutons de module
         document.querySelectorAll('.module-btn').forEach(btn => {
           btn.classList.remove('bg-slate-700', 'text-white', 'bg-slate-800');
@@ -10851,7 +10847,11 @@
           discussionTitle: (dataDiscussion && dataDiscussion.title) ? dataDiscussion.title : undefined,
           withState: true
         });
-        ['parcoursContextLine', 'activitiesContextLine', 'theoryContextLine']
+        // Le fil d'Ariane n'est plus dupliqué dans la colonne 3 : seul le reflet
+        // de la colonne Parcours reste affiché. Le contexte fonctionnel (P10/Chat)
+        // reste intégralement calculé par contextLine(), simplement non projeté
+        // dans la zone centrale.
+        ['parcoursContextLine']
           .forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.textContent = ligne;
@@ -10897,6 +10897,12 @@
         }
         var videoLabel = document.getElementById('theoryVideoLabel');
         if (videoLabel) videoLabel.textContent = 'Vidéo : non publiée';
+        // Un module sélectionné (même sans contenu publié) remplace l'état initial
+        // de la colonne 3 : révéler les en-têtes du cours et des activités.
+        var enteteAct = document.getElementById('activitiesHeader');
+        if (enteteAct) enteteAct.style.display = '';
+        var enteteThe = document.getElementById('theoryHeader');
+        if (enteteThe) enteteThe.style.display = '';
       }
 
       // Déplie le groupe de type de texte et active la leçon correspondante.

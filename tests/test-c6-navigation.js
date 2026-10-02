@@ -313,7 +313,9 @@ for (var p = 0; p < TYPES.length; p++) {
 }
 assert(pathOk, 'R33 \u2014 5 parcours d\u00e9pliables via togglePath, data-path unique');
 
-// ── R34 : Semestre 1 / Deuxième année restent repliés par défaut ───────────
+// ── R34 : Première année / Semestre 1 / Deuxième année restent repliés ─────
+var p1Hidden = /<div id="tree-p1" class="hidden/.test(navRegion);
+assert(p1Hidden, 'R34a \u2014 Premi\u00e8re ann\u00e9e repli\u00e9e par d\u00e9faut (\u00e9tat initial colonne 2 simplifi\u00e9 : parcours + ann\u00e9es visibles, semestres/modules accessibles au clic)');
 var s1Hidden = /<div id="tree-s1" class="hidden/.test(navRegion);
 var p2Hidden = /<div id="tree-p2" class="hidden/.test(navRegion);
 assert(s1Hidden, 'R34 \u2014 Semestre 1 repli\u00e9 par d\u00e9faut (aucun contenu invent\u00e9)');

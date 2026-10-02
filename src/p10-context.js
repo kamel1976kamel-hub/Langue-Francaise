@@ -146,12 +146,14 @@ const P10_TEXT_TYPE_VISUALS = {
 };
 
 /**
- * Ouverture par défaut reprise du C6.2 (UX préservée, rien d'inventé) :
- * Semestre 1, Deuxième année et ses deux semestres restent repliés.
+ * Ouverture initiale de la colonne Parcours : seuls le parcours et ses deux
+ * années sont visibles. Les années (Première comme Deuxième) restent repliées
+ * — cliquer dessus déplie normalement semestres puis modules, comme avant.
+ * Aucune donnée pédagogique n'est supprimée, seul l'état visuel initial change.
  */
 const P10_DEFAULT_OPEN = {
     'pep': true,
-    'pep/y1': true,
+    'pep/y1': false,
     'pep/y1/s1': false,
     'pep/y1/s2': true,
     'pep/y2': false,
