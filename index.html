@@ -10875,21 +10875,54 @@
       }
 
       // ---------- Rendu des deux arbres depuis le référentiel ----------
+      // Préserver le déploiement manuel : la sélection d'un module relance un
+      // rendu complet (innerHTML régénéré depuis P10_DEFAULT_OPEN, donc replié).
+      // On capture d'abord les nœuds que l'utilisateur avait ouverts (conteneurs
+      // #tree-<clé> sans la classe « hidden ») puis on les rouvre après le rendu.
+      // L'arbre ne se rétracte donc plus après un clic sur un module. Au premier
+      // rendu (mount vide) rien n'est capturé : l'accueil reste strictement plié.
+      function p10CapturerEtatsOuverts(mount) {
+        var ouverts = [];
+        if (!mount || !mount.querySelectorAll) return ouverts;
+        mount.querySelectorAll('[id^="tree-"]').forEach(function (el) {
+          var cle = el.id.slice('tree-'.length);
+          if (cle && !el.classList.contains('hidden')) {
+            ouverts.push(cle);
+          }
+        });
+        return ouverts;
+      }
+
+      function p10RestaurerEtatsOuverts(mount, ouverts) {
+        if (!mount || !ouverts || !ouverts.length) return;
+        ouverts.forEach(function (nodeKey) {
+          var subtree = document.getElementById('tree-' + nodeKey);
+          if (subtree) {
+            subtree.classList.remove('hidden');
+            var arrow = document.getElementById('tarrow-' + nodeKey);
+            if (arrow) arrow.style.transform = 'rotate(90deg)';
+          }
+        });
+      }
+
       function p10RenderParcours() {
         if (!p10Disponible()) return;
         var mount = document.getElementById('parcoursTreeRoot');
         if (!mount) return;
+        var ouverts = p10CapturerEtatsOuverts(mount);
         var donnees = (typeof parcoursData !== 'undefined') ? parcoursData : null;
         mount.innerHTML = window.P10.renderParcoursTree({
           context: window.P10.context(),
           contents: window.P10.buildContents(donnees)
         });
+        p10RestaurerEtatsOuverts(mount, ouverts);
       }
 
       function p10RenderDiscussions() {
         if (!p10Disponible()) return;
         var mount = document.getElementById('discussionList');
         if (!mount) return;
+        var ouverts = p10CapturerEtatsOuverts(mount);
         var titres = {};
         var dd = window.discussionData || {};
         Object.keys(dd).forEach(function (t) { titres[t] = dd[t].title; });
@@ -10905,6 +10938,7 @@
         if (typeof window.P10.placeholderParcours === 'function') {
           mount.innerHTML += window.P10.placeholderParcours();
         }
+        p10RestaurerEtatsOuverts(mount, ouverts);
       }
 
       // ---------- Message de bienvenue contextuel du module (workspace Chat) ----------
