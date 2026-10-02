@@ -159,6 +159,13 @@ function creerNoeud(id, classesInitiales) {
             return n;
         },
         querySelector: function () { return null; },
+        setAttribute: function (nom, valeur) {
+            noeud.attributes = noeud.attributes || {};
+            noeud.attributes[nom] = String(valeur);
+        },
+        getAttribute: function (nom) {
+            return (noeud.attributes && noeud.attributes[nom] != null) ? noeud.attributes[nom] : null;
+        },
         __visible: function () { return !visibles.hidden; }
     };
     // className est écrit par le code testé : on le garde cohérent.
@@ -281,6 +288,8 @@ var GLUE = {
     p10ConteneurChat: /function p10ConteneurChat\s*\(\s*\)/,
     p10MasquerDiscussions: /function p10MasquerDiscussions\s*\(\s*\)/,
     p10SynchroniserReflet: /function p10SynchroniserReflet\s*\(\s*ctx\s*\)/,
+    p10AssistantPhraseFor: /function p10AssistantPhraseFor\s*\(\s*titre\s*\)/,
+    buildModuleWelcomeMessage: /function buildModuleWelcomeMessage\s*\(\s*titre\s*\)/,
     p10SelectModule: /window\.p10SelectModule\s*=\s*function/,
     p10AppliquerHash: /function p10AppliquerHash\s*\(\s*rawHash\s*\)/
 };
@@ -289,7 +298,7 @@ Object.keys(GLUE).forEach(function (nom) {
     glueExtrait[nom] = extraireCorps(html, GLUE[nom]);
 });
 var toutExtrait = Object.keys(glueExtrait).every(function (n) { return !!glueExtrait[n]; });
-assert(toutExtrait, 'M0 — les 9 fonctions inline de index.html sont extraites (aucune réécriture du code testé)');
+assert(toutExtrait, 'M0 — les ' + Object.keys(GLUE).length + ' fonctions inline de index.html sont extraites (aucune réécriture du code testé)');
 
 // L'abonné réel de la page projette le reflet du Chat depuis le contexte : le
 // harnais reproduit ce branchement unique (vérifié dans la source, pas inventé).
@@ -310,6 +319,7 @@ assert(!!blocContexteChat && blocContexteChat.indexOf('buildChatContext') !== -1
 
 var injection = [
     glueExtrait.p10Disponible, glueExtrait.p10ChatStorageKey, glueExtrait.p10SujetChat,
+    glueExtrait.p10AssistantPhraseFor, glueExtrait.buildModuleWelcomeMessage,
     glueExtrait.p10ConteneurModule, glueExtrait.p10ConteneurChat,
     glueExtrait.p10MasquerDiscussions, glueExtrait.p10SynchroniserReflet,
     glueExtrait.p10SelectModule, glueExtrait.p10AppliquerHash

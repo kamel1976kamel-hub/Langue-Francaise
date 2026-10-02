@@ -162,12 +162,12 @@ var welcomeMessages = extraireWelcomeMessages();
  * ================================================================= */
 
 section('0. Préalable — localisation des constructions', function () {
-    assertEq(constructions.length, 7,
-        '7 constructions de sourceId présentes dans index.html');
+    assertEq(constructions.length, 6,
+        '6 constructions de sourceId présentes dans index.html');
     assertEq(chatExprs.length, 2,
         'exactement 2 constructions « chat-ai-response- » (readText + speakChatAIResponse)');
-    assertEq(autresExprs.length, 5,
-        'exactement 5 constructions pour les autres familles');
+    assertEq(autresExprs.length, 4,
+        'exactement 4 constructions pour les autres familles');
     assert(chatExprs.length === 2 && chatExprs[0].expr === chatExprs[1].expr,
         'les 2 constructions « chat-ai-response- » sont strictement identiques');
     assertEq(textesStatiques.length, 6,
@@ -329,15 +329,18 @@ section('8. Préfixe conservé', function () {
 });
 
 /* =================================================================
- * 9. LES 5 AUTRES FAMILLES PRODUISENT LES MÊMES VALEURS QU'AVANT
+ * 9. LES 4 AUTRES FAMILLES PRODUISENT LES MÊMES VALEURS QU'AVANT
  *    (contrat de format verrouillé : elles ne doivent pas bouger)
+ *    NOTE : la famille « chat-module » (audio de la fiche du module) a été
+ *    retirée quand la fiche du module et son icône livre ont été supprimées
+ *    du Chat ; elle n'existe plus dans le code, ce n'est donc plus une famille
+ *    à verrouiller.
  * ================================================================= */
 
-section('9. Les 5 autres familles de sourceId sont inchangées', function () {
+section('9. Les 4 autres familles de sourceId sont inchangées', function () {
     var attendus = [
         { nom: 'activity-*', marqueur: '`activity-', attendu: 'activity-explicatif-1-3' },
         { nom: 'theory', marqueur: "'theory'", attendu: 'theory' },
-        { nom: 'chat-module', marqueur: "'chat-module'", attendu: 'chat-module' },
         { nom: 'answer-*', marqueur: '`answer-', attendu: 'answer-explicatif-1-3' },
         { nom: 'feedback-*', marqueur: '`feedback-', attendu: 'feedback-explicatif-1-3' }
     ];
@@ -373,8 +376,8 @@ section('10. Principe de toggle préservé', function () {
     var occurrences = lines.filter(function (l) {
         return /window\.currentAudioSource === sourceId && window\.isSpeaking\(\)/.test(l);
     });
-    assertEq(occurrences.length, 7,
-        'les 7 comparaisons « currentAudioSource === sourceId && isSpeaking() » sont présentes');
+    assertEq(occurrences.length, 6,
+        'les 6 comparaisons « currentAudioSource === sourceId && isSpeaking() » sont présentes');
 
     // Le mécanisme ne dépend pas du FORMAT de sourceId : il compare deux chaînes
     // produites par la MÊME fonction. On vérifie donc la propriété qui le rend

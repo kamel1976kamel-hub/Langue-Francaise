@@ -3438,7 +3438,7 @@
                   <h2 id="chatTitle" class="text-lg font-semibold" style="color: var(--bs-white);">Techniques et pratiques de l'écrit</h2>
                 </div>
               </div>
-              <!-- Icônes YouTube et Livre -->
+              <!-- Icône YouTube -->
               <div class="flex items-center gap-2">
                 <button onclick="toggleYoutubeModal()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: #FF0000;" title="Vidéos YouTube">
                   <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
@@ -3451,61 +3451,17 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
                 </button>
-                <button onclick="toggleChatModuleFiche()" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: var(--bs-text-muted);" title="Informations du module">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                  </svg>
-                </button>
               </div>
             </div>
 
-            <!-- FICHE DU MODULE : ancienne 4e colonne du chat fusionnée
-                 dans le workspace principal en un panneau déroulable.
-                 Les ids utiles (chatModuleTitle, chatModuleContext,
-                 chatModuleFinalities, chatModuleObjectives, chatModuleContent)
-                 sont conservés : updateChatModuleFiche()/p10SyncContexte()/
-                 speakChatModuleText() continuent de les alimenter. -->
-            <div id="chatModuleFiche" class="hidden flex-shrink-0 border-b max-h-[40%] overflow-y-auto px-6 py-4" style="border-color: var(--bs-border-color); background-color: var(--bs-card-bg);">
-              <div class="flex items-center justify-between mb-3">
-                <div class="min-w-0">
-                  <h3 id="chatModuleTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Techniques et pratiques de l'écrit</h3>
-                  <!-- P10.8 — parcours / année / semestre / discussion active. -->
-                  <p id="chatModuleContext" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
-                </div>
-                <button 
-                  onclick="speakChatModuleText()"
-                  class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors flex-shrink-0"
-                  title="Lire les informations du module"
-                >
-                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                  </svg>
-                </button>
-              </div>
+            <!-- FICHE MODULE SUPPRIMÉE : l'ancienne fiche déroulable du module
+                 (titre / contexte / finalités / objectifs / contenu) et son
+                 icône livre ont été retirées du Chat. La sélection d'un module
+                 affiche désormais uniquement un message de bienvenue
+                 contextuel rendu directement dans le workspace (voir
+                 p10ConteneurModule()). Le contexte logique du module (parcours,
+                 année, semestre, module) reste porté par P10. -->
 
-              <div class="space-y-4 text-sm" style="color: var(--bs-text-muted);">
-                <div>
-                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">🎯 Finalités</h4>
-                  <p id="chatModuleFinalities">Ce module vise à développer les compétences rédactionnelles des étudiants en les familiarisant avec les techniques et pratiques essentielles de la production écrite. L'objectif est de maîtriser les différentes étapes de l'écriture et d'appliquer les méthodes appropriées selon les types de textes.</p>
-                </div>
-
-                <div>
-                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">📚 Objectifs</h4>
-                  <ul id="chatModuleObjectives" class="list-disc list-inside space-y-1">
-                    <li>Comprendre les mécanismes de la production écrite</li>
-                    <li>Maîtriser les techniques de planification</li>
-                    <li>Développer des stratégies de révision</li>
-                    <li>Adapter son écriture selon le contexte</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 class="font-semibold mb-2" style="color: var(--bs-body-color);">📝 Contenu</h4>
-                  <p id="chatModuleContent">Le module couvre : l'analyse de la consigne, la recherche documentaire, l'élaboration d'un plan, la rédaction des parties, la cohérence textuelle, la correction et la réécriture. Des exercices pratiques accompagnent chaque étape.</p>
-                </div>
-              </div>
-            </div>
-            
             <!-- Zone de chat (messages) -->
             <div id="chatMessages-techniques" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 hidden">
               <!-- Message de bienvenue de l'IA -->
@@ -8517,35 +8473,7 @@
         }
       };
       
-      // Fonction pour lire les informations du module dans le chat (colonne 4)
-      window.speakChatModuleText = function() {
-        const sourceId = 'chat-module';
-        
-        // Si on clique sur la même source qui est en cours de lecture, on arrête
-        if (window.currentAudioSource === sourceId && window.isSpeaking()) {
-          window.stopAllAudio();
-          return;
-        }
-        
-        // Sinon, on arrête tout et on démarre la nouvelle lecture
-        window.stopAllAudio();
-        window.currentAudioSource = sourceId;
-        
-        const titleElement = document.getElementById('chatModuleTitle');
-        const finalitiesElement = document.getElementById('chatModuleFinalities');
-        const objectivesList = document.getElementById('chatModuleObjectives');
-        const contentElement = document.getElementById('chatModuleContent');
-        
-        if (titleElement && finalitiesElement && objectivesList && contentElement) {
-          const title = titleElement.innerText;
-          const finalities = finalitiesElement.innerText;
-          const objectives = Array.from(objectivesList.querySelectorAll('li')).map(li => li.innerText).join('. ');
-          const content = contentElement.innerText;
-          
-          const fullText = `${title}. Finalités: ${finalities}. Objectifs: ${objectives}. Contenu: ${content}`;
-          window.speakText(fullText);
-        }
-      };
+      // Lecture audio de l'ancienne fiche du module : supprimée avec la fiche.
       
       // Fonction pour lire la réponse de l'IA dans le chat
       window.speakChatAIResponse = function(buttonElement) {
@@ -10263,12 +10191,11 @@
           displayChatHistory(topic);
         }
         
-        // Mettre à jour la colonne 4 (P10.8 : la fiche dépend du contexte,
-        // elle n'est plus figée sur « Techniques et pratiques de l'écrit »).
+        // Reflet du contexte (parcours / année / semestre / titre). La fiche
+        // de module et son icône livre ayant été supprimées du Chat, la seule
+        // projection reste le contexte lisible via p10SyncContexte().
         if (p10Disponible()) {
           p10SyncContexte(window.P10.context(), data);
-        } else {
-          updateChatModuleFiche(data && data.column4 ? data.column4 : null);
         }
         
         console.log('✅ SÉLECTION DE DISCUSSION - FIN');
@@ -10506,14 +10433,10 @@
         alert('Lecture de la vidéo : ' + videoTitle);
       };
 
-      // ============ TOGGLE FICHE DU MODULE (chat) ============
-      // GO 4 COLONNES : l'ancienne 4e colonne structurelle du chat a été
-      // supprimée. La fiche du module vit désormais dans le workspace principal
-      // du chat, en panneau déroulable ; ce bouton plie/déplie le panneau.
-      window.toggleChatModuleFiche = function() {
-        const fiche = document.getElementById('chatModuleFiche');
-        if (fiche) fiche.classList.toggle('hidden');
-      };
+      // ============ TOGGLE FICHE DU MODULE : supprimé ============
+      // L'icône livre et l'ancienne fiche déroulable du module ont été
+      // été retirées du Chat. La sélection d'un module affiche désormais un
+      // message de bienvenue contextuel rendu directement dans le workspace.
 
       // Toggle sections dans les paramètres
       window.toggleSection = function(sectionId) {
@@ -10771,15 +10694,48 @@
           ancre.parentNode.insertBefore(conteneur, ancre);
         }
         conteneur.innerHTML = '';
-        var entete = document.createElement('div');
-        entete.className = 'flex gap-3';
-        var avis = document.createElement('p');
-        avis.className = 'text-xs';
-        avis.style.color = 'var(--bs-text-muted)';
-        avis.textContent = 'Module « ' + mod.title + ' » — aucune discussion publiée. '
-          + 'La conversation porte sur le module lui-même et reste propre à ce module.';
-        entete.appendChild(avis);
-        conteneur.appendChild(entete);
+        // Message de bienvenue contextuel du module : rendu comme un message
+        // de l'assistant directement dans le workspace du Chat. Le texte est
+        // écrit via textContent (jamais d'interpolation HTML) : le titre du
+        // module, donnée dynamique, ne peut donc pas injecter de balises.
+        var rangee = document.createElement('div');
+        rangee.className = 'flex gap-3';
+
+        var avatar = document.createElement('div');
+        avatar.className = 'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0';
+        avatar.style.backgroundColor = 'var(--bs-primary)';
+        avatar.innerHTML = '<svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>';
+
+        var colonne = document.createElement('div');
+        colonne.className = 'flex-1';
+        var carte = document.createElement('div');
+        carte.className = 'rounded-lg p-4';
+        carte.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        var ligneMsg = document.createElement('div');
+        ligneMsg.className = 'flex justify-between items-start';
+        var paragraphe = document.createElement('p');
+        paragraphe.className = 'text-sm flex-1';
+        paragraphe.style.color = 'var(--bs-white)';
+        paragraphe.textContent = buildModuleWelcomeMessage(mod.title);
+        var boutonAudio = document.createElement('button');
+        boutonAudio.className = 'ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors';
+        boutonAudio.setAttribute('onclick', 'speakChatAIResponse(this)');
+        boutonAudio.setAttribute('title', "Lire le message de bienvenue");
+        boutonAudio.innerHTML = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">' +
+          '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+        ligneMsg.appendChild(paragraphe);
+        ligneMsg.appendChild(boutonAudio);
+        carte.appendChild(ligneMsg);
+        var signature = document.createElement('p');
+        signature.className = 'text-xs mt-1';
+        signature.style.color = 'var(--bs-text-muted)';
+        signature.textContent = 'IA • Maintenant';
+        colonne.appendChild(carte);
+        colonne.appendChild(signature);
+        rangee.appendChild(avatar);
+        rangee.appendChild(colonne);
+        conteneur.appendChild(rangee);
         conteneur.classList.remove('hidden');
         return conteneur;
       }
@@ -10818,28 +10774,73 @@
           context: window.P10.context(),
           discussionTitles: titres
         });
+        // PEM / PES : parcours déclarés dans le référentiel P10 (P10_PARCOURS +
+        // P10_PARCOURS_LABELS) mais non encore peuplés. On les intègre à la
+        // navigation contextuelle du Chat depuis LA MÊME source de vérité que
+        // l'arbre Parcours (placeholderParcours), sans dupliquer un libellé
+        // statique dans la vue.
+        if (typeof window.P10.placeholderParcours === 'function') {
+          mount.innerHTML += window.P10.placeholderParcours();
+        }
       }
 
-      // ---------- Zone centrale (P10.8) ----------
-      // Fiche de module réellement chargée : texte uniquement, jamais de HTML
-      // injecté depuis les données, donc aucun vecteur d'injection.
-      function updateChatModuleFiche(fiche) {
-        if (!fiche || typeof fiche !== 'object') return;
-        var titreEl = document.getElementById('chatModuleTitle');
-        if (titreEl) titreEl.textContent = (typeof fiche.title === 'string') ? fiche.title : '';
-        var finalitesEl = document.getElementById('chatModuleFinalities');
-        if (finalitesEl) finalitesEl.textContent = (typeof fiche.finalities === 'string') ? fiche.finalities : '';
-        var objectifsEl = document.getElementById('chatModuleObjectives');
-        if (objectifsEl) {
-          objectifsEl.innerHTML = '';
-          (Array.isArray(fiche.objectives) ? fiche.objectives : []).forEach(function (objetif) {
-            var li = document.createElement('li');
-            li.textContent = String(objetif);
-            objectifsEl.appendChild(li);
-          });
+      // ---------- Message de bienvenue contextuel du module (workspace Chat) ----------
+      // La fiche du module et son icône livre ont été supprimées du Chat. Quand
+      // un module est sélectionné depuis le Parcours, le workspace affiche
+      // uniquement un message de bienvenue contextuel, construit à partir du
+      // titre RÉEL du module sélectionné. Le titre est une donnée dynamique :
+      // il est toujours inséré via textContent (jamais d'interpolation dans une
+      // chaîne HTML), donc aucun vecteur d'injection.
+      function p10AssistantPhraseFor(titre) {
+        var t = String(titre || '').toLowerCase();
+        if (t.indexOf('écrit') !== -1 || t.indexOf('ecrit') !== -1) {
+          return 'maîtriser tous les aspects de la production écrite, de la planification à la révision';
         }
-        var contenuEl = document.getElementById('chatModuleContent');
-        if (contenuEl) contenuEl.textContent = (typeof fiche.content === 'string') ? fiche.content : '';
+        if (t.indexOf('oral') !== -1) {
+          return 'développer vos compétences en expression et compréhension orales';
+        }
+        if (t.indexOf('théâtre') !== -1 || t.indexOf('theatre') !== -1) {
+          return "vous accompagner dans l'apprentissage de la langue française à travers le théâtre";
+        }
+        if (t.indexOf('lecture') !== -1 || t.indexOf('œuvre') !== -1 || t.indexOf('oeuvre') !== -1 || t.indexOf('littér') !== -1) {
+          return 'explorer et interpréter les textes et les œuvres littéraires';
+        }
+        if (t.indexOf('linguistique') !== -1) {
+          return 'comprendre les fondements de la linguistique générale';
+        }
+        if (t.indexOf('psychologie') !== -1) {
+          return "étudier la psychologie de l'enfant et de l'adolescent";
+        }
+        if (t.indexOf('phonétique') !== -1 || t.indexOf('phonetique') !== -1) {
+          return 'maîtriser les sons, la prononciation et la phonétique du français';
+        }
+        if (t.indexOf('graphie') !== -1 || t.indexOf('dictée') !== -1 || t.indexOf('dictee') !== -1) {
+          return 'perfectionner votre orthographe, votre graphie et votre dictée';
+        }
+        if (t.indexOf('usage et maîtrise') !== -1 || t.indexOf('maîtrise de la langue') !== -1) {
+          return 'renforcer votre maîtrise de la langue française';
+        }
+        if (t.indexOf('anglais') !== -1) { return 'progresser en langue anglaise'; }
+        if (t.indexOf('arabe') !== -1) { return 'progresser en langue arabe'; }
+        if (t.indexOf('intelligence artificielle') !== -1) {
+          return "découvrir l'usage de l'intelligence artificielle dans l'apprentissage";
+        }
+        if (t.indexOf('informatique') !== -1) { return 'développer vos compétences en informatique'; }
+        if (t.indexOf('méthodologie') !== -1 || t.indexOf('methodologie') !== -1) {
+          return 'adopter une méthodologie de travail universitaire efficace';
+        }
+        if (t.indexOf('histoire') !== -1) { return "explorer l'histoire de l'Algérie"; }
+        if (t.indexOf('nationalisme') !== -1 || t.indexOf('citoyenneté') !== -1 || t.indexOf('citoyennete') !== -1) {
+          return 'comprendre le nationalisme et la citoyenneté';
+        }
+        return 'vous accompagner dans la réussite de ce module';
+      }
+
+      // Construit le message de bienvenue contextuel à partir du titre du module.
+      function buildModuleWelcomeMessage(titre) {
+        var nom = String(titre || '').trim() || 'ce module';
+        return 'Bienvenue dans le module « ' + nom + ' » ! Je suis votre assistant pour '
+          + p10AssistantPhraseFor(nom) + '. Par quoi aimeriez-vous commencer ?';
       }
 
       function p10SyncContexte(ctx, dataDiscussion) {
@@ -10850,13 +10851,11 @@
           discussionTitle: (dataDiscussion && dataDiscussion.title) ? dataDiscussion.title : undefined,
           withState: true
         });
-        ['parcoursContextLine', 'activitiesContextLine', 'theoryContextLine', 'chatModuleContext']
+        ['parcoursContextLine', 'activitiesContextLine', 'theoryContextLine']
           .forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.textContent = ligne;
           });
-        var fiche = window.P10.column4For(c, window.discussionData || {});
-        if (fiche) updateChatModuleFiche(fiche);
         var titreChat = document.getElementById('chatTitle');
         var dd = window.discussionData || {};
         if (titreChat && c.discussionTopic && dd[c.discussionTopic]) {
@@ -10955,6 +10954,14 @@
       }
 
       // ---------- Pipeline de sélection d'un module canonique (P10.4) ----------
+      // La sélection d'un module place le contexte P10 (parcours, année,
+      // semestre, module, thème publié le cas échéant). Un module qui publie
+      // des discussions ouvre son thème (le workspace affiche la conversation,
+      // message de bienvenue en tête) ; un module sans discussion publiée ouvre
+      // le conteneur de niveau module, qui affiche désormais un message de
+      // bienvenue contextuel (voir p10ConteneurModule()) et plus « aucune
+      // discussion publiée ». La fiche du module et son icône livre ont été
+      // supprimées du Chat.
       window.p10SelectModule = function (chapterId) {
         if (!p10Disponible()) return;
         var ctx = window.P10.selectModule(chapterId);
