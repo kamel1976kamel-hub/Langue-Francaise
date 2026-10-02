@@ -409,6 +409,16 @@ function p10SetContext(patch) {
         next.semesterNumber = autorite.semesterNumber;
     }
 
+    // Invariant P10.11 : un topic de discussion n'appartient qu'au module qui
+    // le publie. Un thème hérité d'un autre module (deep-link, retour arrière,
+    // patch croisé, restauration de hash) est retiré ici : l'état
+    // « chapterId = A avec discussionTopic = topic de B » devient impossible,
+    // y compris quand le module A ne publie aucune discussion.
+    if (autorite && next.discussionTopic &&
+            (autorite.discussionTopics || []).indexOf(next.discussionTopic) === -1) {
+        next.discussionTopic = null;
+    }
+
     var changed = false;
     for (var key in next) {
         if (Object.prototype.hasOwnProperty.call(next, key) && next[key] !== P10Context[key]) changed = true;
@@ -752,6 +762,57 @@ function p10ChatContextFields(ctx, options) {
         module_title: mod.title.slice(0, P10_MAX_MODULE_TITLE),
         discussion_topic: topic ? topic.slice(0, 32) : null,
         lesson_id: c.lessonId ? String(c.lessonId).slice(0, 32) : null
+    };
+}
+
+/**
+ * P10.11 — jeton technique employé comme context.chat.topic lorsqu'aucune
+ * discussion n'est publiée pour le module courant. Ce n'est PAS un libellé
+ * destiné à l'utilisateur : le libellé envoyé au modèle reste le titre réel du
+ * module (topic_title). Le jeton respecte P10_ID_RE (aucun deux-points, donc
+ * compatible avec la clé d'historique chatHistory_<chapterId>:<topic>) et les
+ * bornes du contrat V2 (topic 30, topic_title 100, topic_context 500).
+ */
+const P10_MODULE_CHAT_TOPIC = 'module';
+const P10_CHAT_TOPIC_LIMIT = 30;
+const P10_CHAT_TOPIC_TITLE_LIMIT = 100;
+const P10_CHAT_TOPIC_CONTEXT_LIMIT = 500;
+
+/** Le module donné publie-t-il réellement ce topic ? */
+function p10OwnsDiscussionTopic(chapterId, topic) {
+    var mod = p10GetModule(chapterId);
+    var t = p10SafeId(topic);
+    return !!(mod && t && (mod.discussionTopics || []).indexOf(t) !== -1);
+}
+
+/**
+ * Contexte chat « au niveau module » pour un module sélectionné mais sans
+ * discussion publiée : le module lui-même est un contexte pédagogique valide.
+ * La sortie a exactement la forme de buildChatContext (topic / topic_title /
+ * topic_context / module) et reste strictement dans le contrat V2 existant —
+ * le contrat n'est ni assoupli ni contourné. Aucun contenu n'est inventé : la
+ * description rappelle que rien n'est publié pour ce module.
+ */
+function p10ModuleChatContext(ctx, options) {
+    var c = ctx || P10Context;
+    var mod = p10GetModule(c.chapterId);
+    if (!mod) return null;
+    var opts = options || {};
+    var topic = p10SafeId(opts.topic) || P10_MODULE_CHAT_TOPIC;
+    var champs = p10ChatContextFields(c, {});
+    if (champs && !p10OwnsDiscussionTopic(mod.chapterId, champs.discussion_topic)) {
+        champs.discussion_topic = null; // jamais le topic d'un autre module
+    }
+    var ligne = p10ContextLine(c, { withDiscussion: false, withState: true });
+    var description = 'Module sélectionné dans le Parcours : ' + (mod.title || topic) + '. ' + ligne + '. '
+        + 'Aucune discussion publiée n\'est attachée à ce module : la question de l\'étudiant '
+        + 'porte sur le module lui-même. Réponds dans le cadre de ce module, sans supposer '
+        + 'de contenu pédagogique qui n\'a pas été publié.';
+    return {
+        topic: topic.slice(0, P10_CHAT_TOPIC_LIMIT),
+        topic_title: String(mod.title || topic).slice(0, P10_CHAT_TOPIC_TITLE_LIMIT),
+        topic_context: description.slice(0, P10_CHAT_TOPIC_CONTEXT_LIMIT),
+        module: champs
     };
 }
 
@@ -1272,6 +1333,8 @@ const P10 = {
     moduleOfLegacyChapter: p10ModuleOfLegacyChapter,
     topicsFor: p10TopicsFor,
     moduleHasDiscussions: p10ModuleHasDiscussions,
+    ownsDiscussionTopic: p10OwnsDiscussionTopic,
+    MODULE_CHAT_TOPIC: P10_MODULE_CHAT_TOPIC,
     auditMapping: p10AuditMapping,
 
     // contexte
@@ -1298,6 +1361,7 @@ const P10 = {
 
     // IA et affichage
     chatContextFields: p10ChatContextFields,
+    moduleChatContext: p10ModuleChatContext,
     column4For: p10Column4For,
     renderParcoursTree: p10RenderParcoursTree,
     renderDiscussionTree: p10RenderDiscussionTree,

@@ -107,6 +107,12 @@
                 }
                 
                 // Si aucun conteneur visible n'est trouvé, essayer de trouver le premier disponible
+                // P10.11 — un module sélectionné sans discussion publiée possède
+                // son propre conteneur : les messages ne sont plus versés dans
+                // le conteneur d'un thème appartenant à un autre module.
+                if (!chatContainer && typeof p10ConteneurChat === 'function') {
+                    chatContainer = p10ConteneurChat();
+                }
                 if (!chatContainer) {
                     for (const containerId of possibleContainers) {
                         const container = document.getElementById(containerId);
@@ -193,8 +199,15 @@
                 chatContainer.appendChild(messageDiv);
                 
                 // ÉTAPE 7B : persistance via l'infrastructure d'historique existante
-                if (window.currentDiscussion) {
-                    addMessageToHistory(window.currentDiscussion, message, sender === 'user' ? 'student' : 'ai');
+                // P10.11 — sujet d'historique : la discussion publiée du module
+                // courant (window.currentDiscussion, projetée par P10.11 et jamais
+                // null), sinon le jeton de niveau module résolu par p10SujetChat()
+                // : clé déterministe, propre au module, jamais partagée.
+                var sujetChatRefle = window.currentDiscussion;
+                var sujetModuleChat = (typeof p10SujetChat === 'function') ? p10SujetChat() : '';
+                if (sujetChatRefle || sujetModuleChat) {
+                    addMessageToHistory(window.currentDiscussion || sujetModuleChat, message,
+                        sender === 'user' ? 'student' : 'ai');
                 }
                 
                 // Faire défiler vers le bas
@@ -507,6 +520,34 @@
                         chatContext = { chat: innerChat };
                     }
                 }
+                // P10.11 — le module courant est valide mais ne publie
+                // aucune discussion (ou sa discussion n'est pas disponible
+                // dans discussionData) : le module lui-même constitue le
+                // contexte pédagogique. Le contexte chat est construit au
+                // niveau module (jeton technique + titre réel + description
+                // honnête), dans les limites du contrat V2 existant qui
+                // n'est ni assoupli ni contourné. Ce garde-fou indépendant
+                // garantit qu'aucun cas nominal n'arrive à buildRequestV2
+                // avec context = null.
+                if (!chatContext && typeof p10Disponible === 'function' && p10Disponible() &&
+                        typeof window.P10.moduleChatContext === 'function') {
+                    var moduleChat = window.P10.moduleChatContext(window.P10.context());
+                    if (moduleChat) {
+                        var chatModule = {
+                            topic: moduleChat.topic,
+                            topic_context: moduleChat.topic_context,
+                            topic_title: moduleChat.topic_title
+                        };
+                        var moduleNormalise = null;
+                        if (typeof window.RequestBuilderV2.normalizeModuleContext === 'function') {
+                            moduleNormalise = window.RequestBuilderV2.normalizeModuleContext(moduleChat.module);
+                        } else if (moduleChat.module) {
+                            moduleNormalise = moduleChat.module;
+                        }
+                        if (moduleNormalise) chatModule.module = moduleNormalise;
+                        chatContext = { chat: chatModule };
+                    }
+                }
                 
                 // ─── V2 : assembler optionsV2 ───
                 var optionsV2 = null;
@@ -630,6 +671,12 @@
                 }
                 
                 // Si aucun conteneur visible n'est trouvé, essayer de trouver le premier disponible
+                // P10.11 — un module sélectionné sans discussion publiée possède
+                // son propre conteneur : les messages ne sont plus versés dans
+                // le conteneur d'un thème appartenant à un autre module.
+                if (!chatContainer && typeof p10ConteneurChat === 'function') {
+                    chatContainer = p10ConteneurChat();
+                }
                 if (!chatContainer) {
                     for (const containerId of possibleContainers) {
                         const container = document.getElementById(containerId);
@@ -10248,7 +10295,11 @@
       
       // ============ RÉINITIALISER LA CONVERSATION ============
       window.resetCurrentDiscussion = function() {
-        if (!window.currentDiscussion) return;
+        // P10.11 — le sujet peut être le jeton de niveau module lorsque le
+        // module courant ne publie aucune discussion : la réinitialisation
+        // reste limitée à l'historique propre à ce module.
+        var sujet = (typeof p10SujetChat === 'function') ? p10SujetChat() : window.currentDiscussion;
+        if (!sujet) return;
         
         // Confirmer la réinitialisation
         if (!confirm('Voulez-vous vraiment réinitialiser cette conversation ? Tous les messages seront supprimés.')) {
@@ -10256,14 +10307,14 @@
         }
         
         // Supprimer l'historique du localStorage (clé contextuelle P10.6)
-        const key = p10ChatStorageKey(window.currentDiscussion);
+        const key = p10ChatStorageKey(sujet);
         localStorage.removeItem(key);
         
         // Réafficher le message de bienvenue
-        const data = window.discussionData[window.currentDiscussion];
-        const targetChatContainer = document.getElementById(`chatMessages-${window.currentDiscussion}`);
+        const data = window.discussionData[sujet];
+        const targetChatContainer = document.getElementById(`chatMessages-${sujet}`);
         
-        if (targetChatContainer) {
+        if (targetChatContainer && data) {
           targetChatContainer.innerHTML = `
             <div class="flex gap-3">
               <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
@@ -10290,9 +10341,13 @@
               </div>
             </div>
           `;
+        } else if (targetChatContainer && !data && typeof p10ConteneurModule === 'function') {
+          // Module sans discussion publiée : l'avis d'état est reconstruit,
+          // l'historique du module vient d'être vidé.
+          p10ConteneurModule();
         }
         
-        console.log('Conversation réinitialisée:', window.currentDiscussion);
+        console.log('Conversation réinitialisée:', sujet);
       };
 
       // ============ CHAT AVEC IA (vue Chat) ============
@@ -10720,6 +10775,62 @@
         return 'chatHistory_' + topic;
       }
 
+      // ---------- Sujet du Chat et conteneur de niveau module (P10.11) ----------
+      // Le reflet legacy window.currentDiscussion ne prend JAMAIS null : une
+      // chaîne vide quand le module courant ne publie aucune discussion. Le
+      // sujet technique retenu pour la clé d'historique et le conteneur est
+      // alors le jeton de niveau module défini par P10.
+      function p10SujetChat() {
+        if (window.currentDiscussion) return window.currentDiscussion;
+        if (p10Disponible() && window.P10.module(window.P10.context().chapterId)) {
+          return window.P10.MODULE_CHAT_TOPIC;
+        }
+        return '';
+      }
+
+      // Conteneur de conversation d'un module sans discussion publiée. Créé à
+      // la demande ; le titre réel du module est écrit avec textContent, jamais
+      // par interpolation dans une chaîne HTML.
+      function p10ConteneurModule() {
+        if (!p10Disponible()) return null;
+        var c = window.P10.context();
+        var mod = window.P10.module(c.chapterId);
+        if (!mod) return null;
+        var conteneur = document.getElementById('chatMessages-module');
+        if (!conteneur) {
+          conteneur = document.createElement('div');
+          conteneur.id = 'chatMessages-module';
+          conteneur.className = 'flex-1 overflow-y-auto px-6 py-4 space-y-4';
+          var ancre = document.getElementById('chatMessages-techniques') ||
+            document.querySelector('.smart-textarea-container');
+          if (!ancre || !ancre.parentNode) return null;
+          ancre.parentNode.insertBefore(conteneur, ancre);
+        }
+        conteneur.innerHTML = '';
+        var entete = document.createElement('div');
+        entete.className = 'flex gap-3';
+        var avis = document.createElement('p');
+        avis.className = 'text-xs';
+        avis.style.color = 'var(--bs-text-muted)';
+        avis.textContent = 'Module « ' + mod.title + ' » — aucune discussion publiée. '
+          + 'La conversation porte sur le module lui-même et reste propre à ce module.';
+        entete.appendChild(avis);
+        conteneur.appendChild(entete);
+        conteneur.classList.remove('hidden');
+        return conteneur;
+      }
+
+      // Renvoie le conteneur de niveau module uniquement quand le module
+      // courant ne publie aucune discussion ; sinon null, pour que le chemin
+      // hérité (thème publié) continue à fonctionner à l'identique.
+      function p10ConteneurChat() {
+        if (window.currentDiscussion) return null;
+        if (!p10Disponible()) return null;
+        var conteneur = document.getElementById('chatMessages-module');
+        if (conteneur && !conteneur.classList.contains('hidden')) return conteneur;
+        return null;
+      }
+
       // ---------- Rendu des deux arbres depuis le référentiel ----------
       function p10RenderParcours() {
         if (!p10Disponible()) return;
@@ -10786,6 +10897,11 @@
         var dd = window.discussionData || {};
         if (titreChat && c.discussionTopic && dd[c.discussionTopic]) {
           titreChat.textContent = dd[c.discussionTopic].title;
+        } else if (titreChat) {
+          // P10.11 — sans discussion publiée, le libellé rappelé est le titre
+          // réel du module sélectionné, jamais celui d'un thème voisin.
+          var modCourant = window.P10.module(c.chapterId);
+          if (modCourant) titreChat.textContent = modCourant.title;
         }
         var avis = document.getElementById('chatNoDiscussion');
         if (avis) {
@@ -10837,11 +10953,41 @@
         }
       }
 
+      // Basculer la zone Discussion en « niveau module » (P10.11) : aucun
+      // conteneur d'un thème voisin ne reste visible, le reflet legacy devient
+      // une chaîne vide (jamais null) et la conversation propre au module prend
+      // le relais, avec son historique déjà publié.
       function p10MasquerDiscussions() {
-        window.currentDiscussion = null;
+        window.currentDiscussion = '';
         document.querySelectorAll('[id^="chatMessages-"]').forEach(function (container) {
+          if (container.id === 'chatMessages-module') return;
           container.classList.add('hidden');
         });
+        if (p10ConteneurModule() && typeof displayChatHistory === 'function') {
+          displayChatHistory(window.P10.MODULE_CHAT_TOPIC);
+        }
+        var titreChat = document.getElementById('chatTitle');
+        var mod = window.P10.module(window.P10.context().chapterId);
+        if (titreChat && mod) titreChat.textContent = mod.title;
+      }
+
+      // Point unique de resynchronisation du reflet legacy, employé par le
+      // hash, le boot et la sélection : soit le module courant publie
+      // réellement le thème du contexte, soit on bascule en niveau module. Il
+      // est donc impossible de conserver le topic d'un autre module.
+      function p10SynchroniserReflet(ctx) {
+        if (!p10Disponible()) return;
+        var c = ctx || window.P10.context();
+        var themePublie = !!(c.discussionTopic && window.discussionData &&
+          window.discussionData[c.discussionTopic]);
+        if (themePublie) {
+          if (window.currentDiscussion !== c.discussionTopic &&
+              typeof window.selectDiscussion === 'function') {
+            window.selectDiscussion(c.discussionTopic);
+          }
+          return;
+        }
+        p10MasquerDiscussions();
       }
 
       // ---------- Pipeline de sélection d'un module canonique (P10.4) ----------
@@ -10851,11 +10997,7 @@
         if (!ctx) return;
         // 1. contexte mis à jour ; 2. module sélectionné ; 3. Discussion
         // synchronisée ; 4. zone centrale ; 5. hash (abonné ci-dessous).
-        if (ctx.discussionTopic && typeof window.selectDiscussion === 'function') {
-          window.selectDiscussion(ctx.discussionTopic);
-        } else {
-          p10MasquerDiscussions();
-        }
+        p10SynchroniserReflet(ctx);
       };
 
       // ---------- Hash contextuel (P10.9) ----------
@@ -10877,6 +11019,28 @@
         if (parsed.lessonId && typeof selectModule === 'function' && chapters[parsed.lessonId]) {
           selectModule(parsed.lessonId);
         }
+        // P10.11 — un hash qui désigne un module publiant des discussions doit
+        // rouvrir la discussion de CE module : le thème est résolu depuis le
+        // référentiel du module, jamais depuis l'ancien reflet (qui peut porter
+        // le thème d'un module voisin). Le type de la leçon héritée portée par
+        // le hash est privilégié quand le module le publie.
+        var cHash = window.P10.context();
+        var modHash = window.P10.module(cHash.chapterId);
+        if (modHash && modHash.discussionTopics.length && !cHash.discussionTopic) {
+          var typeLecon = cHash.lessonId ? String(cHash.lessonId).split('-')[0] : null;
+          var choixHash = (typeLecon && modHash.discussionTopics.indexOf(typeLecon) !== -1)
+            ? typeLecon : modHash.discussionTopics[0];
+          window.P10.update({ discussionTopic: choixHash }, 'hash');
+          cHash = window.P10.context();
+        }
+        // P10.11 — un hash ne peut plus laisser le Chat accroché au thème d'un
+        // autre module : le reflet est resynchronisé depuis le contexte relu.
+        // selectDiscussion ne fait qu'aligner un thème déjà présent dans le
+        // contexte (P10.update sans effet) et p10EcrireHash compare avant
+        // d'écrire : aucun cycle hashchange → update → écriture d'URL →
+        // hashchange, car le remplacement d'entrée d'historique ne déclenche
+        // jamais l'événement hashchange.
+        p10SynchroniserReflet(cHash);
       }
 
       if (p10Disponible()) {
@@ -10895,6 +11059,13 @@
           p10ReflectLecon(ctx);
           p10EcrireHash(ctx);
           p10SyncContexte(ctx);
+          // P10.11 — le reflet legacy du Chat est projeté du contexte à chaque
+          // notification (hash, boot, sélection, update direct) : un thème
+          // porté par le contexte sans être publié par le module ne peut donc
+          // jamais rester visible côté Chat. La projection est terminante car
+          // selectDiscussion écrit le reflet avant de déclencher P10.update, et
+          // le rappel suivant constate alors une valeur déjà conforme.
+          p10SynchroniserReflet(ctx);
         });
       }
 
@@ -10929,11 +11100,9 @@
         p10RenderDiscussions();
         p10ReflectLecon(window.P10.context());
         p10SyncContexte(window.P10.context());
-        var final0 = window.P10.context();
-        if (final0.discussionTopic && window.currentDiscussion !== final0.discussionTopic &&
-          typeof window.selectDiscussion === 'function') {
-          window.selectDiscussion(final0.discussionTopic);
-        }
+        // P10.11 — au démarrage comme après un deep-link, le reflet du Chat est
+        // aligné sur ce que le module publie réellement.
+        p10SynchroniserReflet(window.P10.context());
       }
 
       p10Demarrer();
