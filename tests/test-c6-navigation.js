@@ -12,12 +12,24 @@
  *  - aucun élément interdit n'apparaît (codes P1FR, « Modules transversaux »,
  *    troisième année PEP, modules PEM/PES non fournis).
  *
- * Lecture seule de index.html — aucune dépendance, aucun réseau.
+ * Lecture seule de index.html et de src/p10-context.js — aucune dépendance,
+ * aucun réseau, aucune donnée recopiée en dur.
  * Exécution : node tests/test-c6-navigation.js
+ *
+ * P10.4/P10.5 — l'arborescence Parcours et la liste des discussions ne sont
+ * plus écrites en dur dans index.html : elles sont fabriquées au démarrage par
+ * src/p10-context.js à partir du référentiel canonique. Ce test porte sur ce
+ * que voit l'utilisateur : il évalue donc la PAGE SIMULÉE, obtenue en
+ * injectant dans les deux points de montage le balisage RÉELLEMENT produit par
+ * ces fabriques, alimentées par les objets de données existants de la page.
+ * Tous les contrats R1-R47 sont conservés ; ceux qui désignaient des ids de
+ * navigation hérités (data-nav-node) sont ré-exprimés sur les ids canoniques
+ * (data-module-id), à périmètre de contrôle identique.
  */
 
 var fs = require('fs');
 var path = require('path');
+var vm = require('vm');
 
 var INDEX_PATH = path.join(__dirname, '..', 'index.html');
 var src = fs.readFileSync(INDEX_PATH, 'utf8');
@@ -35,10 +47,104 @@ function assert(cond, label) {
   }
 }
 
-function countAll(regex) {
-  var m = String(src).match(new RegExp(regex, 'g'));
+function countAll(regex, where) {
+  var m = String(where === undefined ? page : where).match(new RegExp(regex, 'g'));
   return m ? m.length : 0;
 }
+
+// ── Fabrique de la page simulée (P10.4 / P10.5) ──────────────────────
+/**
+ * Lire un objet littéral `… = { … }` dans le source, sans le recopier :
+ * comptage d'accolades tenant compte des chaînes et des commentaires.
+ */
+function lireObjetLitteral(code, motif) {
+  var m = motif.exec(code);
+  if (!m) return null;
+  var debut = code.indexOf('{', m.index);
+  if (debut === -1) return null;
+  var profondeur = 0;
+  var quote = null;
+  for (var i = debut; i < code.length; i++) {
+    var ch = code.charAt(i);
+    if (quote) {
+      if (ch === '\\') { i++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+    if (ch === '/' && code.charAt(i + 1) === '/') {
+      var saut = code.indexOf('\n', i);
+      if (saut === -1) return null;
+      i = saut;
+      continue;
+    }
+    if (ch === '/' && code.charAt(i + 1) === '*') {
+      var finCom = code.indexOf('*/', i);
+      if (finCom === -1) return null;
+      i = finCom + 1;
+      continue;
+    }
+    if (ch === '{') profondeur++;
+    else if (ch === '}') {
+      profondeur--;
+      if (profondeur === 0) return code.slice(debut, i + 1);
+    }
+  }
+  return null;
+}
+
+function evaluerLitteral(texte) {
+  if (!texte) return null;
+  try { return vm.runInNewContext('(' + texte + ')'); }
+  catch (e) { return null; }
+}
+
+var P10 = require(path.join(__dirname, '..', 'src', 'p10-context.js'));
+
+// Contenu réel du module « Techniques et pratique de l'écrit 2 » : titres des
+// 5 types de textes et des 20 leçons, lus depuis parcoursData.
+var parcoursDataLu = evaluerLitteral(lireObjetLitteral(src, /const parcoursData = /)) || {};
+
+// Titres des 6 discussions héritées, lus depuis discussionData (jamais inventés).
+var titresDiscussions = (function () {
+  var out = {};
+  var data = evaluerLitteral(lireObjetLitteral(src, /window\.discussionData = /));
+  if (!data) return out;
+  for (var k in data) {
+    if (Object.prototype.hasOwnProperty.call(data, k) && data[k] && typeof data[k].title === 'string') {
+      out[k] = data[k].title;
+    }
+  }
+  return out;
+})();
+
+var CONTEXTE_INITIAL = P10.context();
+var MONTAGES = [
+  {
+    mount: '<div id="parcoursTreeRoot" data-p10-tree="parcours"></div>',
+    html: P10.renderParcoursTree({
+      context: CONTEXTE_INITIAL,
+      contents: P10.buildContents(parcoursDataLu)
+    })
+  },
+  {
+    mount: '<div class="p-3 space-y-1" id="discussionList" data-p10-tree="discussion"></div>',
+    html: P10.renderDiscussionTree({
+      context: CONTEXTE_INITIAL,
+      discussionTitles: titresDiscussions
+    })
+  }
+];
+
+var page = src;
+var montagesInjectes = 0;
+MONTAGES.forEach(function (m) {
+  var idx = page.indexOf(m.mount);
+  if (idx < 0) return;
+  var corps = m.mount.slice(0, m.mount.length - '</div>'.length);
+  page = page.slice(0, idx) + corps + m.html + '</div>' + page.slice(idx + m.mount.length);
+  montagesInjectes++;
+});
 
 // ── Références techniques (à ne jamais modifier) ──────────────────────────
 var TYPES = ['narratif', 'descriptif', 'explicatif', 'argumentatif', 'resume'];
@@ -50,24 +156,32 @@ for (var t = 0; t < TYPES.length; t++) {
   }
 }
 var TREE_NODES = ['pep', 'p1', 's1', 's2', 'tpe', 'p2', 'p2s1', 'p2s2'];
-// Structure complète de l'arborescence PEP (C6.2 corrigé) : modules structurels
-// vides identifiés par data-nav-node (jamais des chapterId), par semestre.
-var NAV_EMPTY = { p1s1: 13, p1s2: 12, p2s1: 9, p2s2: 8 };
+// Structure complète de l'arborescence PEP : les 43 modules du parcours, ids
+// canoniques (data-module-id), par semestre. P10.0-C : un module sans contenu
+// reste visible et sélectionnable, jamais inventé.
+var MODULES_PAR_SEMESTRE = { 'pep-y1s1': 13, 'pep-y1s2': 13, 'pep-y2s1': 9, 'pep-y2s2': 8 };
+var TOTAL_MODULES = 43;
+var TOTAL_SANS_CONTENU = 42;
 
 // ── Zone de navigation #pathsNav ──────────────────────────────────────────
-var navStart = String(src).indexOf('id="pathsNav"');
-var navEnd = navStart >= 0 ? String(src).indexOf('</nav>', navStart) : -1;
+var navStart = String(page).indexOf('id="pathsNav"');
+var navEnd = navStart >= 0 ? String(page).indexOf('</nav>', navStart) : -1;
 var navRegion = navStart >= 0 && navEnd > navStart
-  ? String(src).slice(navStart, navEnd)
+  ? String(page).slice(navStart, navEnd)
   : '';
 
+assert(montagesInjectes === MONTAGES.length,
+  'R0 \u2014 les deux points de montage P10 re\u00e7oivent le balisage g\u00e9n\u00e9r\u00e9 (' +
+  montagesInjectes + '/' + MONTAGES.length + ')');
 assert(navRegion.length > 0, 'R1 \u2014 r\u00e9gion #pathsNav localisable');
+assert(/data-p10-tree="parcours"[\s\S]*<button/.test(navRegion),
+  'R1b \u2014 #pathsNav est peupl\u00e9 par l\u2019arbre Parcours g\u00e9n\u00e9r\u00e9');
 
 // ── R2 : les 20 chapterId sont intacts comme attributs data-chapter ───────
 var foundChapters = [];
 var reData = /data-chapter="([a-z]+-[0-9])"/g;
 var mData;
-while ((mData = reData.exec(src)) !== null) {
+while ((mData = reData.exec(page)) !== null) {
   foundChapters.push(mData[1]);
 }
 var uniqueChapters = foundChapters.filter(function (v, i, a) { return a.indexOf(v) === i; }).sort();
@@ -84,21 +198,21 @@ var keysOk = true;
 var BASELINE_KEYS = { narratif: 2, descriptif: 2, explicatif: 3, argumentatif: 2, resume: 1 };
 for (var c = 0; c < CHAPTER_IDS.length; c++) {
   var attendu = BASELINE_KEYS[CHAPTER_IDS[c].split('-')[0]];
-  var obtenu = countAll('"' + CHAPTER_IDS[c] + '":');
+  var obtenu = countAll('"' + CHAPTER_IDS[c] + '":', src);
   if (obtenu !== attendu) {
     keysOk = false;
     console.log('   \u21b3 ' + CHAPTER_IDS[c] + ' : cl\u00e9s=' + obtenu + ' attendu=' + attendu);
   }
 }
 assert(keysOk, 'R5 \u2014 r\u00e9partition des cl\u00e9s chapterId identique au r\u00e9f\u00e9rentiel');
-assert(countAll('"resume-1":') === 1 && countAll('"explicatif-1":') === 3,
+assert(countAll('"resume-1":', src) === 1 && countAll('"explicatif-1":', src) === 3,
   'R5b \u2014 t\u00e9moin des lacunes pr\u00e9existantes (resume sans chapitres, activit\u00e9s sur explicatif-*)');
 
 // ── R6 : les 6 topics CHAT sont inchangés ─────────────────────────────────
 var foundTopics = [];
 var reTopic = /data-topic="([a-z]+)"/g;
 var mTopic;
-while ((mTopic = reTopic.exec(src)) !== null) {
+while ((mTopic = reTopic.exec(page)) !== null) {
   foundTopics.push(mTopic[1]);
 }
 assert(foundTopics.filter(function (v, i, a) { return a.indexOf(v) === i; }).sort().join(',') === TOPICS_CHAT.slice().sort().join(','),
@@ -118,9 +232,10 @@ assert(/Techniques et pratique de l.\u00e9crit 2/.test(navRegion),
 var posTpe = navRegion.indexOf('id="tree-tpe"');
 var posNarratif = navRegion.indexOf('data-path="narratif"');
 var posResume = navRegion.indexOf('data-path="resume"');
-// « Graphie et dictée 2 » est le premier fr\u00e8re S2 APRES la fermeture de tree-tpe :
-// si les 5 types sont avant lui, ils sont bien contenus dans le sous-arbre \u00e9crit 2.
-var posApresTpe = navRegion.indexOf('data-nav-node="p1s2-graphie-dictee-2"');
+// « Graphie et dict\u00e9e 2 » (pep-y1s2-04) est le fr\u00e8re S2 qui suit imm\u00e9diatement
+// le module \u00e9crit 2 : si les 5 types sont avant lui, ils sont bien contenus
+// dans le sous-arbre \u00e9crit 2.
+var posApresTpe = navRegion.indexOf('data-module-id="pep-y1s2-04"');
 assert(posTpe >= 0 && posTpe < posNarratif && posNarratif < posResume && posResume < posApresTpe,
   'R9 \u2014 les 5 parcours sont enfants de Techniques et pratique de l\u2019\u00e9crit 2');
 assert(navRegion.indexOf('Semestre 2') >= 0 && navRegion.indexOf('Premi\u00e8re ann\u00e9e') >= 0 && navRegion.indexOf('Parcours PEP') >= 0,
@@ -199,51 +314,81 @@ for (var p = 0; p < TYPES.length; p++) {
 assert(pathOk, 'R33 \u2014 5 parcours d\u00e9pliables via togglePath, data-path unique');
 
 // ── R34 : Semestre 1 / Deuxième année restent repliés par défaut ───────────
-var s1Hidden = /<div id="tree-s1" class="hidden/.test(String(src));
-var p2Hidden = /<div id="tree-p2" class="hidden/.test(String(src));
+var s1Hidden = /<div id="tree-s1" class="hidden/.test(navRegion);
+var p2Hidden = /<div id="tree-p2" class="hidden/.test(navRegion);
 assert(s1Hidden, 'R34 \u2014 Semestre 1 repli\u00e9 par d\u00e9faut (aucun contenu invent\u00e9)');
 assert(p2Hidden, 'R35 \u2014 Deuxi\u00e8me ann\u00e9e repli\u00e9e par d\u00e9faut');
-var s2Visible = /<div id="tree-s2" class="ml-4/.test(String(src));
-var tpeVisible = /<div id="tree-tpe" class="ml-4/.test(String(src));
+var s2Visible = /<div id="tree-s2" class="ml-4/.test(navRegion);
+var tpeVisible = /<div id="tree-tpe" class="ml-4/.test(navRegion);
 assert(s2Visible && tpeVisible, 'R36 \u2014 Semestre 2 et module \u00e9crit 2 ouverts par d\u00e9faut (UX pr\u00e9serv\u00e9e)');
 
-// ── R37+ : COMPLÉMENT C6.2 — arborescence structurelle PEP complète ───────
+// ── R37+ : arborescence complète des 43 modules, ids canoniques ───────────
 var navNodes = [];
-var reNav = /data-nav-node="([^"]+)"/g;
+var reNav = /data-module-id="([^"]+)"/g;
 var mNav;
 while ((mNav = reNav.exec(navRegion)) !== null) { navNodes.push(mNav[1]); }
-var totalExpected = NAV_EMPTY.p1s1 + NAV_EMPTY.p1s2 + NAV_EMPTY.p2s1 + NAV_EMPTY.p2s2;
-assert(navNodes.length === totalExpected,
-  'R37 \u2014 ' + totalExpected + ' n\u0153uds de navigation structurels (13+12+9+8)');
+var totalExpected = 0;
+for (var cle in MODULES_PAR_SEMESTRE) {
+  if (Object.prototype.hasOwnProperty.call(MODULES_PAR_SEMESTRE, cle)) totalExpected += MODULES_PAR_SEMESTRE[cle];
+}
+assert(totalExpected === TOTAL_MODULES,
+  'R36b \u2014 le r\u00e9f\u00e9rentiel de contr\u00f4le porte bien 43 modules (13+13+9+8)');
+assert(navNodes.length === TOTAL_MODULES,
+  'R37 \u2014 ' + TOTAL_MODULES + ' n\u0153uds de navigation (data-module-id canoniques)');
 var prefixOk = true;
-for (var pf in NAV_EMPTY) {
+for (var pf in MODULES_PAR_SEMESTRE) {
+  if (!Object.prototype.hasOwnProperty.call(MODULES_PAR_SEMESTRE, pf)) continue;
   var cnt = navNodes.filter(function (v) { return v.indexOf(pf + '-') === 0; }).length;
-  if (cnt !== NAV_EMPTY[pf]) {
+  if (cnt !== MODULES_PAR_SEMESTRE[pf]) {
     prefixOk = false;
-    console.log('   \u21b3 ' + pf + ' : ' + cnt + ' n\u0153uds, attendu ' + NAV_EMPTY[pf]);
+    console.log('   \u21b3 ' + pf + ' : ' + cnt + ' n\u0153uds, attendu ' + MODULES_PAR_SEMESTRE[pf]);
   }
 }
-assert(prefixOk, 'R38 \u2014 r\u00e9partition p1s1=13, p1s2=12, p2s1=9, p2s2=8');
-// Tous les n\u0153uds structurels sont marqu\u00e9s "empty" et portent le badge "sans contenu".
+assert(prefixOk, 'R38 \u2014 r\u00e9partition pep-y1s1=13, pep-y1s2=13, pep-y2s1=9, pep-y2s2=8');
+// Un seul module est peuplé ; les 42 autres affichent le badge de vide.
 var emptyMarkers = (navRegion.match(/data-nav-state="empty"/g) || []).length;
-var sansContenu = (navRegion.match(/sans contenu/g) || []).length;
-assert(emptyMarkers === navNodes.length,
-  'R39 \u2014 chaque n\u0153ud structurel porte data-nav-state="empty" (' + emptyMarkers + '/' + navNodes.length + ')');
-assert(sansContenu === navNodes.length,
-  'R40 \u2014 badge \u00ab sans contenu \u00bb sur chaque n\u0153ud vide (' + sansContenu + ')');
-// Les n\u0153uds vides sont INERTES : aucun onclick, aucun data-chapter, aucun selectModule.
-var reNodeTag = /<div[^>]*data-nav-node="[^"]+"[^>]*>/g;
-var nodeTags = navRegion.match(reNodeTag) || [];
-var inertOk = nodeTags.every(function (tag) {
-  return !/onclick/.test(tag) && !/data-chapter/.test(tag) && !/selectModule/.test(tag);
+var contentMarkers = (navRegion.match(/data-nav-state="content"/g) || []).length;
+// Compter le TEXTE AFFICHÉ (>sans contenu<) et non la locution, qui peut
+// aussi se rencontrer dans un commentaire HTML ou dans le code JS.
+var sansContenu = (navRegion.match(/>\s*sans contenu\s*</g) || []).length;
+assert(emptyMarkers === TOTAL_SANS_CONTENU && contentMarkers === 1,
+  'R39 \u2014 42 n\u0153uds data-nav-state="empty" et 1 seul module peupl\u00e9 (' + emptyMarkers + '/' + contentMarkers + ')');
+assert(sansContenu === TOTAL_SANS_CONTENU,
+  'R40 \u2014 badge \u00ab sans contenu \u00bb sur chaque module vide (' + sansContenu + ')');
+// P10.0-C : les modules vides restent sélectionnables, mais ne prétendent
+// AUCUNE activité pédagogique : ni chapterId, ni selectModule (le rendu legacy
+// des 20 chapitres), ni togglePath ; leur gestionnaire ne cible que leur propre
+// identifiant canonique.
+var leafTags = [];
+var reLeafTag = /<button[^>]*data-module-id="([^"]+)"[^>]*>/g;
+var mLeaf;
+while ((mLeaf = reLeafTag.exec(navRegion)) !== null) {
+  leafTags.push({ id: mLeaf[1], tag: mLeaf[0] });
+}
+var feuillesVides = leafTags.filter(function (l) { return /data-nav-state="empty"/.test(l.tag); });
+var sansPretentionOk = feuillesVides.every(function (l) {
+  var gestionnaire = /onclick="([^"]*)"/.exec(l.tag);
+  return !/data-chapter/.test(l.tag) &&
+    !/selectModule\(/.test(l.tag) &&
+    !/togglePath\(/.test(l.tag) &&
+    !!gestionnaire && gestionnaire[1] === "p10SelectModule('" + l.id + "')";
 });
-assert(nodeTags.length === navNodes.length && inertOk,
-  'R41 \u2014 n\u0153uds vides inertes (ni onclick ni chapterId : ne pr\u00e9tendent aucune activit\u00e9)');
-// Homonymes : m\u00eame intitul\u00e9, identifiants de navigation DISTINCTS selon l'ann\u00e9e.
-var hOk = navNodes.indexOf('p1s1-ulm-1') >= 0 && navNodes.indexOf('p2s1-ulm-1') >= 0
-  && navNodes.indexOf('p1s1-tpo-1') >= 0 && navNodes.indexOf('p2s1-tpo-1') >= 0;
-assert(hOk, 'R42 \u2014 homonymes P1/P2 non fusionn\u00e9s (ids de navigation distincts)');
-// Aucun data-nav-node ne doit correspondre \u00e0 un chapterId existant.
+assert(leafTags.length === TOTAL_MODULES && feuillesVides.length === TOTAL_SANS_CONTENU && sansPretentionOk,
+  'R41 \u2014 modules sans contenu s\u00e9lectionnables mais sans pr\u00e9tention d\u2019activit\u00e9 (' +
+  feuillesVides.length + ' feuilles, gestionnaire = id canonique uniquement)');
+// Homonymes : m\u00eame intitul\u00e9, identifiants canoniques DISTINCTS selon l'ann\u00e9e.
+var idsUniques = navNodes.length === Object.keys(navNodes.reduce(function (a, v) { a[v] = 1; return a; }, {})).length;
+var parTitre = {};
+navNodes.forEach(function (id) {
+  var mod = P10.module(id);
+  if (mod && mod.title) { (parTitre[mod.title] = parTitre[mod.title] || []).push(id); }
+});
+var homonymes = Object.keys(parTitre).filter(function (tt) { return parTitre[tt].length > 1; });
+var ulm = parTitre['Usage et ma\u00eetrise de la langue 1'] || [];
+assert(idsUniques && ulm.length >= 2 && homonymes.length >= 3,
+  'R42 \u2014 homonymes P1/P2 non fusionn\u00e9s (m\u00eame libell\u00e9, ids canoniques distincts : ' +
+  homonymes.join(' / ') + ')');
+// Aucun data-module-id ne doit correspondre \u00e0 un chapterId existant.
 var chapterSet = {}; CHAPTER_IDS.forEach(function (x) { chapterSet[x] = 1; });
 var collision = navNodes.filter(function (v) { return chapterSet[v]; });
 assert(collision.length === 0,

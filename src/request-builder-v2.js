@@ -336,23 +336,79 @@ function resoudreStripHtmlToTextPourInstructions() {
 // =================================================================
 
 /**
+ * Clés de contexte de module acceptées dans context.chat (P10.7).
+ * Liste fermée : aucune autre clé ne passe, aucun secret n'y a sa place.
+ */
+var MODULE_CONTEXT_KEYS = [
+    'chapter_id', 'parcours', 'academic_year_id', 'year_number', 'semester_number',
+    'module_title', 'discussion_topic', 'lesson_id'
+];
+var MODULE_CONTEXT_MAX_ID_CHARS = 64;
+var MODULE_CONTEXT_MAX_TITLE_CHARS = 160;
+
+/**
+ * Nettoie le contexte de module (P10) avant envoi : types contraints,
+ * longueurs bornées, sauts de ligne retirés (une valeur ne doit pas pouvoir
+ * fabriquer une ligne de prompt). Renvoie null si rien d'exploitable.
+ *
+ * @param {Object} raw - window.P10.chatContextFields(...) ou équivalent
+ * @returns {Object|null}
+ */
+function normalizeModuleContext(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var out = {};
+    var remplies = 0;
+    for (var i = 0; i < MODULE_CONTEXT_KEYS.length; i++) {
+        var cle = MODULE_CONTEXT_KEYS[i];
+        var valeur = raw[cle];
+        if (valeur === null || valeur === undefined) continue;
+        if (cle === 'year_number' || cle === 'semester_number') {
+            var n = Number(valeur);
+            if (!isFinite(n) || n < 0 || n > 99) continue;
+            out[cle] = Math.floor(n);
+            remplies++;
+            continue;
+        }
+        if (typeof valeur !== 'string') continue;
+        var texte = valeur.replace(/[\r\n\t]+/g, ' ').trim();
+        if (!texte) continue;
+        out[cle] = texte.slice(0, cle === 'module_title'
+            ? MODULE_CONTEXT_MAX_TITLE_CHARS
+            : MODULE_CONTEXT_MAX_ID_CHARS);
+        remplies++;
+    }
+    return remplies > 0 ? out : null;
+}
+
+/**
  * Construit le contexte chat à partir de discussionData.
  * @param {string} topic - Identifiant du topic (ex: "techniques", "narratif")
  * @param {Object} discussionData - Données des discussions (window.discussionData)
+ * @param {Object} [moduleContext] - Contexte de module P10 (chapter_id, parcours,
+ *   academic_year_id, year_number, semester_number, module_title, lesson_id).
+ *   Optionnel : sans lui, la sortie est strictement identique à celle d'avant P10.
  * @returns {Object|null} Contexte chat ou null
  */
-function buildChatContext(topic, discussionData) {
+function buildChatContext(topic, discussionData, moduleContext) {
     if (typeof topic !== 'string' || !topic) return null;
     if (!discussionData || typeof discussionData !== 'object') return null;
 
     var data = discussionData[topic];
     if (!data || typeof data !== 'object') return null;
 
-    return {
+    var chat = {
         topic: topic.slice(0, MAX_CHAT_TOPIC_CHARS),
         topic_context: (typeof data.context === 'string' ? data.context : '').slice(0, MAX_CHAT_TOPIC_CONTEXT_CHARS),
         topic_title: (typeof data.title === 'string' ? data.title : '').slice(0, MAX_CHAT_TOPIC_TITLE_CHARS)
     };
+
+    // P10.7 — le module courant (Parcours → année → semestre → module) est
+    // transmis à l'IA pour contextualiser la réponse. Contractuellement
+    // optionnel : le worker tolère cette clé supplémentaire.
+    var module = normalizeModuleContext(moduleContext);
+    if (module) chat.module = module;
+
+    return chat;
 }
 
 /**
@@ -611,6 +667,7 @@ if (typeof module !== 'undefined' && module.exports) {
         stripHtmlToText: stripHtmlToTextRegles, // alias de compatibilite (semantique REGEX)
         stripHtmlToTextRegles: stripHtmlToTextRegles,
         buildChatContext: buildChatContext,
+        normalizeModuleContext: normalizeModuleContext,
         buildActivityContext: buildActivityContext,
         buildRequestV2: buildRequestV2,
         isResponseV2: isResponseV2,
@@ -635,6 +692,7 @@ if (typeof window !== 'undefined') {
         stripHtmlToText: stripHtmlToTextRegles, // alias de compatibilite (semantique REGEX)
         stripHtmlToTextRegles: stripHtmlToTextRegles,
         buildChatContext: buildChatContext,
+        normalizeModuleContext: normalizeModuleContext,
         buildActivityContext: buildActivityContext,
         buildRequestV2: buildRequestV2,
         isResponseV2: isResponseV2,

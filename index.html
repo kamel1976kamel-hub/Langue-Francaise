@@ -25,6 +25,8 @@
     <script src="memory/student-profile-unified.js?v=44"></script>
     <script src="auth-client.js?v=80"></script>
     <script src="src/request-builder-v2.js?v=1"></script>
+    <!-- P10 — référentiel canonique des modules et contexte partagé Parcours/Discussion -->
+    <script src="src/p10-context.js?v=1"></script>
     <script src="main.js?v=75"></script>
     
     // Debug script -->
@@ -492,7 +494,15 @@
                 // ─── V2 : construire le contexte chat ───
                 var chatContext = null;
                 if (window.RequestBuilderV2 && window.discussionData && window.currentDiscussion) {
-                    var innerChat = window.RequestBuilderV2.buildChatContext(window.currentDiscussion, window.discussionData);
+                    // P10.7 — le contexte de module courant (parcours, année,
+                    // semestre, identifiant canonique, titre) accompagne la
+                    // discussion : la réponse de l'IA est située dans le
+                    // Parcours réellement sélectionné. Aucun secret transmis,
+                    // le titre n'est jamais utilisé comme identifiant.
+                    var contexteModule = (typeof p10Disponible === 'function' && p10Disponible())
+                        ? window.P10.chatContextFields(window.P10.context(), { discussionTopic: window.currentDiscussion })
+                        : null;
+                    var innerChat = window.RequestBuilderV2.buildChatContext(window.currentDiscussion, window.discussionData, contexteModule);
                     if (innerChat) {
                         chatContext = { chat: innerChat };
                     }
@@ -3342,35 +3352,15 @@
             <div class="p-4 border-b" style="border-color: var(--bs-border-color);">
               <h1 class="text-lg font-semibold" style="color: var(--bs-body-color);">Discussions</h1>
             </div>
-            <div class="p-3 space-y-1" id="discussionList">
-              <button class="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 discussion-item active" data-topic="techniques" onclick="selectDiscussion('techniques')">
-                <span class="w-2 h-2 rounded-full indicator" style="background-color: var(--bs-primary);"></span>
-                <span class="text-sm">Techniques et pratiques de l'écrit</span>
-              </button>
-              <button class="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 hover:bg-white/5 discussion-item" data-topic="narratif" onclick="selectDiscussion('narratif')">
-                <span class="w-2 h-2 rounded-full indicator bg-gray-500"></span>
-                <span class="text-sm">Texte narratif</span>
-              </button>
-              <button class="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 hover:bg-white/5 discussion-item" data-topic="descriptif" onclick="selectDiscussion('descriptif')">
-                <span class="w-2 h-2 rounded-full indicator bg-gray-500"></span>
-                <span class="text-sm">Texte descriptif</span>
-              </button>
-              <button class="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 hover:bg-white/5 discussion-item" data-topic="explicatif" onclick="selectDiscussion('explicatif')">
-                <span class="w-2 h-2 rounded-full indicator bg-gray-500"></span>
-                <span class="text-sm">Texte explicatif</span>
-              </button>
-              <button class="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 hover:bg-white/5 discussion-item" data-topic="argumentatif" onclick="selectDiscussion('argumentatif')">
-                <span class="w-2 h-2 rounded-full indicator bg-gray-500"></span>
-                <span class="text-sm">Texte argumentatif</span>
-              </button>
-              <button class="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 hover:bg-white/5 discussion-item" data-topic="resume" onclick="selectDiscussion('resume')">
-                <span class="w-2 h-2 rounded-full indicator bg-gray-500"></span>
-                <span class="text-sm">Résumé</span>
-              </button>
-            </div>
-            <div class="px-4 py-2">
-              <button class="w-full py-2 rounded-lg text-sm" style="background-color: var(--bs-secondary); color: white;">Load More</button>
-            </div>
+            <!-- P10.5 — La liste des discussions n'est plus une liste globale
+                 de six thèmes : elle reprend la hiérarchie du Parcours
+                 (parcours → année → semestre → module) et n'affiche les six
+                 discussions héritées que sous le module qui les porte vraiment.
+                 Balisage produit par P10.renderDiscussionTree() au démarrage.
+                 P10.0-D : aucune fausse pagination, le bouton « Load More »
+                 dépourvu de gestionnaire a été supprimé. -->
+            <div class="p-3 space-y-1" id="discussionList" data-p10-tree="discussion"></div>
+            <div id="chatNoDiscussion" class="hidden px-4 py-3 text-xs" style="color: var(--bs-text-muted);">Ce module n’a pas encore de discussion publiée.</div>
           </aside>
 
           <!-- COLONNE 3: Chat avec l'IA -->
@@ -3661,6 +3651,8 @@
             <div class="p-4">
               <div class="flex items-center justify-between mb-3">
                 <h3 id="chatModuleTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Techniques et pratiques de l'écrit</h3>
+                <!-- P10.8 — parcours / année / semestre / discussion active. -->
+                <p id="chatModuleContext" class="text-xs mt-1 mb-1" style="color: var(--bs-text-muted);"></p>
                 <button 
                   onclick="speakChatModuleText()"
                   class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -3702,377 +3694,20 @@
           <div class="p-4 border-b" style="border-color: var(--bs-border-color);">
             <h1 class="text-lg font-semibold" style="color: var(--bs-body-color);">Parcours</h1>
             <p class="text-xs mt-1" style="color: var(--bs-text-muted);">Parcours PEP · Première et deuxième année</p>
+            <!-- P10.8 — reflet du contexte partagé (module canonique sélectionné). -->
+            <p id="parcoursContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
           </div>
           
           <nav class="p-2 space-y-1" id="pathsNav">
-            <!-- LOT C6.2 — Arborescence des parcours (AFFICHAGE uniquement).
-                 Les niveaux PEP / année / semestre / module sont de simples ancêtres
-                 visuels gérés par toggleTree(). Les 5 types de textes et leurs 4 modules
-                 restent le contenu EXISTANT, avec leurs identifiants techniques inchangés
-                 ({type}-{1..4}), togglePath(), selectModule(), chapters, activityContent.
-                 Aucun nouveau chapterId, aucun code pédagogique affiché. -->
-            <div class="path-item">
-              <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('pep')">
-                <svg id="tarrow-pep" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-                <span class="text-xs font-semibold uppercase tracking-wide text-white truncate">Parcours PEP — Professeur de l'École Primaire</span>
-              </button>
-              <div id="tree-pep" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                <div class="path-item">
-                  <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p1')">
-                    <svg id="tarrow-p1" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                    <span class="text-sm font-medium text-white truncate">Première année</span>
-                  </button>
-                  <div id="tree-p1" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                    <div class="path-item">
-                      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('s1')">
-                        <svg id="tarrow-s1" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                        <span class="text-sm font-medium text-white truncate">Semestre 1</span>
-                      </button>
-                      <div id="tree-s1" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                        <!-- 13 modules de structure (aucun contenu pédagogique dans le dépôt).
-                             data-nav-node = identifiant interne de navigation, jamais un chapterId V2. -->
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-ulm-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-tpo-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratique de l’oral 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-tpe-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratique de l’écrit 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-graphie-dictee-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Graphie et dictée 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-lecture-oeuvres-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la lecture des &#339;uvres littéraires 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-theatre-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la langue française par le théâtre 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-phonetique-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Phonétique fonctionnelle 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-mtu-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Méthodologie du travail universitaire 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-informatique-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Informatique 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-arabe-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue arabe 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-anglais-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-histoire-algerie-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Histoire de l’Algérie 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s1-nationalisme-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Nationalisme et Citoyenneté 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                      </div>
-                    </div>
-                    <div class="path-item">
-                      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('s2')">
-                        <svg id="tarrow-s2" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                        <span class="text-sm font-medium text-white truncate">Semestre 2</span>
-                      </button>
-                      <div id="tree-s2" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                        <!-- Semestre 2, première année : 13 modules au total, dont
-                             « Techniques et pratique de l’écrit 2 » qui porte les 5 types de textes. -->
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-ulm-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-tpo-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratique de l’oral 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="path-item">
-                          <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('tpe')">
-                            <svg id="tarrow-tpe" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                            <span class="text-sm font-medium text-white truncate">Techniques et pratique de l’écrit 2</span>
-                          </button>
-                          <div id="tree-tpe" class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-            <!-- Parcours Narratif -->
-            <div class="path-item" data-path="narratif">
-              <button class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="togglePath('narratif')">
-                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-white truncate">Texte narratif</p>
-                  <p class="text-xs text-slate-400">4 modules</p>
-                </div>
-                <svg id="arrow-narratif" class="h-4 w-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <!-- Modules du parcours -->
-              <div id="modules-narratif" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-4">
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="narratif-1" onclick="selectModule('narratif-1')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">1</span>
-                    Situation initiale
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="narratif-2" onclick="selectModule('narratif-2')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">2</span>
-                    Élément perturbateur
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="narratif-3" onclick="selectModule('narratif-3')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">3</span>
-                    Péripéties
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="narratif-4" onclick="selectModule('narratif-4')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">4</span>
-                    Dénouement
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Parcours Descriptif -->
-            <div class="path-item" data-path="descriptif">
-              <button class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="togglePath('descriptif')">
-                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-white truncate">Texte descriptif</p>
-                  <p class="text-xs text-slate-400">4 modules</p>
-                </div>
-                <svg id="arrow-descriptif" class="h-4 w-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <div id="modules-descriptif" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-4">
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="descriptif-1" onclick="selectModule('descriptif-1')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">1</span>
-                    Observer et cadrer
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="descriptif-2" onclick="selectModule('descriptif-2')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">2</span>
-                    Décrire avec précision
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="descriptif-3" onclick="selectModule('descriptif-3')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">3</span>
-                    Vocabulaire et images
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="descriptif-4" onclick="selectModule('descriptif-4')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">4</span>
-                    Organisation du regard
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Parcours Explicatif -->
-            <div class="path-item" data-path="explicatif">
-              <button class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="togglePath('explicatif')">
-                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
-                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-white truncate">Texte explicatif</p>
-                  <p class="text-xs text-slate-400">4 modules</p>
-                </div>
-                <svg id="arrow-explicatif" class="h-4 w-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <div id="modules-explicatif" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-4">
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="explicatif-1" onclick="selectModule('explicatif-1')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">1</span>
-                    Définir le sujet
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="explicatif-2" onclick="selectModule('explicatif-2')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">2</span>
-                    Causes et conséquences
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="explicatif-3" onclick="selectModule('explicatif-3')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">3</span>
-                    Exemples et analogies
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="explicatif-4" onclick="selectModule('explicatif-4')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">4</span>
-                    Synthèse claire
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Parcours Argumentatif -->
-            <div class="path-item" data-path="argumentatif">
-              <button class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="togglePath('argumentatif')">
-                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center flex-shrink-0">
-                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-white truncate">Texte argumentatif</p>
-                  <p class="text-xs text-slate-400">4 modules</p>
-                </div>
-                <svg id="arrow-argumentatif" class="h-4 w-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <div id="modules-argumentatif" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-4">
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="argumentatif-1" onclick="selectModule('argumentatif-1')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">1</span>
-                    Thèse et enjeux
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="argumentatif-2" onclick="selectModule('argumentatif-2')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">2</span>
-                    Arguments et preuves
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="argumentatif-3" onclick="selectModule('argumentatif-3')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">3</span>
-                    Contre-arguments
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="argumentatif-4" onclick="selectModule('argumentatif-4')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">4</span>
-                    Conclusion persuasive
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Parcours Résumé -->
-            <div class="path-item" data-path="resume">
-              <button class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="togglePath('resume')">
-                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center flex-shrink-0">
-                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-white truncate">Résumé</p>
-                  <p class="text-xs text-slate-400">4 modules</p>
-                </div>
-                <svg id="arrow-resume" class="h-4 w-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <div id="modules-resume" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-4">
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="resume-1" onclick="selectModule('resume-1')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">1</span>
-                    Identifier les idées
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="resume-2" onclick="selectModule('resume-2')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">2</span>
-                    Hiérarchiser l'information
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="resume-3" onclick="selectModule('resume-3')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">3</span>
-                    Reformuler
-                  </span>
-                </button>
-                <button class="module-btn w-full text-left px-3 py-2 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors" data-chapter="resume-4" onclick="selectModule('resume-4')">
-                  <span class="flex items-center gap-2">
-                    <span class="h-5 w-5 rounded-full bg-slate-700 flex items-center justify-center text-xs">4</span>
-                    Vérifier la fidélité
-                  </span>
-                </button>
-              </div>
-            </div>
-                          </div>
-                        </div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-graphie-dictee-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Graphie et dictée 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-lecture-oeuvres-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la lecture des &#339;uvres littéraires 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-theatre-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Initiation à la langue française par le théâtre 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-phonetique-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Phonétique fonctionnelle 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-mtu-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Méthodologie du travail universitaire 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-informatique-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Informatique 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-arabe-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue arabe 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-anglais-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-histoire-algerie-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Histoire de l’Algérie 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p1s2-nationalisme-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Nationalisme et Citoyenneté 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                      </div>
-                    </div>
-                    </div>
-                  </div>
-                    <div class="path-item">
-                      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p2')">
-                        <svg id="tarrow-p2" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                        <span class="text-sm font-medium text-white truncate">Deuxième année</span>
-                      </button>
-                      <div id="tree-p2" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                        <!-- Deuxième année : simples noeuds de structure.
-                             Les homonymes des deux années portent des data-nav-node
-                             distincts (p1s1-* / p2s1-* / p2s2-*), jamais des chapterId. -->
-                        <div class="path-item">
-                          <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p2s1')">
-                            <svg id="tarrow-p2s1" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                            <span class="text-sm font-medium text-white truncate">Semestre 1</span>
-                          </button>
-                          <div id="tree-p2s1" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-ulm-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-tpo-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’oral 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-tpe-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’écrit 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-theatre-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue française et expression théâtrale 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-lecture-textes-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Lecture des textes littéraires 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-linguistique-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Linguistique générale 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-psychologie-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Psychologie de l’enfant et de l’adolescent 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-ia-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Intelligence artificielle dans l’apprentissage 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s1-anglais-1" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 1</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                          </div>
-                        </div>
-                        <div class="path-item">
-                          <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left" onclick="toggleTree('p2s2')">
-                            <svg id="tarrow-p2s2" class="h-4 w-4 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                            <span class="text-sm font-medium text-white truncate">Semestre 2</span>
-                          </button>
-                          <div id="tree-p2s2" class="hidden ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-ulm-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Usage et maîtrise de la langue française 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-tpo-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’oral 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-tpe-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Techniques et pratiques de l’écrit 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-theatre-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Langue française et expressions théâtrales 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-lecture-oeuvres-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Lecture des &#339;uvres littéraires 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-linguistique-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Linguistique générale 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-psychologie-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Psychologie de l’enfant et de l’adolescent 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400" data-nav-node="p2s2-anglais-2" data-nav-state="empty"><span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span><span>Anglais 2</span><span class="ml-auto text-[10px] uppercase tracking-wide text-slate-500">sans contenu</span></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-              </div>
-            </div>
-            <div class="path-item">
-              <div class="flex items-center gap-2 px-3 py-2 text-sm text-slate-400">
-                <span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span>
-                Parcours PEM — Professeur de l'Enseignement Moyen
-              </div>
-            </div>
-            <div class="path-item">
-              <div class="flex items-center gap-2 px-3 py-2 text-sm text-slate-400">
-                <span class="h-1.5 w-1.5 rounded-full bg-slate-600 flex-shrink-0"></span>
-                Parcours PES — Professeur de l'Enseignement Secondaire
-              </div>
-            </div>
+            <!-- P10 — Arbre Parcours piloté par le référentiel canonique
+                 (src/p10-context.js, window.P10). Les 43 modules PEP, leurs
+                 intitulés pédagogiques et leur état « sans contenu » viennent
+                 de P10.MODULES ; le balisage est produit par
+                 P10.renderParcoursTree() au démarrage. Les 5 types de textes et
+                 leurs 20 chapitres {type}-{1..4} restent le contenu EXISTANT
+                 (togglePath(), selectModule(), chapters, activityContent) : ils
+                 sont rendus dans le sous-arbre du module canonique pep-y1s2-03. -->
+            <div id="parcoursTreeRoot" data-p10-tree="parcours"></div>
           </nav>
         </aside>
 
@@ -4083,6 +3718,8 @@
             <div>
               <h2 id="activitiesTitle" class="text-lg font-semibold" style="color: var(--bs-body-color);">Activités</h2>
               <p class="text-sm mt-1" style="color: var(--bs-text-muted);">Sélectionnez une activité pour commencer</p>
+              <!-- P10.8 — contexte partagé affiché dans la zone centrale. -->
+              <p id="activitiesContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
             </div>
             <!-- Icônes YouTube et Livre -->
             <div class="flex items-center gap-2">
@@ -4134,6 +3771,8 @@
             <!-- En-tête du contenu avec bouton audio -->
             <div class="mb-4 flex items-center justify-between">
               <h2 id="theoryTitle" class="text-xl font-semibold" style="color: var(--bs-body-color);">Sélectionnez un module</h2>
+              <!-- P10.8 — même contexte que l'arbre Parcours et la discussion. -->
+              <p id="theoryContextLine" class="text-xs mt-1" style="color: var(--bs-text-muted);"></p>
               <button 
                 onclick="speakTheoryText()"
                 class="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -10429,7 +10068,7 @@
       // ============ GESTION DE L'HISTORIQUE DES CHATS ============
       function loadChatHistory(topic) {
         try {
-          const key = 'chatHistory_' + topic;
+          const key = p10ChatStorageKey(topic);
           const saved = localStorage.getItem(key);
           return saved ? JSON.parse(saved) : [];
         } catch (e) {
@@ -10440,7 +10079,7 @@
       
       function saveChatHistory(topic, messages) {
         try {
-          const key = 'chatHistory_' + topic;
+          const key = p10ChatStorageKey(topic);
           localStorage.setItem(key, JSON.stringify(messages));
         } catch (e) {
           console.error('Erreur sauvegarde historique:', e);
@@ -10532,6 +10171,13 @@
         window.currentDiscussion = topic;
         const data = window.discussionData[topic];
         console.log('📊 Données de discussion:', data);
+        if (!data) return;
+
+        // P10.1/P10.5 — la discussion choisie fait partie du contexte partagé
+        // (elle pilote aussi la clé d'historique et la fiche de module).
+        if (window.P10 && typeof window.P10.update === 'function') {
+          window.P10.update({ discussionTopic: topic }, 'topic');
+        }
         
         // Mettre à jour l'apparence des boutons
         console.log('🎨 MISE À JOUR APPARENCE BOUTONS');
@@ -10541,18 +10187,23 @@
           btn.style.backgroundColor = '';
           btn.style.color = 'var(--bs-text-muted)';
           const indicator = btn.querySelector('.indicator');
+          if (!indicator) return;
           indicator.style.backgroundColor = '';
           indicator.classList.add('bg-gray-500');
         });
         
         const activeBtn = document.querySelector(`[data-topic="${topic}"]`);
         console.log('✅ Bouton activé:', activeBtn);
-        activeBtn.classList.add('active');
-        activeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
-        activeBtn.style.color = 'var(--bs-white)';
-        const activeIndicator = activeBtn.querySelector('.indicator');
-        activeIndicator.classList.remove('bg-gray-500');
-        activeIndicator.style.backgroundColor = 'var(--bs-primary)';
+        if (activeBtn) {
+          activeBtn.classList.add('active');
+          activeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+          activeBtn.style.color = 'var(--bs-white)';
+          const activeIndicator = activeBtn.querySelector('.indicator');
+          if (activeIndicator) {
+            activeIndicator.classList.remove('bg-gray-500');
+            activeIndicator.style.backgroundColor = 'var(--bs-primary)';
+          }
+        }
         
         // Mettre à jour le titre dans la colonne 3
         console.log('📝 MISE À JOUR TITRE');
@@ -10583,8 +10234,13 @@
           displayChatHistory(topic);
         }
         
-        // Mettre à jour la colonne 4
-        updateColumn4(data.column4);
+        // Mettre à jour la colonne 4 (P10.8 : la fiche dépend du contexte,
+        // elle n'est plus figée sur « Techniques et pratiques de l'écrit »).
+        if (p10Disponible()) {
+          p10SyncContexte(window.P10.context(), data);
+        } else {
+          updateColumn4(data && data.column4 ? data.column4 : null);
+        }
         
         console.log('✅ SÉLECTION DE DISCUSSION - FIN');
         console.log('📝 Discussion sélectionnée:', topic);
@@ -10599,8 +10255,8 @@
           return;
         }
         
-        // Supprimer l'historique du localStorage
-        const key = 'chatHistory_' + window.currentDiscussion;
+        // Supprimer l'historique du localStorage (clé contextuelle P10.6)
+        const key = p10ChatStorageKey(window.currentDiscussion);
         localStorage.removeItem(key);
         
         // Réafficher le message de bienvenue
@@ -10618,7 +10274,7 @@
               <div class="flex-1">
                 <div class="rounded-lg p-4" style="background-color: rgba(255,255,255,0.05);">
                   <div class="flex justify-between items-start">
-                    <p class="text-sm flex-1" style="color: var(--bs-white);">${data.welcomeMessage}</p>
+                    <p class="text-sm flex-1" style="color: var(--bs-white);">${escapeHtml(data.welcomeMessage)}</p>
                     <button 
                       onclick="speakChatAIResponse(this)"
                       class="ml-2 p-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-600 transition-colors"
@@ -10782,6 +10438,13 @@
         
         // 6. Mettre à jour l'URL
         history.replaceState(null, "", `#${moduleId}`);
+
+        // P10 — un chapitre hérité {type}-{n} est une LEÇON d'un module
+        // canonique : le contexte partagé est aligné ensuite (le hash contextuel
+        // est écrit par l'abonné P10, jamais ici, pour ne pas dupliquer l'état).
+        if (window.P10 && typeof window.P10.applyLegacyLesson === 'function') {
+          window.P10.applyLegacyLesson(moduleId);
+        }
       };
 
       // ============ INITIALISATION PAR LE HASH ============
@@ -10806,6 +10469,12 @@
       // Listener UNIQUE de navigation par hash
       window.addEventListener("hashchange", () => {
         const id = (location.hash || "").replace("#", "");
+        // P10.9 — hash contextuel '#pep/y1/s2/pep-y1s2-03[/narratif-1]' :
+        // il porte parcours / année / semestre / module, et est relu par P10.
+        if (window.P10 && id.indexOf('/') !== -1) {
+          p10AppliquerHash(location.hash);
+          return;
+        }
         if (chapters[id] && typeof selectModule === 'function') {
           selectModule(id);
         }
@@ -11025,6 +10694,249 @@
 
       // Restauration gérée par ProfileSelector.bootstrapAuth() via /me
       // Ne JAMAIS afficher mainApp sur la seule base de localStorage
+
+      // =================================================================
+      // P10 — SYNCHRONISATION PARCOURS ↔ DISCUSSION
+      // =================================================================
+      // Le référentiel des 43 modules, le contexte partagé, le hash contextuel
+      // et la clé d'historique vivent dans src/p10-context.js (window.P10).
+      // Ce bloc ne fait que câbler le DOM. Sans window.P10 (tests unitaires de
+      // selectModule, chargement partiel), tout reste strictement inerte : le
+      // comportement hérité continue à l'identique.
+
+      function p10Disponible() {
+        return !!(window.P10 && typeof window.P10.context === 'function' &&
+          typeof window.P10.renderParcoursTree === 'function' &&
+          typeof window.P10.historyKey === 'function');
+      }
+
+      // P10.6 — clé de stockage d'une conversation : chatHistory_<chapterId>:<topic>.
+      // Repli strict sur l'ancien format tant que P10 n'est pas disponible.
+      function p10ChatStorageKey(topic) {
+        if (p10Disponible()) {
+          var cle = window.P10.historyKey(window.P10.context().chapterId, topic);
+          if (cle) return cle;
+        }
+        return 'chatHistory_' + topic;
+      }
+
+      // ---------- Rendu des deux arbres depuis le référentiel ----------
+      function p10RenderParcours() {
+        if (!p10Disponible()) return;
+        var mount = document.getElementById('parcoursTreeRoot');
+        if (!mount) return;
+        var donnees = (typeof parcoursData !== 'undefined') ? parcoursData : null;
+        mount.innerHTML = window.P10.renderParcoursTree({
+          context: window.P10.context(),
+          contents: window.P10.buildContents(donnees)
+        });
+      }
+
+      function p10RenderDiscussions() {
+        if (!p10Disponible()) return;
+        var mount = document.getElementById('discussionList');
+        if (!mount) return;
+        var titres = {};
+        var dd = window.discussionData || {};
+        Object.keys(dd).forEach(function (t) { titres[t] = dd[t].title; });
+        mount.innerHTML = window.P10.renderDiscussionTree({
+          context: window.P10.context(),
+          discussionTitles: titres
+        });
+      }
+
+      // ---------- Zone centrale (P10.8) ----------
+      // Fiche de module réellement chargée : texte uniquement, jamais de HTML
+      // injecté depuis les données, donc aucun vecteur d'injection.
+      function updateColumn4(fiche) {
+        if (!fiche || typeof fiche !== 'object') return;
+        var titreEl = document.getElementById('chatModuleTitle');
+        if (titreEl) titreEl.textContent = (typeof fiche.title === 'string') ? fiche.title : '';
+        var finalitesEl = document.getElementById('chatModuleFinalities');
+        if (finalitesEl) finalitesEl.textContent = (typeof fiche.finalities === 'string') ? fiche.finalities : '';
+        var objectifsEl = document.getElementById('chatModuleObjectives');
+        if (objectifsEl) {
+          objectifsEl.innerHTML = '';
+          (Array.isArray(fiche.objectives) ? fiche.objectives : []).forEach(function (objetif) {
+            var li = document.createElement('li');
+            li.textContent = String(objetif);
+            objectifsEl.appendChild(li);
+          });
+        }
+        var contenuEl = document.getElementById('chatModuleContent');
+        if (contenuEl) contenuEl.textContent = (typeof fiche.content === 'string') ? fiche.content : '';
+      }
+
+      function p10SyncContexte(ctx, dataDiscussion) {
+        if (!p10Disponible()) return;
+        var c = ctx || window.P10.context();
+        var ligne = window.P10.contextLine(c, {
+          withDiscussion: !!c.discussionTopic,
+          discussionTitle: (dataDiscussion && dataDiscussion.title) ? dataDiscussion.title : undefined,
+          withState: true
+        });
+        ['parcoursContextLine', 'activitiesContextLine', 'theoryContextLine', 'chatModuleContext']
+          .forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = ligne;
+          });
+        var fiche = window.P10.column4For(c, window.discussionData || {});
+        if (fiche) updateColumn4(fiche);
+        var titreChat = document.getElementById('chatTitle');
+        var dd = window.discussionData || {};
+        if (titreChat && c.discussionTopic && dd[c.discussionTopic]) {
+          titreChat.textContent = dd[c.discussionTopic].title;
+        }
+        var avis = document.getElementById('chatNoDiscussion');
+        if (avis) {
+          if (c.discussionTopic) avis.classList.add('hidden');
+          else avis.classList.remove('hidden');
+        }
+      }
+
+      // État honnête d'un module sans contenu publié : rien n'est inventé.
+      function p10EtatSansContenu(ctx) {
+        var mod = window.P10.module(ctx.chapterId);
+        if (!mod || mod.hasContent) return;
+        var titreAct = document.getElementById('activitiesTitle');
+        if (titreAct) titreAct.textContent = mod.title;
+        var conteneur = document.getElementById('activitiesContainer');
+        if (conteneur) {
+          conteneur.innerHTML = '';
+          var message = document.createElement('p');
+          message.className = 'text-center py-8';
+          message.textContent = 'Aucune activité publiée pour ce module « ' + mod.title +
+            ' » (sans contenu). Le module reste sélectionnable pour le contexte de navigation.';
+          conteneur.appendChild(message);
+        }
+        var theorie = document.getElementById('theoryContent');
+        if (theorie) {
+          theorie.innerHTML = '';
+          var paragraphe = document.createElement('p');
+          paragraphe.textContent = 'Contenu pédagogique non encore publié pour ce module.';
+          theorie.appendChild(paragraphe);
+        }
+        var videoLabel = document.getElementById('theoryVideoLabel');
+        if (videoLabel) videoLabel.textContent = 'Vidéo : non publiée';
+      }
+
+      // Déplie le groupe de type de texte et active la leçon correspondante.
+      function p10ReflectLecon(ctx) {
+        if (!ctx || !ctx.lessonId) return;
+        var type = String(ctx.lessonId).split('-')[0];
+        var box = document.getElementById('modules-' + type);
+        var arrow = document.getElementById('arrow-' + type);
+        if (box && box.classList.contains('hidden')) {
+          box.classList.remove('hidden');
+          if (arrow) arrow.style.transform = 'rotate(90deg)';
+        }
+        var btn = document.querySelector('[data-chapter="' + ctx.lessonId + '"]');
+        if (btn && btn.classList) {
+          btn.classList.add('bg-slate-800', 'text-white');
+          btn.classList.remove('text-slate-300');
+        }
+      }
+
+      function p10MasquerDiscussions() {
+        window.currentDiscussion = null;
+        document.querySelectorAll('[id^="chatMessages-"]').forEach(function (container) {
+          container.classList.add('hidden');
+        });
+      }
+
+      // ---------- Pipeline de sélection d'un module canonique (P10.4) ----------
+      window.p10SelectModule = function (chapterId) {
+        if (!p10Disponible()) return;
+        var ctx = window.P10.selectModule(chapterId);
+        if (!ctx) return;
+        // 1. contexte mis à jour ; 2. module sélectionné ; 3. Discussion
+        // synchronisée ; 4. zone centrale ; 5. hash (abonné ci-dessous).
+        if (ctx.discussionTopic && typeof window.selectDiscussion === 'function') {
+          window.selectDiscussion(ctx.discussionTopic);
+        } else {
+          p10MasquerDiscussions();
+        }
+      };
+
+      // ---------- Hash contextuel (P10.9) ----------
+      var p10DernierModule = null;
+
+      function p10EcrireHash(ctx) {
+        if (!p10Disponible()) return;
+        var cible = window.P10.formatHash(ctx);
+        if (!cible || cible === '#') return;
+        if ((location.hash || '') === cible) return;
+        history.replaceState(null, '', cible);
+      }
+
+      function p10AppliquerHash(rawHash) {
+        if (!p10Disponible()) return;
+        var parsed = window.P10.parseHash(rawHash);
+        if (!parsed) return;
+        window.P10.restoreFromHash(rawHash);
+        if (parsed.lessonId && typeof selectModule === 'function' && chapters[parsed.lessonId]) {
+          selectModule(parsed.lessonId);
+        }
+      }
+
+      if (p10Disponible()) {
+        window.P10.subscribe(function (ctx, reason) {
+          if (p10DernierModule !== ctx.chapterId) {
+            p10DernierModule = ctx.chapterId;
+            p10RenderParcours();
+            p10RenderDiscussions();
+            var mod = window.P10.module(ctx.chapterId);
+            if (mod && !mod.hasContent && !ctx.lessonId) {
+              currentModule = null;
+              currentParcours = null;
+              p10EtatSansContenu(ctx);
+            }
+          }
+          p10ReflectLecon(ctx);
+          p10EcrireHash(ctx);
+          p10SyncContexte(ctx);
+        });
+      }
+
+      function p10Demarrer() {
+        if (!p10Disponible()) return;
+        try {
+          var journal = window.P10.migrateLegacyHistoryKeys(localStorage);
+          if (journal && journal.conflicts && journal.conflicts.length) {
+            console.warn('P10 — conflits de migration d\’historique:', journal.conflicts.join(', '));
+          }
+        } catch (e) {
+          console.warn('P10 — migration de l\’historique impossible:', e);
+        }
+        var restaure = window.P10.restoreFromHash(location.hash || '');
+        if (!restaure) {
+          // Aucun hash exploitable : on reprend le module historiquement peuplé,
+          // sans sélectionner de leçon ni inventer de discussion.
+          window.P10.selectModule(window.P10.LEGACY_DISCUSSION_CHAPTER_ID);
+        }
+        var ctx0 = window.P10.context();
+        var mod0 = window.P10.module(ctx0.chapterId);
+        if (!ctx0.discussionTopic && mod0 && mod0.discussionTopics.length) {
+          // Le module porte des discussions héritées : on reprend celle qui
+          // était ouverte par défaut, sinon la première du module.
+          var herdlee = (typeof window.currentDiscussion === 'string') ? window.currentDiscussion : null;
+          var choix = (herdlee && mod0.discussionTopics.indexOf(herdlee) !== -1)
+            ? herdlee : mod0.discussionTopics[0];
+          window.P10.update({ discussionTopic: choix }, 'boot');
+        }
+        p10DernierModule = window.P10.context().chapterId;
+        p10RenderParcours();
+        p10RenderDiscussions();
+        p10ReflectLecon(window.P10.context());
+        p10SyncContexte(window.P10.context());
+        var final0 = window.P10.context();
+        if (final0.discussionTopic && window.currentDiscussion !== final0.discussionTopic &&
+          typeof window.selectDiscussion === 'function') {
+          window.selectDiscussion(final0.discussionTopic);
+        }
+      }
+
+      p10Demarrer();
     </script>
     
     <!-- Script de secours : vérifie la session AuthClient, pas localStorage -->

@@ -88,6 +88,48 @@ function extraireBlocPrincipal() {
 
 var blocCode = extraireBlocPrincipal();
 
+/**
+ * Localise le corps (accolades incluses) de la première fonction dont l'en-tête
+ * correspond à `motif`. Utilisé pour borner une assertion à UNE définition plutôt
+ * qu'au bloc entier. Une extraction ratée renvoie null : le test échoue alors
+ * bruyamment au lieu de compter faux.
+ */
+function extraireCorpsFonction(code, motif) {
+    var m = motif.exec(code);
+    if (!m) return null;
+    var debut = code.indexOf('{', m.index);
+    if (debut === -1) return null;
+    var profondeur = 0;
+    var quote = null;
+    for (var i = debut; i < code.length; i++) {
+        var ch = code.charAt(i);
+        if (quote) {
+            if (ch === '\\') { i++; continue; }
+            if (ch === quote) quote = null;
+            continue;
+        }
+        if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+        if (ch === '/' && code.charAt(i + 1) === '/') {
+            var saut = code.indexOf('\n', i);
+            if (saut === -1) return null;
+            i = saut;
+            continue;
+        }
+        if (ch === '/' && code.charAt(i + 1) === '*') {
+            var finCom = code.indexOf('*/', i);
+            if (finCom === -1) return null;
+            i = finCom + 1;
+            continue;
+        }
+        if (ch === '{') profondeur++;
+        else if (ch === '}') {
+            profondeur--;
+            if (profondeur === 0) return { debut: debut, fin: i };
+        }
+    }
+    return null;
+}
+
 // Ids RÉELS du document : getElementById renvoie un élément si et seulement si
 // l'id existe dans index.html (sémantique fidèle, y compris pour les ids absents
 // comme contentMeta / contentTitle qui rendent un bloc inatteignable).
@@ -96,6 +138,33 @@ var IDS_REELS = (function () {
     var re = /id\s*=\s*["']([^"']+)["']/g;
     var m;
     while ((m = re.exec(html)) !== null) { found[m[1]] = true; }
+    return found;
+})();
+
+// P10 — l'arborescence Parcours n'est plus écrite en dur dans index.html : elle
+// est fabriquée au démarrage par src/p10-context.js. Le simulateur enregistre les
+// ids RÉELLEMENT émis par cette fabrique (modules-*, arrow-*, tree-* …) au lieu
+// d'en recopier la liste : la sémantique « getElementById renvoie null si l'id
+// n'existe pas » reste celle du navigateur.
+var P10_REFERENTIEL = (function () {
+    try {
+        var mod = require(path.join(__dirname, '..', 'src', 'p10-context.js'));
+        if (mod && typeof mod.renderParcoursTree === 'function' && typeof mod.buildContents === 'function') {
+            return mod;
+        }
+    } catch (e) { /* référentiel indisponible : on s'en tient aux ids du HTML */ }
+    return null;
+})();
+
+var IDS_GENERES = (function () {
+    var found = {};
+    if (!P10_REFERENTIEL) return found;
+    var htmlGenere = P10_REFERENTIEL.renderParcoursTree({
+        contents: P10_REFERENTIEL.buildContents({})
+    });
+    var re = /id\s*=\s*["']([^"']+)["']/g;
+    var m;
+    while ((m = re.exec(htmlGenere)) !== null) { found[m[1]] = true; }
     return found;
 })();
 
@@ -143,6 +212,11 @@ function creerEnvironnement(hashInitial) {
 
     // Tous les ids RÉELS du document sont disponibles (comme dans le navigateur).
     Object.keys(IDS_REELS).forEach(function (id) {
+        if (elements[id] === undefined) reg(id);
+    });
+
+    // Ids de l'arborescence générée par P10 au démarrage de la page réelle.
+    Object.keys(IDS_GENERES).forEach(function (id) {
         if (elements[id] === undefined) reg(id);
     });
 
@@ -513,12 +587,33 @@ section('T15 — Retry (comportement conservé)', function () {
 });
 
 section('T16 — Non-régression structurelle de la définition', function () {
-    var appels = (blocCode.match(/loadActivities\s*\(\s*moduleId\s*\)/g) || []).length;
+    // Le contrat porte sur LA définition de window.selectModule : une écriture de
+    // hash et un rendu d'activités, pas deux. P10.9 ajoute en dehors d'elle un
+    // unique écriteur contextuel (p10EcrireHash) ; le solde du bloc doit rester
+    // vide, ce qui rend tout replaceState sauvage détectable.
+    var corps = extraireCorpsFonction(blocCode, /window\.selectModule\s*=\s*function/);
+    var def = corps === null ? null : blocCode.slice(corps.debut, corps.fin + 1);
+    assert(def !== null, 'définition window.selectModule localisée dans le bloc');
+
+    var appels = def ? (def.match(/loadActivities\s*\(\s*moduleId\s*\)/g) || []).length : 0;
     assert(appels === 1,
         'un seul appel loadActivities(moduleId) dans la définition (obtenu: ' + appels + ')');
-    var replace = (blocCode.match(/history\s*\.\s*replaceState/g) || []).length;
-    assert(replace === 1,
-        'un seul history.replaceState dans la définition (obtenu: ' + replace + ')');
+
+    var replaceDef = def ? (def.match(/history\s*\.\s*replaceState/g) || []).length : 0;
+    assert(replaceDef === 1,
+        'un seul history.replaceState dans la définition (obtenu: ' + replaceDef + ')');
+
+    var ecriteur = extraireCorpsFonction(blocCode, /function\s+p10EcrireHash/);
+    var nbP10 = 0;
+    if (ecriteur !== null) {
+        var corpsP10 = blocCode.slice(ecriteur.debut, ecriteur.fin + 1);
+        nbP10 = (corpsP10.match(/history\s*\.\s*replaceState/g) || []).length;
+        assert(nbP10 === 1, 'l\'écrivain contextuel P10 contient exactement un history.replaceState (obtenu: ' + nbP10 + ')');
+    }
+    var totalBloc = (blocCode.match(/history\s*\.\s*replaceState/g) || []).length;
+    assert(totalBloc === replaceDef + nbP10,
+        'aucun history.replaceState hors de selectModule et de l\'écrivain contextuel (bloc: ' +
+        totalBloc + ', définition: ' + replaceDef + ', P10: ' + nbP10 + ')');
     assert(!/window\s*\.\s*selectModule\s*=\s*function\s*\(\s*chapterId\s*\)/.test(blocCode),
         'aucun résidu de la définition D1 dans le bloc script');
 });

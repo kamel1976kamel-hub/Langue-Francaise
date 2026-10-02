@@ -912,11 +912,39 @@ function synthetiserReponsePedagogique(etapes) {
 // PIPELINE V2 — Prompts, helpers, et pipeline A22B/Tuteur/Cours
 // =================================================================
 
+// Nettoie une valeur de contexte de module fournie par le client : le worker
+// ne fait AUCUNE confiance aveugle aux champs P10 ajoutés à context.chat.
+function cleanV2ModuleValue(valeur, max) {
+    if (typeof valeur !== 'string') return '';
+    var texte = valeur.replace(/[\r\n\t]+/g, ' ').trim();
+    return texte ? texte.slice(0, max) : '';
+}
+
+// Ligne de situation pédagogique (P10.7) : identifiants bornés, titre court.
+// Une requête sans ce bloc produit exactement le prompt d'avant P10.
+function buildV2ModuleContextPrompt(contexteModule) {
+    if (!contexteModule || typeof contexteModule !== 'object') return '';
+    var champs = [];
+    var id = cleanV2ModuleValue(contexteModule.chapter_id, 64);
+    if (id && /^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) champs.push('module ' + id);
+    var parcours = cleanV2ModuleValue(contexteModule.parcours, 16);
+    if (parcours && /^[a-z0-9-]{1,16}$/.test(parcours)) champs.push('parcours ' + parcours);
+    var annee = Number(contexteModule.year_number);
+    if (isFinite(annee) && annee > 0 && annee < 100) champs.push('année ' + Math.floor(annee));
+    var semestre = Number(contexteModule.semester_number);
+    if (isFinite(semestre) && semestre > 0 && semestre < 100) champs.push('semestre ' + Math.floor(semestre));
+    var titre = cleanV2ModuleValue(contexteModule.module_title, 160);
+    if (titre) champs.push('intitulé « ' + titre + ' »');
+    if (champs.length === 0) return '';
+    return 'Situation pédagogique : ' + champs.join(', ') + '.\n';
+}
+
 // Construit la description du contexte pour les prompts V2
 function buildV2ContextPrompt(request) {
     if (request.mode === 'chat' && request.context && request.context.chat) {
         var c = request.context.chat;
         return 'Contexte : discussion sur le thème « ' + (c.topic_title || c.topic) + ' ».\n' +
+            buildV2ModuleContextPrompt(c.module) +
             (c.topic_context ? c.topic_context + '\n' : '');
     }
     if (request.mode === 'activity' && request.context && request.context.activity) {
