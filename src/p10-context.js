@@ -146,16 +146,18 @@ const P10_TEXT_TYPE_VISUALS = {
 };
 
 /**
- * Ouverture initiale de la colonne Parcours : seuls le parcours et ses deux
- * années sont visibles. Les années (Première comme Deuxième) restent repliées
- * — cliquer dessus déplie normalement semestres puis modules, comme avant.
- * Aucune donnée pédagogique n'est supprimée, seul l'état visuel initial change.
+ * Ouverture initiale de la colonne Parcours : dépliage strictement progressif.
+ * Au démarrage, seuls le parcours et ses deux années sont visibles ; les années
+ * (Première comme Deuxième) ET les semestres sont repliés. Un clic sur une année
+ * révèle ses deux semestres (repliés) ; un clic sur un semestre révèle ses
+ * modules ; un clic sur un module ouvre le cours puis les activités. Aucune
+ * donnée pédagogique n'est supprimée, seul l'état visuel initial change.
  */
 const P10_DEFAULT_OPEN = {
     'pep': true,
     'pep/y1': false,
     'pep/y1/s1': false,
-    'pep/y1/s2': true,
+    'pep/y1/s2': false,
     'pep/y2': false,
     'pep/y2/s1': false,
     'pep/y2/s2': false

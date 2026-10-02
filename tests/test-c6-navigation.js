@@ -320,9 +320,10 @@ var s1Hidden = /<div id="tree-s1" class="hidden/.test(navRegion);
 var p2Hidden = /<div id="tree-p2" class="hidden/.test(navRegion);
 assert(s1Hidden, 'R34 \u2014 Semestre 1 repli\u00e9 par d\u00e9faut (aucun contenu invent\u00e9)');
 assert(p2Hidden, 'R35 \u2014 Deuxi\u00e8me ann\u00e9e repli\u00e9e par d\u00e9faut');
-var s2Visible = /<div id="tree-s2" class="ml-4/.test(navRegion);
-var tpeVisible = /<div id="tree-tpe" class="ml-4/.test(navRegion);
-assert(s2Visible && tpeVisible, 'R36 \u2014 Semestre 2 et module \u00e9crit 2 ouverts par d\u00e9faut (UX pr\u00e9serv\u00e9e)');
+var s2Hidden = /<div id="tree-s2" class="hidden/.test(navRegion);
+var tpeBranch = /<div id="tree-tpe"/.test(navRegion);
+assert(s2Hidden, 'R36 \u2014 Semestre 2 repli\u00e9 par d\u00e9faut (\u00e9tat initial strict : ann\u00e9e cliqu\u00e9e \u2192 semestres, semestre cliqu\u00e9 \u2192 modules)');
+assert(tpeBranch, 'R36c \u2014 module \u00e9crit 2 pr\u00e9sent dans l\u2019arbre (accessible apr\u00e8s ouverture de Semestre 2)');
 
 // ── R37+ : arborescence complète des 43 modules, ids canoniques ───────────
 var navNodes = [];
