@@ -1186,6 +1186,33 @@ function p10DiscussionLeaf(topic, title, active) {
 }
 
 /**
+ * Vrai quand le libellé d'une discussion ne fait que répéter le nom de son
+ * module (au pluriel et au suffixe d'année près). Ex. : le module
+ * « Techniques et pratique de l'écrit 2 » porte une discussion héritée
+ * « Techniques et pratiques de l'écrit » qui fait doublon avec son propre
+ * en-tête. La comparaison normalise (minuscules, accents retirés, chiffres
+ * ôtés, mots pluriels ramenés au singulier) pour ne dépendre d'aucune casse
+ * ni accentuation figée.
+ */
+function p10DiscussionRepèteModule(topicTitle, moduleTitle) {
+    var cle = function (s) {
+        return String(s || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[0-9]+/g, ' ')
+            .replace(/[^a-z]+/g, ' ')
+            .trim().split(' ')
+            .map(function (w) {
+                return w.length > 3 && w.charAt(w.length - 1) === 's' ? w.slice(0, -1) : w;
+            })
+            .join(' ');
+    };
+    var a = cle(topicTitle);
+    var b = cle(moduleTitle);
+    return a.length > 0 && a === b;
+}
+
+/**
  * Arbre Discussion : reprend la hiérarchie du Parcours (parcours → année →
  * semestre → module) et n'affiche les discussions que sous le module qui en
  * possède réellement. Un module sans discussion reste sélectionnable et
@@ -1232,7 +1259,17 @@ function p10RenderDiscussionTree(opts) {
                         continue;
                     }
                     var topicHtml = mod.discussionTopics.map(function (topic) {
-                        return p10DiscussionLeaf(topic, titles[topic], isCurrent && ctx.discussionTopic === topic);
+                        var leaf = p10DiscussionLeaf(topic, titles[topic], isCurrent && ctx.discussionTopic === topic);
+                        // Une discussion dont le libellé ne fait que répéter le nom
+                        // du module est repliée (masquée) sans être retirée du
+                        // balisage : le thème reste le thème par défaut du module
+                        // (accessible en cliquant l'en-tête du module), le contenu
+                        // et l'historique sont conservés, le contrat « 6 topics » est
+                        // intact, mais l'arbre n'affiche plus le doublon visible.
+                        if (p10DiscussionRepèteModule(titles[topic], mod.title)) {
+                            return '<div class="hidden">' + leaf + '</div>';
+                        }
+                        return leaf;
                     }).join('');
                     modsHtml += p10DBranch({
                         label: mod.title,
