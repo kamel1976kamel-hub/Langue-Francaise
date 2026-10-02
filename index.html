@@ -3697,7 +3697,11 @@
 
         <!-- COLONNE 2: Parcours d'apprentissage (10cm ≈ 378px) -->
         <aside id="learningPathColumn" class="overflow-y-auto flex-shrink-0" style="width: 378px; background-color: var(--bs-body-bg); color: var(--bs-body-color);">
-          <div class="p-4 border-b" style="border-color: var(--bs-border-color);">
+          <!-- En-tête réduit : le titre « Parcours », le sous-titre et le reflet
+               de contexte ne sont plus affichés à l'état initial. #parcoursContextLine
+               reste présent dans le DOM (écrit par p10SyncContexte) pour préserver
+               le contexte P10/Chat, simplement non visible. -->
+          <div class="p-4 border-b" style="border-color: var(--bs-border-color); display: none;">
             <h1 class="text-lg font-semibold" style="color: var(--bs-body-color);">Parcours</h1>
             <p class="text-xs mt-1" style="color: var(--bs-text-muted);">Parcours PEP · Première et deuxième année</p>
             <!-- P10.8 — reflet du contexte partagé (module canonique sélectionné). -->

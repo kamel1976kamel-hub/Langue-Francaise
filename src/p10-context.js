@@ -146,15 +146,16 @@ const P10_TEXT_TYPE_VISUALS = {
 };
 
 /**
- * Ouverture initiale de la colonne Parcours : dépliage strictement progressif.
- * Au démarrage, seuls le parcours et ses deux années sont visibles ; les années
- * (Première comme Deuxième) ET les semestres sont repliés. Un clic sur une année
- * révèle ses deux semestres (repliés) ; un clic sur un semestre révèle ses
- * modules ; un clic sur un module ouvre le cours puis les activités. Aucune
- * donnée pédagogique n'est supprimée, seul l'état visuel initial change.
+ * Ouverture initiale de la colonne Parcours : accueil réduit aux trois parcours.
+ * Au démarrage, seuls PEP, PEM et PES sont visibles — PEP est replié (aucune
+ * année, semestre, module ni badge « sans contenu » affiché). Un clic sur PEP
+ * révèle Première / Deuxième année (repliées) ; un clic sur une année révèle ses
+ * deux semestres ; un clic sur un semestre révèle ses modules ; un clic sur un
+ * module ouvre le cours puis les activités. Aucune donnée pédagogique n'est
+ * supprimée : seul l'état visuel initial change (conteneurs repliés, pas retirés).
  */
 const P10_DEFAULT_OPEN = {
-    'pep': true,
+    'pep': false,
     'pep/y1': false,
     'pep/y1/s1': false,
     'pep/y1/s2': false,
