@@ -8805,7 +8805,7 @@
       // supports publiés, pas des dépôts locaux. Le « data » est un chemin
       // relatif du dépôt (et non une base64) : téléchargement et lecture directs.
       const BUILTIN_COURSE_DOCUMENTS = [
-        { id: 'builtin-la-phrase-def', name: 'Définition de la phrase', size: 99234, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/quest-ce-quune-phrase.pdf', builtin: true },
+        { id: 'builtin-la-phrase-def', name: 'Définition de la phrase', size: 341506, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/quest-ce-quune-phrase.pdf', builtin: true },
         { id: 'builtin-la-phrase-types', name: 'Types et formes de la phrase', size: 112561, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/types-et-formes-de-la-phrase.pdf', builtin: true },
         { id: 'builtin-la-phrase-verbale', name: 'Phrase verbale et phrase non-verbale', size: 105162, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/phrase-verbale-et-non-verbale.pdf', builtin: true },
         { id: 'builtin-la-phrase-simple', name: 'Phrase simple et phrase complexe', size: 99475, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/phrase-simple-et-complexe.pdf', builtin: true }
@@ -11279,20 +11279,27 @@
         if (holder) holder.innerHTML = '';
       };
 
-      // Vignette cliquable 5 cm × 3 cm ouvrant le lecteur flottant.
+      // Vignette cliquable 5 cm × 3 cm : affiche la prévisualisation YouTube (miniature
+      // réelle de la vidéo) pour que l'étudiant anticipe le contenu avant de lancer la
+      // lecture dans la fenêtre flottante.
       function p10BuildVideoThumb(videoId, title) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'rounded-lg overflow-hidden flex-shrink-0';
         btn.style.width = '5cm';
         btn.style.height = '3cm';
-        btn.style.background = 'linear-gradient(135deg,#1a1a2e,#16213e)';
+        btn.style.backgroundImage = 'url("https://img.youtube.com/vi/' + encodeURIComponent(videoId) + '/hqdefault.jpg")';
+        btn.style.backgroundSize = 'cover';
+        btn.style.backgroundPosition = 'center';
         btn.style.color = '#fff';
+        btn.style.border = '0';
+        btn.style.cursor = 'pointer';
+        btn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.25)';
         btn.title = 'Lire la vidéo : ' + title;
-        btn.innerHTML = '<span class="w-full h-full flex flex-col items-center justify-center gap-1">' +
-          '<span style="width:2.4rem;height:2.4rem;border-radius:9999px;background:rgba(255,0,0,0.85);display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
-          '<span style="font-size:11px;">Lire la vidéo</span></span>';
+        btn.innerHTML = '<span class="w-full h-full flex flex-col items-center justify-center gap-1" style="background:rgba(0,0,0,0.28)">' +
+          '<span style="width:2.4rem;height:2.4rem;border-radius:9999px;background:rgba(255,0,0,0.9);display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>' +
+          '<span style="font-size:0.72rem;text-shadow:0 1px 3px rgba(0,0,0,0.85)">Lire la vidéo</span></span>';
         btn.addEventListener('click', function () { window.p10OpenVideoModal(videoId, title); });
         return btn;
       }
