@@ -11193,6 +11193,55 @@
         p10SynchroniserReflet(ctx);
       };
 
+      // Nœud de navigation personnalisé (P10_CUSTOM_NODES) : sous-arbre « sans
+      // contenu » greffé à un module (ex. « La phrase : Généralité » sous
+      // Usage et maîtrise de la langue 1). Le clic n'invente AUCUNE leçon : il
+      // affiche un libellé honnête « Contenu à venir » dans la colonne centrale
+      // et surligne le nœud. Il ne déclenche ni data-chapter ni selectModule et
+      // ne touche pas au contexte/hash, donc les compteurs du référentiel (43
+      // modules, 20 data-chapter, 6 topics) et l'état réel du module (badge
+      // « sans contenu », vidéo de présentation au clic sur le module) restent
+      // intacts. Le titre vient du référentiel (customNodeTitle), jamais d'une
+      // donnée dynamique interpolée : aucun vecteur d'injection.
+      window.p10SelectCustomNode = function (moduleId, nodeKey, kind) {
+        if (!p10Disponible()) return;
+        var titre = null;
+        try { titre = window.P10.customNodeTitle(moduleId, nodeKey); } catch (e) { titre = null; }
+        if (!titre) return;
+
+        var titreAct = document.getElementById('activitiesTitle');
+        if (titreAct) titreAct.textContent = titre;
+
+        var conteneur = document.getElementById('activitiesContainer');
+        if (conteneur) {
+          conteneur.innerHTML = '';
+          var msg = document.createElement('p');
+          msg.className = 'text-center py-8';
+          msg.textContent = 'Contenu à venir pour « ' + titre + ' ». Ce nœud de navigation reste sans activité publiée.';
+          conteneur.appendChild(msg);
+        }
+
+        var theorie = document.getElementById('theoryContent');
+        if (theorie) {
+          theorie.innerHTML = '';
+          var paragraphe = document.createElement('p');
+          paragraphe.className = 'text-lg font-semibold';
+          paragraphe.textContent = titre;
+          theorie.appendChild(paragraphe);
+        }
+
+        var enteteAct = document.getElementById('activitiesHeader');
+        if (enteteAct) enteteAct.style.display = '';
+        var enteteThe = document.getElementById('theoryHeader');
+        if (enteteThe) enteteThe.style.display = '';
+
+        document.querySelectorAll('[data-custom-node]').forEach(function (el) {
+          if (el.classList) el.classList.remove('bg-slate-800', 'text-white');
+        });
+        var actif = document.querySelector('[data-custom-module="' + moduleId + '"] [data-custom-node="' + nodeKey + '"]');
+        if (actif && actif.classList) actif.classList.add('bg-slate-800', 'text-white');
+      };
+
       // ---------- Hash contextuel (P10.9) ----------
       var p10DernierModule = null;
 

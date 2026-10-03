@@ -117,6 +117,29 @@ const P10_CONTENT_MODULES = {
     }
 };
 
+/**
+ * Sous-arbre de NAVIGATION pur, indépendant du pipeline de contenu
+ * {type}-{1..4} (qui, lui, émet des data-chapter et selectModule comptés par
+ * les tests C6). Un module listé ici reste « sans contenu » (badge honnête,
+ * sélectionnable) mais révèle des enfants cliquables gérés par
+ * p10SelectCustomNode. Aucun de ces nœuds n'émet data-module-id ni
+ * data-chapter : les comptages du référentiel restent intacts.
+ */
+const P10_CUSTOM_NODES = {
+    'pep-y2s1-01': {
+        group: {
+            key: 'phrase',
+            title: 'La phrase : Généralité',
+            lessons: [
+                { key: 'phrase-def', title: 'Définition de la phrase' },
+                { key: 'phrase-types', title: 'Types et formes de la phrase' },
+                { key: 'phrase-verbale', title: 'Phrase verbale et phrase non-verbale' },
+                { key: 'phrase-simple', title: 'Phrase simple et phrase complexe' }
+            ]
+        }
+    }
+};
+
 /** Discussion héritée rattachée à UN SEUL module : la migration d'historique. */
 const P10_LEGACY_DISCUSSION_CHAPTER_ID = 'pep-y1s2-03';
 const P10_LEGACY_DISCUSSION_TOPICS = ['techniques', 'narratif', 'descriptif', 'explicatif', 'argumentatif', 'resume'];
@@ -953,6 +976,72 @@ function p10ModuleLeaf(mod, ctx) {
         '</button>';
 }
 
+/**
+ * Rendu d'un module à sous-arbre de navigation (P10_CUSTOM_NODES). Le bouton
+ * du module reste une feuille « sans contenu » identique aux autres modules
+ * vides (même onclick p10SelectModule(id), même data-nav-state="empty", même
+ * badge), pour ne rien changer aux comptages C6. Les enfants (groupe + leçons)
+ * sont rendus dans un sous-arbre distinct via des nœuds data-custom-node qui
+ * ne portent JAMAIS data-module-id ni data-chapter.
+ */
+function p10CustomModuleBranch(mod, custom, ctx) {
+    var mid = p10SafeId(mod.chapterId);
+    if (!mid) return '';
+    var active = ctx && ctx.chapterId === mid;
+    var moduleBtn = '<button type="button"' +
+        ' onclick="' + p10Handler('p10SelectModule', mid) + '"' +
+        (active ? ' aria-current="true"' : '') +
+        ' class="' + P10_NODE_CLASSES.leaf + (active ? P10_NODE_CLASSES.activeLeaf : '') + '"' +
+        ' data-module-id="' + p10Escape(mid) + '" data-nav-state="empty">' +
+        '<span class="' + P10_NODE_CLASSES.leafDot + '"></span>' +
+        '<span>' + p10Escape(mod.title) + '</span>' +
+        '<span class="' + P10_NODE_CLASSES.emptyBadge + '">sans contenu</span>' +
+        '</button>';
+    var gkey = p10SafeId(custom.group.key) || 'groupe';
+    var lessonsHtml = (custom.group.lessons || []).map(function (lesson, index) {
+        var lkey = p10SafeId(lesson.key);
+        if (!lkey) return '';
+        var onclickSel = "p10SelectCustomNode('" + mid + "','" + lkey + "','lesson')";
+        return '<button type="button" class="' + P10_NODE_CLASSES.moduleBtn + '"' +
+            ' data-custom-node="' + p10Escape(lkey) + '" onclick="' + onclickSel + '">' +
+            '<span class="flex items-center gap-2">' +
+            '<span class="' + P10_NODE_CLASSES.moduleBtnIndex + '">' + (index + 1) + '</span>' +
+            p10Escape(lesson.title) +
+            '</span></button>';
+    }).join('');
+    var groupOnclick = "p10SelectCustomNode('" + mid + "','" + gkey + "','group');toggleTree('c-" + gkey + "')";
+    var groupHtml = p10Branch({
+        label: custom.group.title,
+        nodeKey: 'c-' + gkey,
+        open: false,
+        onclick: groupOnclick,
+        buttonAttrs: 'data-custom-node="' + p10Escape(gkey) + '"',
+        subtree: lessonsHtml
+    });
+    return '<div class="' + P10_NODE_CLASSES.pathItem + '" data-custom-module="' + p10Escape(mid) + '">' +
+        moduleBtn +
+        '<div class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700 pl-2">' + groupHtml + '</div>' +
+        '</div>';
+}
+
+/**
+ * Titre lisible d'un nœud de navigation personnalisé (P10_CUSTOM_NODES),
+ * résolu depuis le référentiel : sert au placement « Contenu à venir » affiché
+ * quand on clique un groupe ou une leçon custom. Renvoie null si le module
+ * n'a pas de sous-arbre ou si la clé est inconnue (aucune donnée inventée).
+ */
+function p10CustomNodeTitle(moduleId, key) {
+    var custom = P10_CUSTOM_NODES[p10SafeId(moduleId) || moduleId];
+    if (!custom || !custom.group) return null;
+    var g = custom.group;
+    if (g.key === key) return g.title;
+    var lessons = Array.isArray(g.lessons) ? g.lessons : [];
+    for (var i = 0; i < lessons.length; i++) {
+        if (lessons[i].key === key) return lessons[i].title;
+    }
+    return null;
+}
+
 function p10TextTypeGroup(spec, type, ctx) {
     var visual = P10_TEXT_TYPE_VISUALS[type] || { gradient: 'from-slate-500 to-slate-600', icons: [] };
     var lessons = Array.isArray(spec && spec.lessons) ? spec.lessons : [];
@@ -1079,7 +1168,11 @@ function p10RenderParcoursTree(opts) {
                 var modsHtml = '';
                 for (var mi = 0; mi < mods.length; mi++) {
                     var mod = mods[mi];
-                    if (!mod.hasContent) { modsHtml += p10ModuleLeaf(mod, ctx); continue; }
+                    if (!mod.hasContent) {
+                        var custom = P10_CUSTOM_NODES[mod.chapterId];
+                        modsHtml += custom ? p10CustomModuleBranch(mod, custom, ctx) : p10ModuleLeaf(mod, ctx);
+                        continue;
+                    }
                     var groupsHtml = '';
                     var typeSpecs = contents[mod.chapterId] || {};
                     for (var ti = 0; ti < mod.textTypes.length; ti++) {
@@ -1412,6 +1505,7 @@ const P10 = {
     column4For: p10Column4For,
     renderParcoursTree: p10RenderParcoursTree,
     renderDiscussionTree: p10RenderDiscussionTree,
+    customNodeTitle: p10CustomNodeTitle,
     buildContents: p10BuildContents,
     placeholderParcours: p10PlaceholderParcours
 };
