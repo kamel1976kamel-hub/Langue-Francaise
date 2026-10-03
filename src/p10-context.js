@@ -131,10 +131,10 @@ const P10_CUSTOM_NODES = {
             key: 'phrase',
             title: 'La phrase : Généralité',
             lessons: [
-                { key: 'phrase-def', title: 'Définition de la phrase', video: 'CmV3s9XYFVc' },
-                { key: 'phrase-types', title: 'Types et formes de la phrase', video: 'bttNqsIL3DY' },
-                { key: 'phrase-verbale', title: 'Phrase verbale et phrase non-verbale', video: '7WXqvHx3H7w' },
-                { key: 'phrase-simple', title: 'Phrase simple et phrase complexe', video: 'tOAlxFQM8GA' }
+                { key: 'phrase-def', title: 'Définition de la phrase', video: 'CmV3s9XYFVc', pdf: 'documents/la-phrase/quest-ce-quune-phrase.pdf' },
+                { key: 'phrase-types', title: 'Types et formes de la phrase', video: 'bttNqsIL3DY', pdf: 'documents/la-phrase/types-et-formes-de-la-phrase.pdf' },
+                { key: 'phrase-verbale', title: 'Phrase verbale et phrase non-verbale', video: '7WXqvHx3H7w', pdf: 'documents/la-phrase/phrase-verbale-et-non-verbale.pdf' },
+                { key: 'phrase-simple', title: 'Phrase simple et phrase complexe', video: 'tOAlxFQM8GA', pdf: 'documents/la-phrase/phrase-simple-et-complexe.pdf' }
             ]
         }
     }
@@ -1053,11 +1053,11 @@ function p10CustomNodeInfo(moduleId, key) {
     var custom = P10_CUSTOM_NODES[p10SafeId(moduleId) || moduleId];
     if (!custom || !custom.group) return null;
     var g = custom.group;
-    if (g.key === key) return { title: g.title, video: g.video || null, kind: 'group' };
+    if (g.key === key) return { title: g.title, video: g.video || null, pdf: g.pdf || null, kind: 'group' };
     var lessons = Array.isArray(g.lessons) ? g.lessons : [];
     for (var i = 0; i < lessons.length; i++) {
         if (lessons[i].key === key) {
-            return { title: lessons[i].title, video: lessons[i].video || null, kind: 'lesson' };
+            return { title: lessons[i].title, video: lessons[i].video || null, pdf: lessons[i].pdf || null, kind: 'lesson' };
         }
     }
     return null;

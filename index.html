@@ -8796,6 +8796,18 @@
         }
       };
       
+      // Documents de cours intégrés au dépôt (fichiers statiques servis par
+      // GitHub Pages), groupés sous le sous-dossier « La phrase : généralités »
+      // dans la Base de données. Non supprimables (builtin) : ce sont des
+      // supports publiés, pas des dépôts locaux. Le « data » est un chemin
+      // relatif du dépôt (et non une base64) : téléchargement et lecture directs.
+      const BUILTIN_COURSE_DOCUMENTS = [
+        { id: 'builtin-la-phrase-def', name: 'Définition de la phrase', size: 99234, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/quest-ce-quune-phrase.pdf', builtin: true },
+        { id: 'builtin-la-phrase-types', name: 'Types et formes de la phrase', size: 112561, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/types-et-formes-de-la-phrase.pdf', builtin: true },
+        { id: 'builtin-la-phrase-verbale', name: 'Phrase verbale et phrase non-verbale', size: 105162, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/phrase-verbale-et-non-verbale.pdf', builtin: true },
+        { id: 'builtin-la-phrase-simple', name: 'Phrase simple et phrase complexe', size: 99475, type: 'application/pdf', category: 'La phrase : généralités', data: 'documents/la-phrase/phrase-simple-et-complexe.pdf', builtin: true }
+      ];
+
       function saveDocument(doc) {
         try {
           const documents = loadDocuments();
@@ -8820,18 +8832,23 @@
       function loadDocumentsList() {
         const container = document.getElementById('documentsList');
         if (!container) return;
-        const documents = loadDocuments();
-        
-        if (documents.length === 0) {
+        // Les supports publiés du dépôt (builtins) sont toujours présents ; les
+        // dépôts locaux de l'enseignant s'ajoutent. On les groupe par
+        // sous-dossier (category). Sans document du tout : état vide honnête.
+        const all = BUILTIN_COURSE_DOCUMENTS.concat(loadDocuments());
+
+        if (all.length === 0) {
           container.innerHTML = '<p class="text-xs text-center py-4" style="color: var(--bs-text-muted);">Aucun document disponible</p>';
           return;
         }
-        
-        container.innerHTML = documents.map(doc => {
+
+        const rowOf = (doc) => {
           const size = formatFileSize(doc.size);
-          const date = new Date(doc.uploadedAt).toLocaleDateString('fr-FR');
+          const meta = doc.uploadedAt
+            ? new Date(doc.uploadedAt).toLocaleDateString('fr-FR')
+            : 'Support de cours';
           const icon = getFileIcon(doc.type);
-          
+          const canDelete = currentUser && currentUser.role === 'teacher' && !doc.builtin;
           return `
             <div class="flex items-center gap-3 p-3 rounded-lg" style="background-color: rgba(255,255,255,0.03);">
               <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background-color: var(--bs-primary);">
@@ -8839,15 +8856,15 @@
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate" style="color: var(--bs-white);">${escapeHtml(doc.name)}</p>
-                <p class="text-[10px]" style="color: var(--bs-text-muted);">${size} • ${date}</p>
+                <p class="text-[10px]" style="color: var(--bs-text-muted);">${size} • ${meta}</p>
               </div>
               <div class="flex items-center gap-1">
-                <a href="${doc.data}" download="${doc.name}" class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: var(--bs-success);" title="Télécharger">
+                <a href="${doc.data}" download="${escapeHtml(doc.name)}" class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: var(--bs-success);" title="Télécharger">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                   </svg>
                 </a>
-                ${currentUser && currentUser.role === 'teacher' ? `
+                ${canDelete ? `
                   <button onclick="deleteDocument('${doc.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10" style="color: var(--bs-danger);" title="Supprimer">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -8857,6 +8874,19 @@
               </div>
             </div>
           `;
+        };
+
+        // Regroupement par sous-dossier, ordre d'apparition conservé.
+        const groups = new Map();
+        all.forEach(doc => {
+          const cat = doc.category || 'Documents';
+          if (!groups.has(cat)) groups.set(cat, []);
+          groups.get(cat).push(doc);
+        });
+
+        container.innerHTML = Array.from(groups.entries()).map(([cat, docs]) => {
+          const heading = `<p class="text-[11px] uppercase tracking-wide font-semibold mb-1 mt-2" style="color: var(--bs-text-muted);">${escapeHtml(cat)}</p>`;
+          return heading + '<div class="space-y-2">' + docs.map(rowOf).join('') + '</div>';
         }).join('');
       }
       
@@ -11052,22 +11082,17 @@
         if (conteneur) {
           conteneur.innerHTML = '';
           if (videoPresentation) {
-            var cadre = document.createElement('div');
-            cadre.className = 'rounded-lg overflow-hidden';
-            cadre.style.aspectRatio = '16 / 9';
-            cadre.style.background = '#000';
-            var iframe = document.createElement('iframe');
-            iframe.src = 'https://www.youtube-nocookie.com/embed/' + videoPresentation;
-            iframe.title = 'Présentation du module';
-            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-            iframe.allowFullscreen = true;
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            iframe.style.border = '0';
-            iframe.style.display = 'block';
-            cadre.appendChild(iframe);
-            conteneur.appendChild(cadre);
+            // La vidéo de présentation n'occupe plus toute la zone : elle devient
+            // une vignette 5×3 cm en haut à gauche, lisible en fenêtre flottante.
+            var topRow = document.createElement('div');
+            topRow.className = 'flex items-center gap-3 mb-3';
+            topRow.appendChild(p10BuildVideoThumb(videoPresentation, 'Présentation du module'));
+            var aide = document.createElement('span');
+            aide.className = 'text-sm';
+            aide.style.color = 'var(--bs-text-muted)';
+            aide.textContent = 'Cliquez sur la vignette pour lire la vidéo de présentation.';
+            topRow.appendChild(aide);
+            conteneur.appendChild(topRow);
           } else {
             var message = document.createElement('p');
             message.className = 'text-center py-8';
@@ -11193,18 +11218,113 @@
         p10SynchroniserReflet(ctx);
       };
 
+      // ---------- Lecteur vidéo flottant + vignette (partagé module & leçons) ----------
+      // La vidéo n'occupe plus la zone principale : elle devient une petite
+      // vignette 5 cm × 3 cm placée en haut à gauche ; un clic ouvre une fenêtre
+      // flottante (modal) qui contient le lecteur. Le modal est créé à la demande
+      // et l'iframe est détruit à la fermeture (lecture réellement stoppée).
+      function p10EnsureVideoModal() {
+        var modal = document.getElementById('customVideoModal');
+        if (modal) return modal;
+        modal = document.createElement('div');
+        modal.id = 'customVideoModal';
+        modal.className = 'hidden fixed inset-0 z-[60] flex items-center justify-center p-4';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        modal.innerHTML =
+          '<div class="w-[900px] max-w-full rounded-xl overflow-hidden shadow-2xl" style="background-color: var(--bs-card-bg);">' +
+            '<div class="flex items-center justify-between px-5 py-3 border-b" style="border-color: var(--bs-border-color); background-color: var(--bs-header-bg);">' +
+              '<h3 id="customVideoModalTitle" class="text-base font-semibold" style="color: var(--bs-white);"></h3>' +
+              '<button type="button" onclick="p10CloseVideoModal()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10" style="color: var(--bs-text-muted);" aria-label="Fermer">' +
+                '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+              '</button>' +
+            '</div>' +
+            '<div class="p-4"><div id="customVideoModalFrame" style="aspect-ratio:16 / 9; background:#000;"></div></div>' +
+          '</div>';
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function (e) { if (e.target === modal) window.p10CloseVideoModal(); });
+        return modal;
+      }
+
+      window.p10OpenVideoModal = function (videoId, title) {
+        if (!videoId) return;
+        var modal = p10EnsureVideoModal();
+        var holder = document.getElementById('customVideoModalFrame');
+        var titleEl = document.getElementById('customVideoModalTitle');
+        if (titleEl) titleEl.textContent = title || 'Vidéo';
+        if (holder) {
+          holder.innerHTML = '';
+          var iframe = document.createElement('iframe');
+          iframe.src = 'https://www.youtube-nocookie.com/embed/' + videoId + '?autoplay=1';
+          iframe.title = title || 'Vidéo';
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+          iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+          iframe.allowFullscreen = true;
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.border = '0';
+          iframe.style.display = 'block';
+          holder.appendChild(iframe);
+        }
+        modal.classList.remove('hidden');
+      };
+
+      window.p10CloseVideoModal = function () {
+        var modal = document.getElementById('customVideoModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        var holder = document.getElementById('customVideoModalFrame');
+        if (holder) holder.innerHTML = '';
+      };
+
+      // Vignette cliquable 5 cm × 3 cm ouvrant le lecteur flottant.
+      function p10BuildVideoThumb(videoId, title) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rounded-lg overflow-hidden flex-shrink-0';
+        btn.style.width = '5cm';
+        btn.style.height = '3cm';
+        btn.style.background = 'linear-gradient(135deg,#1a1a2e,#16213e)';
+        btn.style.color = '#fff';
+        btn.title = 'Lire la vidéo : ' + title;
+        btn.innerHTML = '<span class="w-full h-full flex flex-col items-center justify-center gap-1">' +
+          '<span style="width:2.4rem;height:2.4rem;border-radius:9999px;background:rgba(255,0,0,0.85);display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
+          '<span style="font-size:11px;">Lire la vidéo</span></span>';
+        btn.addEventListener('click', function () { window.p10OpenVideoModal(videoId, title); });
+        return btn;
+      }
+
+      // Visionneuse PDF intégrée (document original du dépôt) + fallback lien.
+      function p10BuildPdfViewer(pdfPath, title) {
+        var wrap = document.createElement('div');
+        wrap.className = 'rounded-lg overflow-hidden border';
+        wrap.style.height = 'calc(100vh - 300px)';
+        wrap.style.minHeight = '460px';
+        wrap.style.borderColor = 'var(--bs-border-color)';
+        wrap.style.background = '#111';
+        var iframe = document.createElement('iframe');
+        iframe.src = pdfPath + '#toolbar=1';
+        iframe.title = title;
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = '0';
+        iframe.style.display = 'block';
+        wrap.appendChild(iframe);
+        return wrap;
+      }
+
       // Nœud de navigation personnalisé (P10_CUSTOM_NODES) : sous-arbre « sans
       // contenu » greffé à un module (ex. « La phrase : Généralité » sous
-      // Usage et maîtrise de la langue 1). Quand le nœud publie une vidéo (les
-      // 4 sous-leçons ont chacune leur YouTube), on l'intègre dans la colonne
-      // activités ; sinon on affiche un libellé honnête « Contenu à venir ». Le
-      // clic n'invente AUCUNE leçon et ne déclenche ni data-chapter ni
-      // selectModule : il ne touche pas au contexte/hash, donc les compteurs du
-      // référentiel (43 modules, 20 data-chapter, 6 topics) et l'état réel du
-      // module (badge « sans contenu », vidéo de présentation au clic sur le
-      // module) restent intacts. Titre et identifiant vidéo viennent du
-      // référentiel (customNodeInfo), jamais d'une donnée dynamique interpolée :
-      // aucun vecteur d'injection.
+      // Usage et maîtrise de la langue 1). La leçon affiche le DOCUMENT PDF
+      // original dans la zone principale, accompagné en haut à gauche d'une
+      // vignette vidéo 5×3 cm (lecture en fenêtre flottante) et d'un bouton
+      // « Télécharger ». Le groupe, lui, n'a ni PDF ni vidéo : il garde le
+      // libellé honnête « Contenu à venir ». Le clic n'invente AUCUNE leçon et
+      // ne déclenche ni data-chapter ni selectModule : le contexte/hash restent
+      // intacts, donc les compteurs du référentiel (43 modules, 20 data-chapter,
+      // 6 topics) ne bougent pas. Titre, identifiant vidéo et chemin PDF
+      // viennent du référentiel (customNodeInfo), jamais d'une donnée dynamique
+      // interpolée : aucun vecteur d'injection.
       window.p10SelectCustomNode = function (moduleId, nodeKey, kind) {
         if (!p10Disponible()) return;
         var info = null;
@@ -11212,6 +11332,7 @@
         if (!info || !info.title) return;
         var titre = info.title;
         var videoId = info.video || null;
+        var pdfPath = info.pdf || null;
 
         var titreAct = document.getElementById('activitiesTitle');
         if (titreAct) titreAct.textContent = titre;
@@ -11219,24 +11340,26 @@
         var conteneur = document.getElementById('activitiesContainer');
         if (conteneur) {
           conteneur.innerHTML = '';
-          if (videoId) {
-            var cadre = document.createElement('div');
-            cadre.className = 'rounded-lg overflow-hidden';
-            cadre.style.aspectRatio = '16 / 9';
-            cadre.style.background = '#000';
-            var iframe = document.createElement('iframe');
-            iframe.src = 'https://www.youtube-nocookie.com/embed/' + videoId;
-            iframe.title = titre;
-            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-            iframe.allowFullscreen = true;
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            iframe.style.border = '0';
-            iframe.style.display = 'block';
-            cadre.appendChild(iframe);
-            conteneur.appendChild(cadre);
-          } else {
+          if (videoId || pdfPath) {
+            var topRow = document.createElement('div');
+            topRow.className = 'flex items-center gap-3 mb-3';
+            if (videoId) topRow.appendChild(p10BuildVideoThumb(videoId, titre));
+            if (pdfPath) {
+              var dl = document.createElement('a');
+              dl.className = 'px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90';
+              dl.style.marginLeft = videoId ? 'auto' : '0';
+              dl.style.backgroundColor = 'var(--bs-primary)';
+              dl.style.color = '#fff';
+              dl.href = pdfPath;
+              dl.setAttribute('download', titre + '.pdf');
+              dl.textContent = 'Télécharger le document';
+              topRow.appendChild(dl);
+            }
+            conteneur.appendChild(topRow);
+          }
+          if (pdfPath) {
+            conteneur.appendChild(p10BuildPdfViewer(pdfPath, titre));
+          } else if (!videoId) {
             var msg = document.createElement('p');
             msg.className = 'text-center py-8';
             msg.textContent = 'Contenu à venir pour « ' + titre + ' ». Ce nœud de navigation reste sans activité publiée.';
@@ -11249,7 +11372,7 @@
           theorie.innerHTML = '';
           var paragraphe = document.createElement('p');
           paragraphe.className = 'text-lg font-semibold';
-          paragraphe.textContent = videoId ? 'Vidéo : ' + titre : titre;
+          paragraphe.textContent = titre;
           theorie.appendChild(paragraphe);
         }
 
