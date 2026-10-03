@@ -11040,20 +11040,52 @@
         if (!mod || mod.hasContent) return;
         var titreAct = document.getElementById('activitiesTitle');
         if (titreAct) titreAct.textContent = mod.title;
+        // Module « Usage et maîtrise de la langue 1 » : une présentation vidéo est
+        // publiée. On remplace l'état « sans contenu » par l'intégration YouTube
+        // (colonne activités) et par le titre « Présentation du module » (colonne
+        // cours). L'identifiant de la vidéo est une constante codée en dur, jamais
+        // une donnée dynamique : aucun vecteur d'injection. Les autres modules sans
+        // contenu conservent l'état générique.
+        var videoPresentation = (ctx.chapterId === 'pep-y2s1-01') ? 'DGc63dAiAdc' : null;
+
         var conteneur = document.getElementById('activitiesContainer');
         if (conteneur) {
           conteneur.innerHTML = '';
-          var message = document.createElement('p');
-          message.className = 'text-center py-8';
-          message.textContent = 'Aucune activité publiée pour ce module « ' + mod.title +
-            ' » (sans contenu). Le module reste sélectionnable pour le contexte de navigation.';
-          conteneur.appendChild(message);
+          if (videoPresentation) {
+            var cadre = document.createElement('div');
+            cadre.className = 'rounded-lg overflow-hidden';
+            cadre.style.aspectRatio = '16 / 9';
+            cadre.style.background = '#000';
+            var iframe = document.createElement('iframe');
+            iframe.src = 'https://www.youtube-nocookie.com/embed/' + videoPresentation;
+            iframe.title = 'Présentation du module';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+            iframe.allowFullscreen = true;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = '0';
+            iframe.style.display = 'block';
+            cadre.appendChild(iframe);
+            conteneur.appendChild(cadre);
+          } else {
+            var message = document.createElement('p');
+            message.className = 'text-center py-8';
+            message.textContent = 'Aucune activité publiée pour ce module « ' + mod.title +
+              ' » (sans contenu). Le module reste sélectionnable pour le contexte de navigation.';
+            conteneur.appendChild(message);
+          }
         }
         var theorie = document.getElementById('theoryContent');
         if (theorie) {
           theorie.innerHTML = '';
           var paragraphe = document.createElement('p');
-          paragraphe.textContent = 'Contenu pédagogique non encore publié pour ce module.';
+          if (videoPresentation) {
+            paragraphe.className = 'text-lg font-semibold';
+            paragraphe.textContent = 'Présentation du module';
+          } else {
+            paragraphe.textContent = 'Contenu pédagogique non encore publié pour ce module.';
+          }
           theorie.appendChild(paragraphe);
         }
         var videoLabel = document.getElementById('theoryVideoLabel');
