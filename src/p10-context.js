@@ -131,10 +131,10 @@ const P10_CUSTOM_NODES = {
             key: 'phrase',
             title: 'La phrase : Généralité',
             lessons: [
-                { key: 'phrase-def', title: 'Définition de la phrase' },
-                { key: 'phrase-types', title: 'Types et formes de la phrase' },
-                { key: 'phrase-verbale', title: 'Phrase verbale et phrase non-verbale' },
-                { key: 'phrase-simple', title: 'Phrase simple et phrase complexe' }
+                { key: 'phrase-def', title: 'Définition de la phrase', video: 'CmV3s9XYFVc' },
+                { key: 'phrase-types', title: 'Types et formes de la phrase', video: 'bttNqsIL3DY' },
+                { key: 'phrase-verbale', title: 'Phrase verbale et phrase non-verbale', video: '7WXqvHx3H7w' },
+                { key: 'phrase-simple', title: 'Phrase simple et phrase complexe', video: 'tOAlxFQM8GA' }
             ]
         }
     }
@@ -1042,6 +1042,27 @@ function p10CustomNodeTitle(moduleId, key) {
     return null;
 }
 
+/**
+ * Infos complètes d'un nœud de navigation personnalisé : { title, video, kind }.
+ * « video » est un identifiant YouTube codé en dur dans le référentiel (jamais
+ * une donnée dynamique) : aucun vecteur d'injection. kind = 'group' pour
+ * l'enfant « La phrase : Généralité », 'lesson' pour une sous-leçon. Renvoie
+ * null si le module n'a pas de sous-arbre ou si la clé est inconnue.
+ */
+function p10CustomNodeInfo(moduleId, key) {
+    var custom = P10_CUSTOM_NODES[p10SafeId(moduleId) || moduleId];
+    if (!custom || !custom.group) return null;
+    var g = custom.group;
+    if (g.key === key) return { title: g.title, video: g.video || null, kind: 'group' };
+    var lessons = Array.isArray(g.lessons) ? g.lessons : [];
+    for (var i = 0; i < lessons.length; i++) {
+        if (lessons[i].key === key) {
+            return { title: lessons[i].title, video: lessons[i].video || null, kind: 'lesson' };
+        }
+    }
+    return null;
+}
+
 function p10TextTypeGroup(spec, type, ctx) {
     var visual = P10_TEXT_TYPE_VISUALS[type] || { gradient: 'from-slate-500 to-slate-600', icons: [] };
     var lessons = Array.isArray(spec && spec.lessons) ? spec.lessons : [];
@@ -1506,6 +1527,7 @@ const P10 = {
     renderParcoursTree: p10RenderParcoursTree,
     renderDiscussionTree: p10RenderDiscussionTree,
     customNodeTitle: p10CustomNodeTitle,
+    customNodeInfo: p10CustomNodeInfo,
     buildContents: p10BuildContents,
     placeholderParcours: p10PlaceholderParcours
 };

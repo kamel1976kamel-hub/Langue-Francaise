@@ -11195,19 +11195,23 @@
 
       // Nœud de navigation personnalisé (P10_CUSTOM_NODES) : sous-arbre « sans
       // contenu » greffé à un module (ex. « La phrase : Généralité » sous
-      // Usage et maîtrise de la langue 1). Le clic n'invente AUCUNE leçon : il
-      // affiche un libellé honnête « Contenu à venir » dans la colonne centrale
-      // et surligne le nœud. Il ne déclenche ni data-chapter ni selectModule et
-      // ne touche pas au contexte/hash, donc les compteurs du référentiel (43
-      // modules, 20 data-chapter, 6 topics) et l'état réel du module (badge
-      // « sans contenu », vidéo de présentation au clic sur le module) restent
-      // intacts. Le titre vient du référentiel (customNodeTitle), jamais d'une
-      // donnée dynamique interpolée : aucun vecteur d'injection.
+      // Usage et maîtrise de la langue 1). Quand le nœud publie une vidéo (les
+      // 4 sous-leçons ont chacune leur YouTube), on l'intègre dans la colonne
+      // activités ; sinon on affiche un libellé honnête « Contenu à venir ». Le
+      // clic n'invente AUCUNE leçon et ne déclenche ni data-chapter ni
+      // selectModule : il ne touche pas au contexte/hash, donc les compteurs du
+      // référentiel (43 modules, 20 data-chapter, 6 topics) et l'état réel du
+      // module (badge « sans contenu », vidéo de présentation au clic sur le
+      // module) restent intacts. Titre et identifiant vidéo viennent du
+      // référentiel (customNodeInfo), jamais d'une donnée dynamique interpolée :
+      // aucun vecteur d'injection.
       window.p10SelectCustomNode = function (moduleId, nodeKey, kind) {
         if (!p10Disponible()) return;
-        var titre = null;
-        try { titre = window.P10.customNodeTitle(moduleId, nodeKey); } catch (e) { titre = null; }
-        if (!titre) return;
+        var info = null;
+        try { info = window.P10.customNodeInfo(moduleId, nodeKey); } catch (e) { info = null; }
+        if (!info || !info.title) return;
+        var titre = info.title;
+        var videoId = info.video || null;
 
         var titreAct = document.getElementById('activitiesTitle');
         if (titreAct) titreAct.textContent = titre;
@@ -11215,10 +11219,29 @@
         var conteneur = document.getElementById('activitiesContainer');
         if (conteneur) {
           conteneur.innerHTML = '';
-          var msg = document.createElement('p');
-          msg.className = 'text-center py-8';
-          msg.textContent = 'Contenu à venir pour « ' + titre + ' ». Ce nœud de navigation reste sans activité publiée.';
-          conteneur.appendChild(msg);
+          if (videoId) {
+            var cadre = document.createElement('div');
+            cadre.className = 'rounded-lg overflow-hidden';
+            cadre.style.aspectRatio = '16 / 9';
+            cadre.style.background = '#000';
+            var iframe = document.createElement('iframe');
+            iframe.src = 'https://www.youtube-nocookie.com/embed/' + videoId;
+            iframe.title = titre;
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+            iframe.allowFullscreen = true;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = '0';
+            iframe.style.display = 'block';
+            cadre.appendChild(iframe);
+            conteneur.appendChild(cadre);
+          } else {
+            var msg = document.createElement('p');
+            msg.className = 'text-center py-8';
+            msg.textContent = 'Contenu à venir pour « ' + titre + ' ». Ce nœud de navigation reste sans activité publiée.';
+            conteneur.appendChild(msg);
+          }
         }
 
         var theorie = document.getElementById('theoryContent');
@@ -11226,7 +11249,7 @@
           theorie.innerHTML = '';
           var paragraphe = document.createElement('p');
           paragraphe.className = 'text-lg font-semibold';
-          paragraphe.textContent = titre;
+          paragraphe.textContent = videoId ? 'Vidéo : ' + titre : titre;
           theorie.appendChild(paragraphe);
         }
 
