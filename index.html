@@ -1797,6 +1797,118 @@
           height: 36px !important;
         }
       }
+
+      /* ============================================================
+         RESPONSIVE — correctif mobile-first. Les règles ci-dessus
+         ciblaient « aside.header-dark », classe absente du DOM : elles
+         ne s'appliquaient JAMAIS (d'ou le bloc de navigation de 113px
+         qui restait vertical et les colonnes de 378px fixes qui
+         debordaient). Ces regles ciblent les VRAIS elements et ne
+         s'appliquent qu'en dessous des points de rupture : le rendu
+         desktop (>1024px) reste strictement inchange.
+         ============================================================ */
+      @media (max-width: 1024px) {
+        #mainApp > div > aside,
+        #mainApp > div > div,
+        #primaryNav, #learningPathColumn, #discussionListColumn, #middleColumn {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          flex: 0 0 auto !important;
+          flex-shrink: 1 !important;
+        }
+        #learningPathColumn, #discussionListColumn {
+          height: auto !important;
+          max-height: 45vh;
+          overflow-y: auto;
+        }
+        #middleColumn { height: auto !important; }
+        #middleColumn > .flex-1.overflow-y-auto { overflow: visible !important; }
+        #chatView { flex-direction: column !important; height: auto !important; }
+        #chatView > * { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+        #primaryNav {
+          flex-direction: row !important;
+          align-items: center !important;
+          height: auto !important;
+          padding: 0.25rem 0.5rem !important;
+          position: sticky !important;
+          top: 0;
+          z-index: 40;
+        }
+        #primaryNav > div:first-child {
+          flex-shrink: 0;
+          border-bottom: none !important;
+          border-right: 1px solid var(--bs-border-color);
+          padding: 0.25rem 0.5rem !important;
+        }
+        #primaryNav nav {
+          flex: 1 1 auto !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          gap: 0.75rem;
+          padding: 0.25rem 0 !important;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        #primaryNav nav > button { flex-shrink: 0; margin-top: 0 !important; }
+        #accessibilityPanel, #progressionPanel, #databasePanel,
+        #homeworkPanel, #announcementsPanel, #settingsPanel {
+          left: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+      }
+      @media (max-width: 768px) {
+        #primaryNav {
+          position: fixed !important;
+          top: auto !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 100;
+          width: 100% !important;
+          height: 56px !important;
+          padding: 0 !important;
+          justify-content: center;
+        }
+        #primaryNav > div:first-child { display: none !important; }
+        /* Sur mobile : seul le <nav> reste (logo/pied masqués), la barre occupe toute la largeur */
+        #primaryNav > *:not(nav) { display: none !important; }
+        #primaryNav nav {
+          width: 100% !important;
+          justify-content: space-between !important;
+          gap: 0;
+          padding: 0 6px !important;
+          height: 100%;
+          overflow: hidden !important;
+        }
+        #primaryNav nav > button {
+          flex: 0 0 auto !important;
+          flex-direction: column !important;
+          justify-content: center;
+          height: 100%;
+          min-width: 0 !important;
+          padding: 0 2px;
+        }
+        #primaryNav nav > button span { font-size: 8px; margin-top: 1px; line-height: 1; white-space: nowrap; }
+        #mainApp > div { padding-bottom: 72px !important; }
+        #learningPathColumn, #discussionListColumn { max-height: 40vh; }
+        #authModal > div { margin: 1rem; max-width: calc(100% - 2rem); }
+      }
+      @media (max-width: 480px) {
+        #learningPathColumn, #discussionListColumn { max-height: 36vh; }
+        .p10-video-thumb {
+          width: 100% !important;
+          max-width: 5cm !important;
+          height: auto !important;
+          aspect-ratio: 5 / 3;
+        }
+        #primaryNav nav > button svg { width: 20px; height: 20px; }
+        /* Sous 480px : icônes seules (libellés masqués) pour que les 7 items tiennent */
+        #primaryNav nav > button span { display: none !important; }
+      }
       
       /* Styles pour les parcours qui s'adaptent au thème */
       [data-bs-theme=light] .path-item button {
@@ -2221,7 +2333,7 @@
       <div class="flex h-screen">
         
         <!-- COLONNE 1: Navigation (3cm ≈ 113px) - TOUJOURS SOMBRE -->
-        <aside class="border-r border-system flex-shrink-0 flex flex-col" style="width: 113px; background-color: #262626; border-color: var(--bs-border-color);" data-theme="dark">
+        <aside id="primaryNav" class="border-r border-system flex-shrink-0 flex flex-col" style="width: 113px; background-color: #262626; border-color: var(--bs-border-color);" data-theme="dark">
           <!-- Logo ENS Biskra -->
           <div class="p-3 border-b flex-shrink-0" style="border-color: var(--bs-border-color);">
             <div class="w-10 h-10 mx-auto rounded-lg flex items-center justify-center text-xs font-bold" style="background-color: var(--bs-primary); color: var(--bs-white);">
@@ -2564,7 +2676,7 @@
 
         <!-- MODAL YOUTUBE PARCOURS -->
         <div id="parcoursYoutubeModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center" style="background-color: rgba(0,0,0,0.8);">
-          <div class="w-[800px] max-h-[80vh] rounded-xl overflow-hidden shadow-2xl" style="background-color: var(--bs-card-bg);">
+          <div class="w-[800px] max-w-[calc(100vw-2rem)] max-h-[80vh] rounded-xl overflow-hidden shadow-2xl" style="background-color: var(--bs-card-bg);">
             <!-- Header -->
             <div class="flex items-center justify-between px-6 py-4 border-b" style="border-color: var(--bs-border-color); background-color: var(--bs-header-bg);">
               <div class="flex items-center gap-3">
@@ -2589,7 +2701,7 @@
 
         <!-- MODAL YOUTUBE CHAT -->
         <div id="youtubeModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center" style="background-color: rgba(0,0,0,0.8);">
-          <div class="w-[800px] max-h-[80vh] rounded-xl overflow-hidden shadow-2xl" style="background-color: var(--bs-card-bg);">
+          <div class="w-[800px] max-w-[calc(100vw-2rem)] max-h-[80vh] rounded-xl overflow-hidden shadow-2xl" style="background-color: var(--bs-card-bg);">
             <!-- Header -->
             <div class="flex items-center justify-between px-6 py-4 border-b" style="border-color: var(--bs-border-color); background-color: var(--bs-header-bg);">
               <div class="flex items-center gap-3">
@@ -3411,7 +3523,7 @@
         <!-- VUE CHAT (cachée par défaut) -->
         <div id="chatView" class="hidden flex flex-1 h-full">
           <!-- COLONNE 2: Liste des discussions -->
-          <aside class="overflow-y-auto flex-shrink-0" style="width: 378px; background-color: var(--bs-body-bg); color: var(--bs-body-color);">
+          <aside id="discussionListColumn" class="overflow-y-auto flex-shrink-0" style="width: 378px; background-color: var(--bs-body-bg); color: var(--bs-body-color);">
             <div class="p-4 border-b" style="border-color: var(--bs-border-color);">
               <h1 class="text-lg font-semibold" style="color: var(--bs-body-color);">Discussions</h1>
             </div>
@@ -9720,6 +9832,7 @@
         chatWindow.className = 'fixed z-[70] rounded-lg shadow-2xl overflow-hidden';
         chatWindow.style.cssText = `
           width: 380px;
+          max-width: calc(100vw - 24px);
           height: 500px;
           bottom: 20px;
           right: 20px;
@@ -11088,7 +11201,7 @@
             // La vidéo de présentation n'occupe plus toute la zone : elle devient
             // une vignette 5×3 cm en haut à gauche, lisible en fenêtre flottante.
             var topRow = document.createElement('div');
-            topRow.className = 'flex items-center gap-3 mb-3';
+            topRow.className = 'flex flex-wrap items-center gap-3 mb-3';
             topRow.appendChild(p10BuildVideoThumb(videoPresentation, 'Présentation du module'));
             var aide = document.createElement('span');
             aide.className = 'text-sm';
@@ -11285,9 +11398,10 @@
       function p10BuildVideoThumb(videoId, title) {
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'rounded-lg overflow-hidden flex-shrink-0';
+        btn.className = 'rounded-lg overflow-hidden flex-shrink-0 p10-video-thumb';
         btn.style.width = '5cm';
         btn.style.height = '3cm';
+        btn.style.maxWidth = '100%';
         btn.style.backgroundImage = 'url("https://img.youtube.com/vi/' + encodeURIComponent(videoId) + '/hqdefault.jpg")';
         btn.style.backgroundSize = 'cover';
         btn.style.backgroundPosition = 'center';
@@ -11417,7 +11531,7 @@
           conteneur.innerHTML = '';
           if (videoId || pdfPath) {
             var topRow = document.createElement('div');
-            topRow.className = 'flex items-center gap-3 mb-3';
+            topRow.className = 'flex flex-wrap items-center gap-3 mb-3';
             if (videoId) topRow.appendChild(p10BuildVideoThumb(videoId, titre));
             if (pdfPath) {
               var dl = document.createElement('a');
