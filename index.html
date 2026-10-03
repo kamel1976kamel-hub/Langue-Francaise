@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js : rendu des documents PDF directement dans la page, sans dépendre
+         du lecteur PDF natif du navigateur (qui peut être réglé sur « télécharger »). -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     
     <!-- Scripts essentiels -->
     <!-- Modules pédagogiques -->
@@ -11294,22 +11297,87 @@
         return btn;
       }
 
-      // Visionneuse PDF intégrée (document original du dépôt) + fallback lien.
+      // Visionneuse PDF : rend le document avec PDF.js (pages => canvas) directement
+      // dans la zone, SANS dépendre du lecteur PDF natif du navigateur (qui peut être
+      // réglé sur « télécharger », laissant l'<iframe> blanc). Repli sur l'<iframe>
+      // natif si PDF.js est indisponible ou échoue.
       function p10BuildPdfViewer(pdfPath, title) {
         var wrap = document.createElement('div');
-        wrap.className = 'rounded-lg overflow-hidden border';
-        wrap.style.height = 'calc(100vh - 300px)';
-        wrap.style.minHeight = '460px';
+        wrap.className = 'rounded-lg border';
+        wrap.style.height = 'calc(100vh - 320px)';
+        wrap.style.minHeight = '480px';
         wrap.style.borderColor = 'var(--bs-border-color)';
-        wrap.style.background = '#111';
-        var iframe = document.createElement('iframe');
-        iframe.src = pdfPath + '#toolbar=1';
-        iframe.title = title;
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = '0';
-        iframe.style.display = 'block';
-        wrap.appendChild(iframe);
+        wrap.style.overflowY = 'auto';
+        wrap.style.background = '#e9e9ec';
+
+        var note = document.createElement('div');
+        note.style.cssText = 'padding:16px;text-align:center;color:#555;font-size:0.9rem';
+        note.textContent = 'Chargement du document…';
+        wrap.appendChild(note);
+
+        function fallbackNative() {
+          wrap.innerHTML = '';
+          var bar = document.createElement('div');
+          bar.style.cssText = 'padding:8px 12px;font-size:0.82rem;color:#666;background:#fff;border-bottom:1px solid #ddd';
+          bar.textContent = 'Aperçu natif — si le document ne s’affiche pas, utilisez le bouton « Télécharger le document ».';
+          wrap.appendChild(bar);
+          var frame = document.createElement('iframe');
+          frame.src = pdfPath + '#toolbar=1';
+          frame.title = title;
+          frame.style.width = '100%';
+          frame.style.height = 'calc(100% - 34px)';
+          frame.style.minHeight = '440px';
+          frame.style.border = '0';
+          frame.style.display = 'block';
+          wrap.appendChild(frame);
+        }
+
+        function startRender() {
+        try {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          window.pdfjsLib.getDocument({ url: pdfPath }).promise.then(function (doc) {
+            wrap.innerHTML = '';
+            var container = document.createElement('div');
+            container.style.cssText = 'padding:12px;display:flex;flex-direction:column;align-items:center;gap:10px';
+            wrap.appendChild(container);
+            var scale = 1.5;
+            var seq = Promise.resolve();
+            for (var p = 1; p <= doc.numPages; p++) {
+              (function (pageNum) {
+                seq = seq.then(function () {
+                  return doc.getPage(pageNum).then(function (page) {
+                    var viewport = page.getViewport({ scale: scale });
+                    var canvas = document.createElement('canvas');
+                    canvas.style.cssText = 'width:100%;max-width:820px;height:auto;box-shadow:0 1px 4px rgba(0,0,0,0.25);background:#fff';
+                    var ctx = canvas.getContext('2d');
+                    canvas.width = Math.floor(viewport.width);
+                    canvas.height = Math.floor(viewport.height);
+                    container.appendChild(canvas);
+                    return page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                  });
+                });
+              })(p);
+            }
+            return seq;
+          }).catch(function () { fallbackNative(); });
+        } catch (e) {
+          fallbackNative();
+        }
+        }
+
+        if (window.pdfjsLib) {
+          startRender();
+        } else {
+          // Le script PDF.js (head, synchrone) peut n'être pas encore prêt lors d'une
+          // sélection très précoce : on attend brièvement avant de replier sur
+          // l'aperçu natif, pour éviter un blanc.
+          var tries = 0;
+          var iv = setInterval(function () {
+            tries++;
+            if (window.pdfjsLib) { clearInterval(iv); startRender(); }
+            else if (tries >= 25) { clearInterval(iv); fallbackNative(); }
+          }, 200);
+        }
         return wrap;
       }
 
